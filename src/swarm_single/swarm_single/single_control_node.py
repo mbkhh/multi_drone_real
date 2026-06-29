@@ -14,7 +14,7 @@ from px4_msgs.msg import OffboardControlMode, TrajectorySetpoint, VehicleCommand
 
 from swarm_single.navigation import navigation
 from swarm_single.formation import PatternController
-from swarm_single.lidar_handler import lidarHandler
+# from swarm_single.lidar_handler import lidarHandler
 from swarm_single.communication import Communication
 
 class DroneState:
