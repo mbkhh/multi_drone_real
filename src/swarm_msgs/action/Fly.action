@@ -1,0 +1,9 @@
+# Define the goal
+geometry_msgs/Vector3 goal
+bool absolute
+---
+# Define the result
+string result
+---
+# Define a feedback message
+float32 distance_remaining

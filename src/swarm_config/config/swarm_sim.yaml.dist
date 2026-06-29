@@ -1,0 +1,6 @@
+spawn_spacing: 5
+drone_count: 4
+px4_model: 'x500_depth'
+frame_id: '4002'
+path_parameters:
+  px4_path: '~/PX4-Autopilot'

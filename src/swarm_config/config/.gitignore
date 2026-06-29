@@ -1,0 +1,5 @@
+# Ignore all user-specific local config files
+*.yaml
+
+# But DO NOT ignore the default distribution templates
+!*.yaml.dist

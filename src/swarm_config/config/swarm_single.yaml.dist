@@ -1,0 +1,26 @@
+goal_frame_name: 'goal'
+position_goal_timer: 0.1
+liveness_topic_name: 'live'
+manual_control_topic_name: 'manual_controller'
+formation_topic_name: 'formation'
+formation_command_topic_name: '/swarm/formation_command'
+command_topic_name: 'command'
+leader_command_topic_name: '/swarm/command'
+broadcast_interval: 1.5
+status_interval: 1
+goal_tolerance: 0.5
+navigation:
+  time_step: 0.016
+  neighbor_dist: 3.5
+  max_neighbors: 20
+  time_horizon: 3.0
+  radius: 0.5
+  max_speed: 6.0
+  good_dist_to_goal: 0.01
+lidar:
+  lidar_min_cutoff: 0.2
+  lidar_max_cutoff: 8
+  min_samples: 5
+  max_distance_samples: 0.5
+formation:
+  animation_resolution: 0.1
