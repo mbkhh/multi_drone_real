@@ -134,7 +134,7 @@ class SingleControlNode(Node):
             else:
                 # When the RC switch is flicked, PX4 drops out of Offboard.
                 # Yield control to the pilot by going back to IDLE.
-                self.get_logger().warn("Pilot took control or Offboard lost! Resetting to IDLE.")
+                self.get_logger().info("Pilot took control or Offboard lost! Resetting to IDLE.")
                 self.state = DroneState.IDLE
                 
                 # Reset the velocity goal so the drone doesn't immediately 
