@@ -198,7 +198,7 @@ class SingleControlNode(Node):
         msg.param5 = params.get("param5", 0.0)
         msg.param6 = params.get("param6", 0.0)
         msg.param7 = params.get("param7", 0.0)
-        msg.target_system = int(self.drone_id)+1
+        msg.target_system = 1
         msg.target_component = 1
         msg.source_system = 255
         msg.source_component = 1
