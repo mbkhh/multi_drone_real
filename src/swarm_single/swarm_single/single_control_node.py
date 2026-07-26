@@ -53,7 +53,7 @@ class SingleControlNode(Node):
 
 		self.navigation = navigation(self)
 		self.formation = PatternController(self)
-		self.lidar = lidarHandler(self)
+		# self.lidar = lidarHandler(self)
 		self.communication = Communication(self)
 
 		#######################################################
