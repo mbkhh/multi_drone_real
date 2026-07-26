@@ -132,7 +132,7 @@ class SingleControlNode(Node):
             if self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
                 self.publish_position_setpoint()
             else:
-                self.get_logger().warn("Lost Offboard state during TAKEOFF! Reverting to ARMING state.")
+                self.get_logger().info("Lost Offboard state during TAKEOFF! Reverting to ARMING state.")
                 self.state = DroneState.ARMING
         elif self.state == DroneState.LANDING:
             if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_AUTO_LAND:
