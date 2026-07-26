@@ -3,7 +3,7 @@
 import rclpy
 import tf2_ros
 import math
-import math
+from typing import Dict
 from rclpy.node import Node
 from geometry_msgs.msg import TransformStamped
 from swarm_config.config_utils import get_config
@@ -41,28 +41,32 @@ class SingleControlNode(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
-        self.velocity_goal = [0.0, 0.0, 0.0]#Vector3(0.0, 0.0, 0.0)
+        self.velocity_goal = [0.0, 0.0, 0.0]
         self.manual_velocity = [0.0, 0.0, 0.0]
         self.leader_goal = [0.0, 0.0, 0.0]
         self.yaw = 1.57
 
-
         self.mission = []
-
         self.message = ""
 
         self.navigation = navigation(self)
         self.formation = PatternController(self)
-        # self.lidar = lidarHandler(self)
         self.communication = Communication(self)
 
-        #######################################################
-
         self.manual_control = False
-
         self.state = DroneState.IDLE
         self.drone_id = self.frame_id
+        
+        # QoS Profile for telemetry and setpoints (Depth = 1)
         qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+        
+        # QoS Profile strictly for Vehicle Commands (Depth = 10) like in the working code
+        qos_profile_cmd = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
             history=HistoryPolicy.KEEP_LAST,
@@ -73,8 +77,10 @@ class SingleControlNode(Node):
             OffboardControlMode, f"/uav_{self.drone_id}/fmu/in/offboard_control_mode", qos_profile)
         self.trajectory_setpoint_publisher = self.create_publisher(
             TrajectorySetpoint, f"/uav_{self.drone_id}/fmu/in/trajectory_setpoint", qos_profile)
+        
+        # Applying the deeper QoS profile here
         self.vehicle_command_publisher = self.create_publisher(
-            VehicleCommand, f"/uav_{self.drone_id}/fmu/in/vehicle_command", qos_profile)
+            VehicleCommand, f"/uav_{self.drone_id}/fmu/in/vehicle_command", qos_profile_cmd)
 
         self.vehicle_status_subscriber = self.create_subscription(
             VehicleStatus, f"/uav_{self.drone_id}/fmu/out/vehicle_status", self.vehicle_status_callback, qos_profile)
@@ -82,88 +88,69 @@ class SingleControlNode(Node):
         self.offboard_setpoint_counter = 0
         self.vehicle_status = VehicleStatus()
 
+        # Timer runs at 20Hz
         self.timer = self.create_timer(0.05, self.control_loop_callback)
 
         self.mission_goal_tolerance = 0.4
-
         self.sended_goal_ack = True
         
         self.get_logger().info(f"SingleControlNode successfully initialized for Drone {self.drone_id}.")
 
     def control_loop_callback(self):
-        """Main callback that runs at 10Hz, sends heartbeats, and executes state logic."""
+        """Main callback that runs at 20Hz, sends heartbeats, and executes state logic."""
+        
+        # Always publish heartbeats to keep Offboard alive
         self.publish_offboard_control_heartbeat_signal()
-
-        # if self.is_leader and len(self.mission)!= 0:
-        #   if self.mission[0][0] != self.leader_goal[0] or self.mission[0][1] != self.leader_goal[1] or self.mission[0][2] != self.leader_goal[2] :
-        #       self.goal_callback_temp(self.mission[0])
-
-        #   distance = math.dist(self.mission[0], self.navigation.current_pos[:3])
-
-        #   if distance < self.mission_goal_tolerance:
-        #       self.mission.pop(0)
-        #       self.communication.send_mission()
-        # if self.is_leader and len(self.mission) == 0:
-        #   if not self.sended_goal_ack:
-        #       if self.navigation.current_pos[0] != 0.0 or self.navigation.current_pos[1] != 0.0 or self.navigation.current_pos[2] != 0.0:
-        #           distance = math.dist(self.leader_goal, self.navigation.current_pos[:3])
-        #           if distance < self.mission_goal_tolerance:
-        #               self.sended_goal_ack = True
-        #               self.message = f"Achieved goal {self.leader_goal[0]:.2f}, {self.leader_goal[1]:.2f}, {self.leader_goal[2]:.2f}"
-
         self.navigation.navigate_to_goal()
 
-        # if self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
-            #if(int(self.drone_id) == 1):
-            #   self.get_logger().info(f"time is {int(self.get_clock().now().nanoseconds / 1000000)}")
+        # Always publish position setpoints if we are trying to fly or arming
+        if self.state != DroneState.IDLE:
+            self.publish_position_setpoint()
+
         if self.state == DroneState.IDLE and self.velocity_goal[2] < -0.1:
-            self.get_logger().info("Takeoff command detected (Z velocity < 0). Starting arming sequence.")
+            self.get_logger().info("Takeoff command detected. Starting arming sequence.")
             self.state = DroneState.ARMING
             self.offboard_setpoint_counter = 0 
     
-        if self.state == DroneState.ARMING:
-            # FIX 1: We MUST stream setpoints during the warmup phase so PX4 allows Offboard mode.
-            self.publish_position_setpoint()
-            
-            if self.offboard_setpoint_counter >= 10:
-                self.arm()
-                self.state = DroneState.TAKEOFF
-                self.get_logger().info("Offboard setpoint counter reached. Transitioning to TAKEOFF state.")
+        elif self.state == DroneState.ARMING:
             self.offboard_setpoint_counter += 1
             
+            # Step 1: Let setpoints stream for 5 ticks (~0.25s), then request Offboard mode
+            if self.offboard_setpoint_counter == 5:
+                self.get_logger().info("Requesting Offboard mode...")
+                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=6.0)
+                
+            # Step 2: Let PX4 process Offboard for 15 ticks (~0.75s), then Arm
+            elif self.offboard_setpoint_counter == 20:
+                self.arm()
+                
+            # Step 3: Give it a moment to confirm arming, then transition to TAKEOFF
+            elif self.offboard_setpoint_counter >= 30:
+                self.state = DroneState.TAKEOFF
+                self.offboard_setpoint_counter = 0
+                self.get_logger().info("Sequence complete. Transitioning to TAKEOFF state.")
+            
         elif self.state == DroneState.TAKEOFF:
-            # FIX 2: Always publish setpoints while in TAKEOFF to prevent PX4 from timing out and dropping Offboard
-            self.publish_position_setpoint()
-            self.get_logger().info(str(self.vehicle_status.nav_state) + "     " + str(VehicleStatus.NAVIGATION_STATE_OFFBOARD))
+            # Check if pilot took over via physical RC
             if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
-                # FIX 3: Give telemetry a small grace period to update after sending the command.
-                # If we stay out of offboard mode for too long (e.g. 10 ticks / 0.5 sec), then the pilot actually took over.
                 self.offboard_setpoint_counter += 1
                 if self.offboard_setpoint_counter > 20: 
-                    self.get_logger().info("Pilot took control or Offboard lost! Resetting to IDLE.")
+                    self.get_logger().warn("Pilot took control or Offboard lost! Resetting to IDLE.")
                     self.state = DroneState.IDLE
                     self.velocity_goal = [0.0, 0.0, 0.0]
                     self.offboard_setpoint_counter = 0
             else:
-                # While safely in Offboard mode, keep the counter locked at 10 
-                # so the grace period is ready if the pilot flicks the RC switch later.
-                self.offboard_setpoint_counter = 10
+                self.offboard_setpoint_counter = 0
+                
         elif self.state == DroneState.LANDING:
             if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_AUTO_LAND:
-                # If PX4 exits land mode for some reason, re-issue the command
                 self.get_logger().info("PX4 dropped out of AUTO_LAND. Re-issuing LAND command.")
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
             if self.vehicle_status.arming_state != VehicleStatus.ARMING_STATE_ARMED:
                 self.get_logger().info("Landed and disarmed. Returning to IDLE.")
                 self.state = DroneState.IDLE
                 self.disarm()
-                self.offboard_setpoint_counter = 0 # Reset for next takeoff
-        # else:
-        #     if self.state != DroneState.IDLE:
-        #         self.get_logger().info("Pilot took control or Offboard lost. Resetting state to IDLE.")
-        #         self.state = DroneState.IDLE
-        #         # You might want to reset other variables here too
-        #         self.velocity_goal = [0.0, 0.0, 0.0]
+                self.offboard_setpoint_counter = 0
 
     def publish_offboard_control_heartbeat_signal(self):
         msg = OffboardControlMode()
@@ -176,12 +163,10 @@ class SingleControlNode(Node):
         self.offboard_control_mode_publisher.publish(msg)
 
     def vehicle_status_callback(self, vehicle_status):
-        """Callback function for vehicle_status topic subscriber."""
         self.vehicle_status = vehicle_status
         
     def arm(self):
-        self.get_logger().info("Sending VEHICLE_CMD_DO_SET_MODE (Offboard) and ARM command.")
-        self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=6.0)
+        self.get_logger().info("Sending ARM command.")
         self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=1.0)
 
     def disarm(self):
@@ -191,12 +176,8 @@ class SingleControlNode(Node):
     def publish_position_setpoint(self):
         msg = TrajectorySetpoint()
         msg.position = [math.nan, math.nan, math.nan] 
-        # if self.manual_control:
-        #   msg.velocity = [self.manual_velocity[0], self.manual_velocity[1], self.manual_velocity[2]]
-        #   msg.yaw = self.yaw
-        # else:
-        msg.velocity = [self.velocity_goal[0],self.velocity_goal[1],self.velocity_goal[2]]#self.velocity_goal.xyz
-        msg.yaw = self.yaw #self.velocity_goal[3] #1.57079  # (90 degrees)
+        msg.velocity = [self.velocity_goal[0], self.velocity_goal[1], self.velocity_goal[2]]
+        msg.yaw = self.yaw
 
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.trajectory_setpoint_publisher.publish(msg)
@@ -204,16 +185,16 @@ class SingleControlNode(Node):
     def publish_vehicle_command(self, command, **params):
         msg = VehicleCommand()
         msg.command = command
-        msg.param1 = params.get("param1", 0.0)
-        msg.param2 = params.get("param2", 0.0)
-        msg.param3 = params.get("param3", 0.0)
-        msg.param4 = params.get("param4", 0.0)
-        msg.param5 = params.get("param5", 0.0)
-        msg.param6 = params.get("param6", 0.0)
-        msg.param7 = params.get("param7", 0.0)
+        msg.param1 = float(params.get("param1", 0.0))
+        msg.param2 = float(params.get("param2", 0.0))
+        msg.param3 = float(params.get("param3", 0.0))
+        msg.param4 = float(params.get("param4", 0.0))
+        msg.param5 = float(params.get("param5", 0.0))
+        msg.param6 = float(params.get("param6", 0.0))
+        msg.param7 = float(params.get("param7", 0.0))
         msg.target_system = 1
         msg.target_component = 1
-        msg.source_system = 255
+        msg.source_system = 1 # Changed to 1 to match the working code
         msg.source_component = 1
         msg.from_external = True
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
