@@ -29,7 +29,7 @@ class SingleControlNode(Node):
         super().__init__('control_node')
         self.declare_parameter('frame_id', '1')
         
-        self.frame_id = "0"
+        self.frame_id = "1"
         self.px4_model = get_config('swarm_sim.px4_model')
         self.goal_frame = get_config('swarm_single.goal_frame_name')
 
