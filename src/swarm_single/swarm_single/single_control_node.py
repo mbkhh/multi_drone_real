@@ -132,8 +132,15 @@ class SingleControlNode(Node):
             if self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
                 self.publish_position_setpoint()
             else:
-                self.get_logger().info("Lost Offboard state during TAKEOFF! Reverting to ARMING state.")
-                self.state = DroneState.ARMING
+                # When the RC switch is flicked, PX4 drops out of Offboard.
+                # Yield control to the pilot by going back to IDLE.
+                self.get_logger().warn("Pilot took control or Offboard lost! Resetting to IDLE.")
+                self.state = DroneState.IDLE
+                
+                # Reset the velocity goal so the drone doesn't immediately 
+                # try to re-enter the ARMING phase on the next loop
+                self.velocity_goal = [0.0, 0.0, 0.0] 
+                self.offboard_setpoint_counter = 0
         elif self.state == DroneState.LANDING:
             if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_AUTO_LAND:
                 # If PX4 exits land mode for some reason, re-issue the command
