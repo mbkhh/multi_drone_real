@@ -113,44 +113,43 @@ class SingleControlNode(Node):
 
         self.navigation.navigate_to_goal()
 
-        if self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
+        # if self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
             #if(int(self.drone_id) == 1):
             #   self.get_logger().info(f"time is {int(self.get_clock().now().nanoseconds / 1000000)}")
-            if self.state == DroneState.IDLE and self.velocity_goal[2] < -0.1:
-                self.get_logger().info("Takeoff command detected (Z velocity < 0). Starting arming sequence.")
+        if self.state == DroneState.IDLE and self.velocity_goal[2] < -0.1:
+            self.get_logger().info("Takeoff command detected (Z velocity < 0). Starting arming sequence.")
+            self.state = DroneState.ARMING
+            self.offboard_setpoint_counter = 0 
+    
+        if self.state == DroneState.ARMING:
+            if self.offboard_setpoint_counter >= 10:
+                self.arm()
+                self.state = DroneState.TAKEOFF
+                self.get_logger().info("Offboard setpoint counter reached. Transitioning to TAKEOFF state.")
+            self.offboard_setpoint_counter += 1
+            
+        elif self.state == DroneState.TAKEOFF:
+            if self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
+                self.publish_position_setpoint()
+            else:
+                self.get_logger().warn("Lost Offboard state during TAKEOFF! Reverting to ARMING state.")
                 self.state = DroneState.ARMING
-                self.offboard_setpoint_counter = 0 
-        
-            if self.state == DroneState.ARMING:
-                if self.offboard_setpoint_counter >= 10:
-                    self.arm()
-                    self.state = DroneState.TAKEOFF
-                    self.get_logger().info("Offboard setpoint counter reached. Transitioning to TAKEOFF state.")
-                self.offboard_setpoint_counter += 1
-                
-            elif self.state == DroneState.TAKEOFF:
-                if self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
-                    self.publish_position_setpoint()
-                else:
-                    self.get_logger().warn("Lost Offboard state during TAKEOFF! Reverting to ARMING state.")
-                    self.state = DroneState.ARMING
-
-            elif self.state == DroneState.LANDING:
-                if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_AUTO_LAND:
-                    # If PX4 exits land mode for some reason, re-issue the command
-                    self.get_logger().warn("PX4 dropped out of AUTO_LAND. Re-issuing LAND command.")
-                    self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
-                if self.vehicle_status.arming_state != VehicleStatus.ARMING_STATE_ARMED:
-                    self.get_logger().info("Landed and disarmed. Returning to IDLE.")
-                    self.state = DroneState.IDLE
-                    self.disarm()
-                    self.offboard_setpoint_counter = 0 # Reset for next takeoff
-        else:
-            if self.state != DroneState.IDLE:
-                self.get_logger().info("Pilot took control or Offboard lost. Resetting state to IDLE.")
+        elif self.state == DroneState.LANDING:
+            if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_AUTO_LAND:
+                # If PX4 exits land mode for some reason, re-issue the command
+                self.get_logger().warn("PX4 dropped out of AUTO_LAND. Re-issuing LAND command.")
+                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
+            if self.vehicle_status.arming_state != VehicleStatus.ARMING_STATE_ARMED:
+                self.get_logger().info("Landed and disarmed. Returning to IDLE.")
                 self.state = DroneState.IDLE
-                # You might want to reset other variables here too
-                self.velocity_goal = [0.0, 0.0, 0.0]
+                self.disarm()
+                self.offboard_setpoint_counter = 0 # Reset for next takeoff
+        # else:
+        #     if self.state != DroneState.IDLE:
+        #         self.get_logger().info("Pilot took control or Offboard lost. Resetting state to IDLE.")
+        #         self.state = DroneState.IDLE
+        #         # You might want to reset other variables here too
+        #         self.velocity_goal = [0.0, 0.0, 0.0]
 
     def publish_offboard_control_heartbeat_signal(self):
         msg = OffboardControlMode()
