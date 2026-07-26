@@ -122,6 +122,9 @@ class SingleControlNode(Node):
             self.offboard_setpoint_counter = 0 
     
         if self.state == DroneState.ARMING:
+            # FIX 1: We MUST stream setpoints during the warmup phase so PX4 allows Offboard mode.
+            self.publish_position_setpoint()
+            
             if self.offboard_setpoint_counter >= 10:
                 self.arm()
                 self.state = DroneState.TAKEOFF
@@ -129,18 +132,22 @@ class SingleControlNode(Node):
             self.offboard_setpoint_counter += 1
             
         elif self.state == DroneState.TAKEOFF:
-            if self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
-                self.publish_position_setpoint()
+            # FIX 2: Always publish setpoints while in TAKEOFF to prevent PX4 from timing out and dropping Offboard
+            self.publish_position_setpoint()
+            
+            if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
+                # FIX 3: Give telemetry a small grace period to update after sending the command.
+                # If we stay out of offboard mode for too long (e.g. 10 ticks / 0.5 sec), then the pilot actually took over.
+                self.offboard_setpoint_counter += 1
+                if self.offboard_setpoint_counter > 20: 
+                    self.get_logger().info("Pilot took control or Offboard lost! Resetting to IDLE.")
+                    self.state = DroneState.IDLE
+                    self.velocity_goal = [0.0, 0.0, 0.0]
+                    self.offboard_setpoint_counter = 0
             else:
-                # When the RC switch is flicked, PX4 drops out of Offboard.
-                # Yield control to the pilot by going back to IDLE.
-                self.get_logger().info("Pilot took control or Offboard lost! Resetting to IDLE.")
-                self.state = DroneState.IDLE
-                
-                # Reset the velocity goal so the drone doesn't immediately 
-                # try to re-enter the ARMING phase on the next loop
-                self.velocity_goal = [0.0, 0.0, 0.0] 
-                self.offboard_setpoint_counter = 0
+                # While safely in Offboard mode, keep the counter locked at 10 
+                # so the grace period is ready if the pilot flicks the RC switch later.
+                self.offboard_setpoint_counter = 10
         elif self.state == DroneState.LANDING:
             if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_AUTO_LAND:
                 # If PX4 exits land mode for some reason, re-issue the command
