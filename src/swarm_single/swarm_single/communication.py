@@ -70,6 +70,7 @@ class Communication():
         self._action_target_pos = None
         self._goal_check_timer = None
         
+        self.referendum_conducting()
         self.parent_node.get_logger().info("Communication module initialized. Listening for swarm and station heartbeat...")
 
     def manual_control_handler(self, msg: ManualControl):
