@@ -135,7 +135,7 @@ class SingleControlNode(Node):
             if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
                 self.offboard_setpoint_counter += 1
                 if self.offboard_setpoint_counter > 20: 
-                    self.get_logger().warn("Pilot took control or Offboard lost! Resetting to IDLE.")
+                    self.get_logger().info("Pilot took control or Offboard lost! Resetting to IDLE.")
                     self.state = DroneState.IDLE
                     self.velocity_goal = [0.0, 0.0, 0.0]
                     self.offboard_setpoint_counter = 0
