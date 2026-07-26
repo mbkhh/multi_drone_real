@@ -29,7 +29,7 @@ class SingleControlNode(Node):
 		super().__init__('control_node')
 		self.declare_parameter('frame_id', '1')
 		
-		self.frame_id = self.get_parameter('frame_id').get_parameter_value().string_value
+		self.frame_id = "0"
 		self.px4_model = get_config('swarm_sim.px4_model')
 		self.goal_frame = get_config('swarm_single.goal_frame_name')
 
@@ -70,14 +70,14 @@ class SingleControlNode(Node):
 		)
 
 		self.offboard_control_mode_publisher = self.create_publisher(
-			OffboardControlMode, f"/px4_{self.drone_id}/fmu/in/offboard_control_mode", qos_profile)
+			OffboardControlMode, f"/uav_{self.drone_id}/fmu/in/offboard_control_mode", qos_profile)
 		self.trajectory_setpoint_publisher = self.create_publisher(
-			TrajectorySetpoint, f"/px4_{self.drone_id}/fmu/in/trajectory_setpoint", qos_profile)
+			TrajectorySetpoint, f"/uav_{self.drone_id}/fmu/in/trajectory_setpoint", qos_profile)
 		self.vehicle_command_publisher = self.create_publisher(
-			VehicleCommand, f"/px4_{self.drone_id}/fmu/in/vehicle_command", qos_profile)
+			VehicleCommand, f"/uav_{self.drone_id}/fmu/in/vehicle_command", qos_profile)
 
 		self.vehicle_status_subscriber = self.create_subscription(
-			VehicleStatus, f"/px4_{self.drone_id}/fmu/out/vehicle_status", self.vehicle_status_callback, qos_profile)
+			VehicleStatus, f"/uav_{self.drone_id}/fmu/out/vehicle_status", self.vehicle_status_callback, qos_profile)
 
 		self.offboard_setpoint_counter = 0
 		self.vehicle_status = VehicleStatus()
