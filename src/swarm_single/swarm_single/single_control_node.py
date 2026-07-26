@@ -134,7 +134,7 @@ class SingleControlNode(Node):
         elif self.state == DroneState.TAKEOFF:
             # FIX 2: Always publish setpoints while in TAKEOFF to prevent PX4 from timing out and dropping Offboard
             self.publish_position_setpoint()
-            
+            self.get_logger().info(str(self.vehicle_status.nav_state) + "     " + str(VehicleStatus.NAVIGATION_STATE_OFFBOARD))
             if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
                 # FIX 3: Give telemetry a small grace period to update after sending the command.
                 # If we stay out of offboard mode for too long (e.g. 10 ticks / 0.5 sec), then the pilot actually took over.
