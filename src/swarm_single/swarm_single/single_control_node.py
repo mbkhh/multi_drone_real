@@ -92,52 +92,60 @@ class SingleControlNode(Node):
 		"""Main callback that runs at 10Hz, sends heartbeats, and executes state logic."""
 		self.publish_offboard_control_heartbeat_signal()
 
-		if self.is_leader and len(self.mission)!= 0:
-			if self.mission[0][0] != self.leader_goal[0] or self.mission[0][1] != self.leader_goal[1] or self.mission[0][2] != self.leader_goal[2] :
-				self.goal_callback_temp(self.mission[0])
+		# if self.is_leader and len(self.mission)!= 0:
+		# 	if self.mission[0][0] != self.leader_goal[0] or self.mission[0][1] != self.leader_goal[1] or self.mission[0][2] != self.leader_goal[2] :
+		# 		self.goal_callback_temp(self.mission[0])
 
-			distance = math.dist(self.mission[0], self.navigation.current_pos[:3])
+		# 	distance = math.dist(self.mission[0], self.navigation.current_pos[:3])
 
-			if distance < self.mission_goal_tolerance:
-				self.mission.pop(0)
-				self.communication.send_mission()
-		if self.is_leader and len(self.mission) == 0:
-			if not self.sended_goal_ack:
-				if self.navigation.current_pos[0] != 0.0 or self.navigation.current_pos[1] != 0.0 or self.navigation.current_pos[2] != 0.0:
-					distance = math.dist(self.leader_goal, self.navigation.current_pos[:3])
-					if distance < self.mission_goal_tolerance:
-						self.sended_goal_ack = True
-						self.message = f"Achieved goal {self.leader_goal[0]:.2f}, {self.leader_goal[1]:.2f}, {self.leader_goal[2]:.2f}"
+		# 	if distance < self.mission_goal_tolerance:
+		# 		self.mission.pop(0)
+		# 		self.communication.send_mission()
+		# if self.is_leader and len(self.mission) == 0:
+		# 	if not self.sended_goal_ack:
+		# 		if self.navigation.current_pos[0] != 0.0 or self.navigation.current_pos[1] != 0.0 or self.navigation.current_pos[2] != 0.0:
+		# 			distance = math.dist(self.leader_goal, self.navigation.current_pos[:3])
+		# 			if distance < self.mission_goal_tolerance:
+		# 				self.sended_goal_ack = True
+		# 				self.message = f"Achieved goal {self.leader_goal[0]:.2f}, {self.leader_goal[1]:.2f}, {self.leader_goal[2]:.2f}"
 
 		self.navigation.navigate_to_goal()
-		#if(int(self.drone_id) == 1):
-		#	self.get_logger().info(f"time is {int(self.get_clock().now().nanoseconds / 1000000)}")
-		if self.state == DroneState.IDLE and self.velocity_goal[2] < -0.1:
-			# self.get_logger().info("Takeoff command detected (Z velocity < 0). Starting arming sequence.")
-			self.state = DroneState.ARMING
-			self.offboard_setpoint_counter = 0 
-	
-		if self.state == DroneState.ARMING:
-			if self.offboard_setpoint_counter >= 10:
-				self.arm()
-				self.state = DroneState.TAKEOFF
-			self.offboard_setpoint_counter += 1
-			
-		elif self.state == DroneState.TAKEOFF:
-			if self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
-				self.publish_position_setpoint()
-			else:
-				self.state = DroneState.ARMING
 
-		elif self.state == DroneState.LANDING:
-			if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_AUTO_LAND:
-				# If PX4 exits land mode for some reason, re-issue the command
-				self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
-			if self.vehicle_status.arming_state != VehicleStatus.ARMING_STATE_ARMED:
-				# self.get_logger().info("Landed and disarmed. Returning to IDLE.")
+		if self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
+			#if(int(self.drone_id) == 1):
+			#	self.get_logger().info(f"time is {int(self.get_clock().now().nanoseconds / 1000000)}")
+			if self.state == DroneState.IDLE and self.velocity_goal[2] < -0.1:
+				# self.get_logger().info("Takeoff command detected (Z velocity < 0). Starting arming sequence.")
+				self.state = DroneState.ARMING
+				self.offboard_setpoint_counter = 0 
+		
+			if self.state == DroneState.ARMING:
+				if self.offboard_setpoint_counter >= 10:
+					self.arm()
+					self.state = DroneState.TAKEOFF
+				self.offboard_setpoint_counter += 1
+				
+			elif self.state == DroneState.TAKEOFF:
+				if self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
+					self.publish_position_setpoint()
+				else:
+					self.state = DroneState.ARMING
+
+			elif self.state == DroneState.LANDING:
+				if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_AUTO_LAND:
+					# If PX4 exits land mode for some reason, re-issue the command
+					self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
+				if self.vehicle_status.arming_state != VehicleStatus.ARMING_STATE_ARMED:
+					# self.get_logger().info("Landed and disarmed. Returning to IDLE.")
+					self.state = DroneState.IDLE
+					self.disarm()
+					self.offboard_setpoint_counter = 0 # Reset for next takeoff
+		else:
+			if self.state != DroneState.IDLE:
+				self.get_logger().info("Pilot took control. Resetting state to IDLE.")
 				self.state = DroneState.IDLE
-				self.disarm()
-				self.offboard_setpoint_counter = 0 # Reset for next takeoff
+				# You might want to reset other variables here too
+				self.velocity_goal = [0.0, 0.0, 0.0]
 
 	def publish_offboard_control_heartbeat_signal(self):
 		msg = OffboardControlMode()
