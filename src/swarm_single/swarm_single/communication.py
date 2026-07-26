@@ -134,7 +134,7 @@ class Communication():
                 timed_out_neighbors.add(neighbor_id)
         
         for neighbor_id in timed_out_neighbors:
-            self.parent_node.get_logger().warn(f"Connection lost with neighbor {neighbor_id}! Removing from swarm topology.")
+            self.parent_node.get_logger().info(f"Connection lost with neighbor {neighbor_id}! Removing from swarm topology.")
             del self.parent_node.last_seen_neighbors[neighbor_id]
         
         if bool(timed_out_neighbors): self.referendum_conducting()

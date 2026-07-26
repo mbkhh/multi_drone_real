@@ -137,7 +137,7 @@ class SingleControlNode(Node):
         elif self.state == DroneState.LANDING:
             if self.vehicle_status.nav_state != VehicleStatus.NAVIGATION_STATE_AUTO_LAND:
                 # If PX4 exits land mode for some reason, re-issue the command
-                self.get_logger().warn("PX4 dropped out of AUTO_LAND. Re-issuing LAND command.")
+                self.get_logger().info("PX4 dropped out of AUTO_LAND. Re-issuing LAND command.")
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
             if self.vehicle_status.arming_state != VehicleStatus.ARMING_STATE_ARMED:
                 self.get_logger().info("Landed and disarmed. Returning to IDLE.")
