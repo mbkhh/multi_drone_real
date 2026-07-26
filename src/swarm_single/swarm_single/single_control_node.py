@@ -66,7 +66,7 @@ class SingleControlNode(Node):
             reliability=ReliabilityPolicy.BEST_EFFORT,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
             history=HistoryPolicy.KEEP_LAST,
-            depth=1
+            depth=10
         )
 
         self.offboard_control_mode_publisher = self.create_publisher(
