@@ -150,7 +150,7 @@ class Communication():
             if self.leader_velocity_subscriber != None:
                 self.parent_node.destroy_subscription(self.leader_velocity_subscriber)
             self.leader_velocity_subscriber =self.parent_node.create_subscription(
-            VehicleLocalPosition, f"/uav_{leader_id}/fmu/out/vehicle_local_position", self.vehicle_local_position_callback, self.qos_profile)
+            VehicleLocalPosition, f"/uav_{leader_id}/fmu/out/vehicle_local_position_v1", self.vehicle_local_position_callback, self.qos_profile)
             if leader_id == int(self.parent_node.frame_id) and not self.parent_node.is_leader:
                 self.become_leader()
             elif leader_id != int(self.parent_node.frame_id) and self.parent_node.is_leader:

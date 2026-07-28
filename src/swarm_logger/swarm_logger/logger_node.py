@@ -4,17 +4,21 @@ from collections import defaultdict, deque
 from threading import Lock
 
 import rclpy
-from nav_msgs.msg import Odometry
 from px4_msgs.msg import (
     BatteryStatus,
+    EstimatorStatusFlags,
+    FailsafeFlags,
     OffboardControlMode,
     SensorGps,
     TrajectorySetpoint,
+    VehicleAttitude,
     VehicleCommand,
     VehicleCommandAck,
+    VehicleControlMode,
     VehicleGlobalPosition,
     VehicleLandDetected,
     VehicleLocalPosition,
+    VehicleOdometry,
     VehicleStatus,
 )
 from rclpy.node import Node
@@ -36,16 +40,11 @@ class SwarmLogger(Node):
         super().__init__('swarm_logger')
 
         default_drone_count = int(get_config('swarm_sim.drone_count'))
-        default_model = str(get_config('swarm_sim.px4_model'))
         self.declare_parameter('drone_count', default_drone_count)
-        self.declare_parameter('px4_model', default_model)
         self.declare_parameter('print_interval', 1.0)
 
         self.drone_count = (
             self.get_parameter('drone_count').get_parameter_value().integer_value
-        )
-        self.px4_model = (
-            self.get_parameter('px4_model').get_parameter_value().string_value
         )
         print_interval = (
             self.get_parameter('print_interval').get_parameter_value().double_value
@@ -105,13 +104,18 @@ class SwarmLogger(Node):
 
     def _add_vehicle_topics(self):
         px4_topics = [
-            (VehicleStatus, 'vehicle_status'),
-            (VehicleLocalPosition, 'vehicle_local_position'),
+            (VehicleStatus, 'vehicle_status_v1'),
+            (VehicleLocalPosition, 'vehicle_local_position_v1'),
             (VehicleGlobalPosition, 'vehicle_global_position'),
             (SensorGps, 'vehicle_gps_position'),
+            (VehicleAttitude, 'vehicle_attitude'),
+            (VehicleOdometry, 'vehicle_odometry'),
+            (VehicleControlMode, 'vehicle_control_mode'),
             (VehicleLandDetected, 'vehicle_land_detected'),
-            (BatteryStatus, 'battery_status'),
+            (BatteryStatus, 'battery_status_v1'),
             (VehicleCommandAck, 'vehicle_command_ack'),
+            (EstimatorStatusFlags, 'estimator_status_flags'),
+            (FailsafeFlags, 'failsafe_flags'),
         ]
         control_topics = [
             (VehicleCommand, 'vehicle_command'),
@@ -133,12 +137,6 @@ class SwarmLogger(Node):
                     f'{namespace}/in/{topic_name}',
                     self._px4_qos,
                 )
-
-            self._subscribe(
-                Odometry,
-                f'/model/{self.px4_model}_{drone_id}/odometry',
-                self._ros_qos,
-            )
 
     def _enqueue(self, topic, message):
         with self._queue_lock:

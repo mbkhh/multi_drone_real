@@ -9,7 +9,6 @@
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
-  <depend>nav_msgs</depend>
   <depend>px4_msgs</depend>
   <depend>swarm_msgs</depend>
   <depend>swarm_config</depend>

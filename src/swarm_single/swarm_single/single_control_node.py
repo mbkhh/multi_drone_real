@@ -7,10 +7,17 @@ from typing import Dict
 from rclpy.node import Node
 from geometry_msgs.msg import TransformStamped
 from swarm_config.config_utils import get_config
+from tf2_ros import TransformBroadcaster
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
 
-from px4_msgs.msg import OffboardControlMode, TrajectorySetpoint, VehicleCommand, VehicleStatus
+from px4_msgs.msg import (
+    OffboardControlMode,
+    TrajectorySetpoint,
+    VehicleCommand,
+    VehicleLocalPosition,
+    VehicleStatus,
+)
 
 from swarm_single.navigation import navigation
 from swarm_single.formation import PatternController
@@ -29,7 +36,9 @@ class SingleControlNode(Node):
         super().__init__('control_node')
         self.declare_parameter('frame_id', '1')
         
-        self.frame_id = "1"
+        self.frame_id = (
+            self.get_parameter('frame_id').get_parameter_value().string_value
+        )
         self.px4_model = get_config('swarm_sim.px4_model')
         self.goal_frame = get_config('swarm_single.goal_frame_name')
 
@@ -40,6 +49,7 @@ class SingleControlNode(Node):
 
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+        self.local_position_tf_broadcaster = TransformBroadcaster(self)
 
         self.velocity_goal = [0.0, 0.0, 0.0]
         self.manual_velocity = [0.0, 0.0, 0.0]
@@ -83,7 +93,13 @@ class SingleControlNode(Node):
             VehicleCommand, f"/uav_{self.drone_id}/fmu/in/vehicle_command", qos_profile_cmd)
 
         self.vehicle_status_subscriber = self.create_subscription(
-            VehicleStatus, f"/uav_{self.drone_id}/fmu/out/vehicle_status", self.vehicle_status_callback, qos_profile)
+            VehicleStatus, f"/uav_{self.drone_id}/fmu/out/vehicle_status_v1", self.vehicle_status_callback, qos_profile)
+        self.vehicle_local_position_subscriber = self.create_subscription(
+            VehicleLocalPosition,
+            f"/uav_{self.drone_id}/fmu/out/vehicle_local_position_v1",
+            self.vehicle_local_position_callback,
+            qos_profile,
+        )
 
         self.offboard_setpoint_counter = 0
         self.vehicle_status = VehicleStatus()
@@ -164,6 +180,32 @@ class SingleControlNode(Node):
 
     def vehicle_status_callback(self, vehicle_status):
         self.vehicle_status = vehicle_status
+
+    def vehicle_local_position_callback(self, local_position):
+        """Publish the real PX4 NED pose into the ENU TF tree used by navigation."""
+        if not (local_position.xy_valid and local_position.z_valid):
+            return
+
+        transform = TransformStamped()
+        transform.header.stamp = self.get_clock().now().to_msg()
+        transform.header.frame_id = 'world'
+        transform.child_frame_id = f'{self.px4_model}_{self.frame_id}/odom'
+
+        # PX4 local position is NED. The navigation code and TF tree use ENU.
+        transform.transform.translation.x = float(local_position.y)
+        transform.transform.translation.y = float(local_position.x)
+        transform.transform.translation.z = float(-local_position.z)
+
+        yaw_enu = (math.pi / 2.0) - float(local_position.heading)
+        transform.transform.rotation.z = math.sin(yaw_enu / 2.0)
+        transform.transform.rotation.w = math.cos(yaw_enu / 2.0)
+        self.local_position_tf_broadcaster.sendTransform(transform)
+
+        self.navigation.vel = [
+            float(local_position.vx),
+            float(local_position.vy),
+            float(local_position.vz),
+        ]
         
     def arm(self):
         self.get_logger().info("Sending ARM command.")

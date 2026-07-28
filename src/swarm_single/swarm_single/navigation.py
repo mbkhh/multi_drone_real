@@ -166,7 +166,10 @@ class navigation():
 			return None
 	
 	def get_obstacle_absolute(self):
-		if not self.parent_node.lidar.cluster_centers_cartesian:
+		if (
+			not hasattr(self.parent_node, 'lidar')
+			or not self.parent_node.lidar.cluster_centers_cartesian
+		):
 			return []
 		try:
 			# 1. Look up the transform at the time the scan was taken
