@@ -17,7 +17,6 @@ setup(
 	maintainer_email='99536958+mrwhy224@users.noreply.github.com',
 	description='A package to launch and control a single drone instance for swarm simulations.',
 	license='Apache License 2.0',
-	tests_require=['pytest'],
 	entry_points={
 		'console_scripts': [
 			'control_node = swarm_single.single_control_node:main',

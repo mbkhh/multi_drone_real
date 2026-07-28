@@ -22,7 +22,6 @@ setup(
 	maintainer_email='99536958+mrwhy224@users.noreply.github.com',
 	description='A ROS 2 package to manage all configuration files and parameters for the drone swarm project.',
 	license='Apache License 2.0',
-	tests_require=['pytest'],
 	entry_points={
 		'console_scripts': [
 			'config = swarm_config.test:main',
