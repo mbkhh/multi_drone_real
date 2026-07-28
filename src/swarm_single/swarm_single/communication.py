@@ -211,9 +211,9 @@ class Communication():
             self.parent_node.get_logger().error(f"JSON Decode Error: {e}")
             return
         command_type = cmd.get("command")
-        if command_type in ("arm", "offboard"):
+        if command_type == "arm":
             self.parent_node.request_offboard_control()
-            self.parent_node.get_logger().info("Received OFFBOARD request.")
+            self.parent_node.get_logger().info("Received ARM command.")
 
         elif command_type == "start_animation":
             start_time = int(cmd.get("start_time"))
@@ -244,13 +244,13 @@ class Communication():
             self.parent_node.get_logger().error(f"JSON Decode Error: {e}")
             return
         command_type = cmd.get("command")
-        if command_type in ("arm", "offboard"):
+        if command_type == "arm":
             self.parent_node.request_offboard_control()
             out_msg = String()
-            out_msg.data = json.dumps({"command": "offboard"})
+            out_msg.data = json.dumps({"command": "arm"})
             self.command_publisher.publish(out_msg)
             self.parent_node.get_logger().info(
-                "Leader: publishing OFFBOARD request."
+                "Leader: publishing ARM command."
             )
         elif command_type == "fly":
             x = float(cmd.get("x"))

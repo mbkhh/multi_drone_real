@@ -324,8 +324,8 @@ class SingleControlNode(Node):
         self.offboard_was_confirmed = False
         self.state = DroneState.ARMING
         self.get_logger().warning(
-            'Explicit OFFBOARD request received: preparing with zero velocity; '
-            'PX4 will be armed only if currently disarmed.'
+            'Explicit ARM received: preparing Offboard with zero velocity, '
+            'then switching mode and arming PX4.'
         )
 
     def release_to_pilot(self, reason):

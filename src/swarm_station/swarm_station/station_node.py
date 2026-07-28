@@ -175,10 +175,6 @@ class StationNode(Node):
 		msg = String()
 		msg.data =  json.dumps({"command": "arm"})
 		self.command_publisher.publish(msg)
-	def send_offboard_command(self):
-		msg = String()
-		msg.data = json.dumps({"command": "offboard"})
-		self.command_publisher.publish(msg)
 		
 	def send_disarm_leader_command(self):
 		msg = String()
@@ -281,8 +277,6 @@ class StationNode(Node):
 						match command[0].lower():
 							case 'arm':
 								self.send_arm_command()
-							case 'offboard':
-								self.send_offboard_command()
 							case 'disarm_leader':
 								self.send_disarm_leader_command()
 							case 'land':
