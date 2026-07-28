@@ -287,11 +287,11 @@ class SingleControlNode(Node):
                 'failsafe telemetry is missing/stale.'
             )
             return
-        if not self.vehicle_status.pre_flight_checks_pass:
-            self.get_logger().error(
-                'Offboard rejected: PX4 preflight checks have not passed.'
-            )
-            return
+        # if not self.vehicle_status.pre_flight_checks_pass:
+        #     self.get_logger().error(
+        #         'Offboard rejected: PX4 preflight checks have not passed.'
+        #     )
+        #     return
         if self.vehicle_status.failsafe:
             self.get_logger().error('Offboard rejected: PX4 is in failsafe.')
             return
