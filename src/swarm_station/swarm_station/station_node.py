@@ -175,10 +175,18 @@ class StationNode(Node):
 		msg = String()
 		msg.data =  json.dumps({"command": "arm"})
 		self.command_publisher.publish(msg)
+	def send_offboard_command(self):
+		msg = String()
+		msg.data = json.dumps({"command": "offboard"})
+		self.command_publisher.publish(msg)
 		
 	def send_disarm_leader_command(self):
 		msg = String()
 		msg.data =  json.dumps({"command": "disarm_leader"})
+		self.command_publisher.publish(msg)
+	def send_land_command(self):
+		msg = String()
+		msg.data = json.dumps({"command": "land"})
 		self.command_publisher.publish(msg)
 	def stop_animation_command(self):
 		msg = String()
@@ -273,8 +281,12 @@ class StationNode(Node):
 						match command[0].lower():
 							case 'arm':
 								self.send_arm_command()
+							case 'offboard':
+								self.send_offboard_command()
 							case 'disarm_leader':
 								self.send_disarm_leader_command()
+							case 'land':
+								self.send_land_command()
 							case 'stop_animation':
 								self.stop_animation_command()
 							case 'mission':
@@ -394,4 +406,3 @@ def main(args=None):
 
 if __name__ == '__main__':
 	main()
-

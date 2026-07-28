@@ -78,6 +78,8 @@ class Communication():
         #self.parent_node.get_logger().info(f"Manual Control: {msg.vx}, {msg.vy}, {msg.vz}, {msg.vyaw}")
         if msg.manual_mode:
             self.parent_node.manual_control = True
+            if self.parent_node.state == "TAKEOFF":
+                self.parent_node.motion_enabled = True
             yaw = self.parent_node.yaw + msg.vyaw/30.0
             if yaw > math.pi:
                 yaw -= 2 * math.pi
@@ -209,9 +211,9 @@ class Communication():
             self.parent_node.get_logger().error(f"JSON Decode Error: {e}")
             return
         command_type = cmd.get("command")
-        if command_type == "arm":
-            self.parent_node.state = "ARMING"
-            self.parent_node.get_logger().info("Received ARM command.")
+        if command_type in ("arm", "offboard"):
+            self.parent_node.request_offboard_control()
+            self.parent_node.get_logger().info("Received OFFBOARD request.")
 
         elif command_type == "start_animation":
             start_time = int(cmd.get("start_time"))
@@ -226,7 +228,9 @@ class Communication():
         elif command_type == 'mission':
             mission = cmd.get("points")
 
-            self.parent_node.mission = mission 
+            self.parent_node.mission = mission
+            if self.parent_node.state == "TAKEOFF":
+                self.parent_node.motion_enabled = True
         elif command_type == "leader_is_dead":
             del self.parent_node.last_seen_neighbors[self.parent_node.leader_id]
             self.referendum_conducting()
@@ -240,12 +244,14 @@ class Communication():
             self.parent_node.get_logger().error(f"JSON Decode Error: {e}")
             return
         command_type = cmd.get("command")
-        if command_type == "arm":
-            self.parent_node.state = "ARMING"
+        if command_type in ("arm", "offboard"):
+            self.parent_node.request_offboard_control()
             out_msg = String()
-            out_msg.data = json.dumps({"command": "arm"})
+            out_msg.data = json.dumps({"command": "offboard"})
             self.command_publisher.publish(out_msg)
-            self.parent_node.get_logger().info("Leader: Publishing ARM Command.")
+            self.parent_node.get_logger().info(
+                "Leader: publishing OFFBOARD request."
+            )
         elif command_type == "fly":
             x = float(cmd.get("x"))
             y = float(cmd.get("y"))
@@ -253,46 +259,20 @@ class Communication():
             absolute = cmd.get("absolute", True)
 
             if absolute:
-                self.parent_node.goal_callback_temp([x, y, z])
+                goal_accepted = self.parent_node.goal_callback_temp([x, y, z])
             else:
-                self.parent_node.goal_callback_temp([self.parent_node.leader_goal[0] + x, self.parent_node.leader_goal[1] + y, self.parent_node.leader_goal[2] + z])
+                goal_accepted = self.parent_node.goal_callback_temp([self.parent_node.leader_goal[0] + x, self.parent_node.leader_goal[1] + y, self.parent_node.leader_goal[2] + z])
+            if goal_accepted and self.parent_node.state == "TAKEOFF":
+                self.parent_node.motion_enabled = True
+            elif goal_accepted:
+                self.parent_node.get_logger().warning(
+                    "Goal stored but motion is disabled: explicitly ARM Offboard first."
+                )
                 
         elif command_type == "disarm_leader":
-            out_msg = String()
-            out_msg.data = json.dumps({"command": "leader_is_dead"})
-            self.command_publisher.publish(out_msg)
-            self.parent_node.get_logger().info("Leader: Destroying all connections, Returning to base.")
-            self.parent_node.goal_callback_temp( [0.0, 0.0, -1.0])
-            self.parent_node.is_leader = False
-            self.parent_node.destroy_publisher(self.liveness_publisher)
-            self.parent_node.destroy_publisher(self.status_publisher)
-            self.parent_node.destroy_subscription(self.liveness_subscriber)
-            self.parent_node.destroy_subscription(self.manual_control_subscriber)
-            self.parent_node.destroy_subscription(self.leader_formation_subscriber)
-            self.parent_node.destroy_subscription(self.leader_command_subscriber)
-            self.parent_node.destroy_subscription(self.formation_subscriber)
-            self.parent_node.destroy_subscription(self.command_subscriber)
-            self.status_timer.cancel()
-            self.liveness_broadcast_timer.cancel()
-            self.timeout_timer.cancel()
-            self.parent_node.destroy_publisher(self.formation_publisher)
-            self.parent_node.destroy_publisher(self.command_publisher)
-            self._fly_action.destroy()
-
-            self._fly_action                    = None
-            self.formation_publisher            = None
-            self.liveness_publisher             = None
-            self.command_publisher              = None
-            self.liveness_subscriber            = None
-            self.leader_formation_subscriber    = None
-            self.leader_command_subscriber      = None
-            self.formation_subscriber           = None
-            self.command_subscriber             = None
-            self.status_publisher               = None
-            self.manual_control_subscriber      = None
-            self.status_timer                   = None
-            self.liveness_broadcast_timer       = None
-            self.timeout_timer                  = None
+            self.parent_node.request_safe_disarm()
+        elif command_type == "land":
+            self.parent_node.request_land()
         elif command_type == "start_animation":
             start_time = int(self.parent_node.get_clock().now().nanoseconds / 1000000)
 
@@ -322,6 +302,8 @@ class Communication():
             mission = cmd.get("points")
 
             self.parent_node.mission = mission 
+            if self.parent_node.state == "TAKEOFF":
+                self.parent_node.motion_enabled = True
 
             self.parent_node.get_logger().info(f"Leader: getting mission {mission}.")
             self.send_mission()
@@ -377,6 +359,11 @@ class Communication():
     def goal_callback(self, goal_request):
         """Accept or reject a client request to start an action."""
         self.parent_node.get_logger().info(f"Received goal request: {goal_request.goal}")
+        if self.parent_node.state != "TAKEOFF":
+            self.parent_node.get_logger().warning(
+                'Fly action rejected: Offboard is not active.'
+            )
+            return GoalResponse.REJECT
         return GoalResponse.ACCEPT
     def cancel_callback(self, goal_handle):
         self.parent_node.get_logger().info("Received cancel request")
@@ -390,9 +377,24 @@ class Communication():
 
         # Send goal to drone
         if absolute:
-            self.parent_node.goal_callback_temp([goal.x, goal.y, goal.z])
+            goal_accepted = self.parent_node.goal_callback_temp(
+                [goal.x, goal.y, goal.z]
+            )
         else:
-            self.parent_node.goal_callback_temp([self.parent_node.leader_goal[0] + goal.x, self.parent_node.leader_goal[1] + goal.y, self.parent_node.leader_goal[2] + goal.z])
+            goal_accepted = self.parent_node.goal_callback_temp(
+                [
+                    self.parent_node.leader_goal[0] + goal.x,
+                    self.parent_node.leader_goal[1] + goal.y,
+                    self.parent_node.leader_goal[2] + goal.z,
+                ]
+            )
+        if not goal_accepted:
+            goal_handle.abort()
+            result_msg = Fly.Result()
+            result_msg.result = 'Rejected by safety limits'
+            return result_msg
+        if self.parent_node.state == "TAKEOFF":
+            self.parent_node.motion_enabled = True
         
 
         # Create feedback message

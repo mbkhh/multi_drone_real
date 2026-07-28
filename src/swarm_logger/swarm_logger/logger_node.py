@@ -8,6 +8,7 @@ from px4_msgs.msg import (
     BatteryStatus,
     EstimatorStatusFlags,
     FailsafeFlags,
+    ManualControlSetpoint,
     OffboardControlMode,
     SensorGps,
     TrajectorySetpoint,
@@ -116,6 +117,7 @@ class SwarmLogger(Node):
             (VehicleCommandAck, 'vehicle_command_ack'),
             (EstimatorStatusFlags, 'estimator_status_flags'),
             (FailsafeFlags, 'failsafe_flags'),
+            (ManualControlSetpoint, 'manual_control_setpoint'),
         ]
         control_topics = [
             (VehicleCommand, 'vehicle_command'),

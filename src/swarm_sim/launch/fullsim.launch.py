@@ -115,7 +115,7 @@ def generate_launch_description():
             executable='control_node',
             name=f'control_node_d{str(instance_id)}',
             parameters=[{
-                'frame_id': str(instance_id),
+                'frame_id': instance_id,
             }],
             output='log' # MODIFIED: Suppress output
         )

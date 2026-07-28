@@ -122,6 +122,8 @@ class PatternController:
         self.parent.get_logger().info(f"Start performing animation")
         self.parent.get_logger().info(f"time is {int(self.parent.get_clock().now().nanoseconds / 1000000)}")
         self.animation_start_time = start_time
+        if self.animation_timer is not None:
+            self.animation_timer.cancel()
         self.animation_timer = self.parent.create_timer(self.animation_resolution, self.run_animation)
         if(speed_x != 0):
             self.rotation_x_speed = 360/(speed_x*1000)
@@ -146,6 +148,9 @@ class PatternController:
         self.refresh_pattern()
 
     def stop_animation(self):
+        if self.animation_timer is None:
+            self.parent.get_logger().info("Animation is already stopped")
+            return
         self.animation_timer.cancel()
         self.animation_timer = None 
         self.parent.get_logger().info(f"Stop performing animation")
