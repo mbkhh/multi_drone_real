@@ -311,12 +311,13 @@ class SingleControlNode(Node):
 
         # Reset the relative-goal origin to the measured current pose. This
         # prevents an old goal from causing motion after pilot takeover.
-        if not self.goal_callback_temp(self.navigation.current_pos[:3]):
+        current_pose = [float(value) for value in self.navigation.current_pos[:3]]
+        if not all(math.isfinite(value) for value in current_pose):
             self.get_logger().error(
-                'Offboard rejected: current pose is outside the configured '
-                'goal safety envelope.'
+                'Offboard rejected: current PX4 local pose is not finite.'
             )
             return
+        self.set_goal_transform(current_pose, log_received=False)
         self.motion_enabled = False
         self.manual_control = False
         self.velocity_goal = [0.0, 0.0, 0.0]
@@ -545,7 +546,12 @@ class SingleControlNode(Node):
             )
             return False
 
-        self.get_logger().info(f'Received goal request: [{goal[0]:.2f}, {goal[1]:.2f}, {goal[2]:.2f}]. Broadcasting static transform.')
+        self.set_goal_transform(goal)
+        return True
+
+    def set_goal_transform(self, goal, log_received=True):
+        if log_received:
+            self.get_logger().info(f'Received goal request: [{goal[0]:.2f}, {goal[1]:.2f}, {goal[2]:.2f}]. Broadcasting static transform.')
         self.sended_goal_ack = False
         static_transform_stamped = TransformStamped()
 
@@ -562,7 +568,6 @@ class SingleControlNode(Node):
         static_transform_stamped.transform.rotation.z = 0.0
         static_transform_stamped.transform.rotation.w = 1.0
         self.goal_tf_broadcaster.sendTransform(static_transform_stamped)
-        return True
 
 def main(args=None):
     rclpy.init(args=args)

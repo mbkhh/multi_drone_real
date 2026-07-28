@@ -110,6 +110,9 @@ def make_goal_stub():
 
 def test_goal_safety_envelope():
     controller = make_goal_stub()
+    controller.set_goal_transform = lambda goal, log_received=True: (
+        SingleControlNode.set_goal_transform(controller, goal, log_received)
+    )
 
     assert not SingleControlNode.goal_callback_temp(
         controller, [math.nan, 0.0, 1.0]
@@ -119,4 +122,16 @@ def test_goal_safety_envelope():
 
     assert SingleControlNode.goal_callback_temp(controller, [2.0, 3.0, 2.0])
     assert controller.leader_goal == [2.0, 3.0, 2.0]
+    assert controller.goal_tf_broadcaster.last_transform is not None
+
+
+def test_current_hold_pose_can_be_outside_commanded_goal_envelope():
+    controller = make_goal_stub()
+    current_pose = [25.0, -30.0, 8.0]
+
+    SingleControlNode.set_goal_transform(
+        controller, current_pose, log_received=False
+    )
+
+    assert controller.leader_goal == current_pose
     assert controller.goal_tf_broadcaster.last_transform is not None
