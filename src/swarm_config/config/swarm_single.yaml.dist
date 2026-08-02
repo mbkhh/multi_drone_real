@@ -21,11 +21,11 @@ mission:
   # mission starts. Positive Z is up, matching the station's move command.
   relative_to_start: true
   waypoints:
-    - [0.0, 0.0, 2.0]
-    - [2.0, 0.0, 2.0]
-    - [2.0, 2.0, 2.0]
-    - [0.0, 2.0, 2.0]
-    - [0.0, 0.0, 2.0]
+    - [0.0, 0.0, 4.0]
+    - [2.0, 0.0, 4.0]
+    - [2.0, 2.0, 4.0]
+    - [0.0, 2.0, 4.0]
+    - [0.0, 0.0, 4.0]
   goal_tolerance: 0.4
   waypoint_dwell: 1.0
   timeout: 180.0
