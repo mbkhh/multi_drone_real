@@ -6,7 +6,7 @@ from swarm_msgs.msg import Status, ManualControl, FormationCommand
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from swarm_msgs.action import Fly
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
-from px4_msgs.msg import VehicleLocalPosition
+from px4_msgs.msg import VehicleLocalPosition, VehicleStatus
 from swarm_config.config_utils import get_config
 import math
 import json
@@ -77,6 +77,8 @@ class Communication():
         """Handles manual control commands from the user."""
         #self.parent_node.get_logger().info(f"Manual Control: {msg.vx}, {msg.vy}, {msg.vz}, {msg.vyaw}")
         if msg.manual_mode:
+            if self.parent_node.mission_active:
+                self.parent_node.abort_mission('manual control requested')
             self.parent_node.manual_control = True
             if self.parent_node.state == "TAKEOFF":
                 self.parent_node.motion_enabled = True
@@ -117,6 +119,25 @@ class Communication():
         msg.goal_y          = float(self.parent_node.leader_goal[1])
         msg.goal_z          = float(self.parent_node.leader_goal[2])
         msg.message         = self.parent_node.message
+        msg.control_state   = self.parent_node.state
+        msg.armed           = (
+            self.parent_node.vehicle_status.arming_state
+            == VehicleStatus.ARMING_STATE_ARMED
+        )
+        msg.offboard        = (
+            self.parent_node.vehicle_status.nav_state
+            == VehicleStatus.NAVIGATION_STATE_OFFBOARD
+        )
+        msg.mission_active  = self.parent_node.mission_active
+        msg.mission_count   = len(self.parent_node.mission)
+        if self.parent_node.mission_active:
+            msg.mission_index = self.parent_node.mission_index + 1
+        else:
+            msg.mission_index = min(
+                self.parent_node.mission_index,
+                len(self.parent_node.mission),
+            )
+        msg.mission_state   = self.parent_node.mission_state
         self.parent_node.message = "" 
         self.status_publisher.publish(msg)
 
@@ -226,11 +247,17 @@ class Communication():
         elif command_type == "stop_animation":
             self.parent_node.formation.stop_animation()
         elif command_type == 'mission':
-            mission = cmd.get("points")
-
-            self.parent_node.mission = mission
+            # Followers do not execute the leader's coordinates. They enable
+            # their existing formation goal and follow the leader instead.
             if self.parent_node.state == "TAKEOFF":
                 self.parent_node.motion_enabled = True
+                self.parent_node.get_logger().info(
+                    'Follower mission tracking enabled.'
+                )
+            else:
+                self.parent_node.get_logger().warning(
+                    'Follower ignored mission start because Offboard is not active.'
+                )
         elif command_type == "leader_is_dead":
             del self.parent_node.last_seen_neighbors[self.parent_node.leader_id]
             self.referendum_conducting()
@@ -263,6 +290,10 @@ class Communication():
             else:
                 goal_accepted = self.parent_node.goal_callback_temp([self.parent_node.leader_goal[0] + x, self.parent_node.leader_goal[1] + y, self.parent_node.leader_goal[2] + z])
             if goal_accepted and self.parent_node.state == "TAKEOFF":
+                if self.parent_node.mission_active:
+                    self.parent_node.abort_mission(
+                        'replaced by a station move/set_goal command'
+                    )
                 self.parent_node.motion_enabled = True
             elif goal_accepted:
                 self.parent_node.get_logger().warning(
@@ -300,19 +331,22 @@ class Communication():
             self.parent_node.get_logger().info("Leader: Publishing stop animation command.")
         elif command_type == 'mission':
             mission = cmd.get("points")
-
-            self.parent_node.mission = mission 
-            if self.parent_node.state == "TAKEOFF":
-                self.parent_node.motion_enabled = True
-
-            self.parent_node.get_logger().info(f"Leader: getting mission {mission}.")
-            self.send_mission()
+            relative_to_start = cmd.get("relative_to_start", True)
+            if self.parent_node.start_mission(
+                mission,
+                relative_to_start=relative_to_start,
+            ):
+                self.parent_node.get_logger().info(
+                    f"Leader accepted mission with {len(mission)} waypoints."
+                )
+                self.send_mission()
 
             
     def send_mission(self):
         command = {
             "command": "mission",
-            "points":self.parent_node.mission
+            "points": self.parent_node.mission,
+            "relative_to_start": False,
         }
         msg = String()
         msg.data = json.dumps(command)

@@ -1,6 +1,9 @@
 import math
 from types import SimpleNamespace
 
+from builtin_interfaces.msg import Time
+from px4_msgs.msg import VehicleStatus
+
 from swarm_single.single_control_node import SingleControlNode
 
 
@@ -11,17 +14,31 @@ class DummyLogger:
     def error(self, _message):
         pass
 
+    def warning(self, _message):
+        pass
+
 
 class DummyNow:
-    nanoseconds = 123456789000
+    def __init__(self, nanoseconds=123456789000):
+        self.nanoseconds = nanoseconds
 
     def to_msg(self):
-        return SimpleNamespace()
+        seconds, nanoseconds = divmod(self.nanoseconds, 1_000_000_000)
+        return Time(sec=int(seconds), nanosec=int(nanoseconds))
+
+    def __sub__(self, other):
+        return SimpleNamespace(nanoseconds=self.nanoseconds - other.nanoseconds)
 
 
 class DummyClock:
+    def __init__(self):
+        self.nanoseconds = 123456789000
+
     def now(self):
-        return DummyNow()
+        return DummyNow(self.nanoseconds)
+
+    def advance(self, seconds):
+        self.nanoseconds += int(seconds * 1_000_000_000)
 
 
 class DummyPublisher:
@@ -135,3 +152,126 @@ def test_current_hold_pose_can_be_outside_commanded_goal_envelope():
 
     assert controller.leader_goal == current_pose
     assert controller.goal_tf_broadcaster.last_transform is not None
+
+
+def make_mission_stub():
+    clock = DummyClock()
+    controller = SimpleNamespace(
+        state='TAKEOFF',
+        manual_control=False,
+        navigation=SimpleNamespace(
+            current_pos=[10.0, 20.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        ),
+        max_mission_waypoints=10,
+        max_goal_distance=10.0,
+        min_goal_altitude=-0.5,
+        max_goal_altitude=5.0,
+        mission_goal_tolerance=0.4,
+        mission_waypoint_dwell=1.0,
+        mission_timeout=60.0,
+        mission=[],
+        mission_active=False,
+        mission_index=0,
+        mission_target=None,
+        mission_start_time=None,
+        mission_dwell_start=None,
+        mission_state='IDLE',
+        message='',
+        motion_enabled=False,
+        velocity_goal=[0.0, 0.0, 0.0],
+        get_clock=lambda: clock,
+        get_logger=lambda: DummyLogger(),
+        telemetry_is_fresh=lambda: True,
+        accepted_goals=[],
+    )
+
+    def accept_goal(goal):
+        controller.accepted_goals.append(list(goal))
+        return True
+
+    controller.goal_callback_temp = accept_goal
+    controller.activate_current_mission_waypoint = lambda: (
+        SingleControlNode.activate_current_mission_waypoint(controller)
+    )
+    controller.abort_mission = lambda reason: (
+        SingleControlNode.abort_mission(controller, reason)
+    )
+    controller.complete_mission = lambda: (
+        SingleControlNode.complete_mission(controller)
+    )
+    return controller, clock
+
+
+def test_relative_mission_reuses_normal_goal_path():
+    controller, _clock = make_mission_stub()
+
+    accepted = SingleControlNode.start_mission(
+        controller,
+        [[0.0, 0.0, 2.0], [2.0, 0.0, 2.0]],
+        relative_to_start=True,
+    )
+
+    assert accepted
+    assert controller.mission == [[10.0, 20.0, 2.0], [12.0, 20.0, 2.0]]
+    assert controller.accepted_goals == [[10.0, 20.0, 2.0]]
+    assert controller.mission_active
+    assert controller.motion_enabled
+
+
+def test_mission_advances_and_completes_after_dwell():
+    controller, clock = make_mission_stub()
+    assert SingleControlNode.start_mission(
+        controller,
+        [[0.0, 0.0, 1.0]],
+        relative_to_start=True,
+    )
+    controller.navigation.current_pos[:3] = controller.mission_target
+
+    SingleControlNode.update_mission_progress(controller)
+    clock.advance(1.1)
+    SingleControlNode.update_mission_progress(controller)
+
+    assert not controller.mission_active
+    assert controller.mission_state == 'COMPLETED'
+    assert controller.mission_index == 1
+    assert controller.velocity_goal == [0.0, 0.0, 0.0]
+
+
+def test_mission_requires_active_offboard_state():
+    controller, _clock = make_mission_stub()
+    controller.state = 'IDLE'
+
+    assert not SingleControlNode.start_mission(
+        controller,
+        [[0.0, 0.0, 1.0]],
+        relative_to_start=True,
+    )
+    assert not controller.mission_active
+
+
+def test_rc_mode_change_aborts_mission_and_latches_pilot_control():
+    controller, _clock = make_mission_stub()
+    controller.mission = [[10.0, 20.0, 2.0]]
+    controller.mission_active = True
+    controller.mission_target = list(controller.mission[0])
+    controller.motion_enabled = True
+    controller.manual_control = True
+    controller.manual_velocity = [0.2, 0.1, -0.1]
+    controller.offboard_setpoint_counter = 42
+    controller.offboard_was_confirmed = True
+    controller.release_to_pilot = lambda reason: (
+        SingleControlNode.release_to_pilot(controller, reason)
+    )
+
+    vehicle_status = VehicleStatus()
+    vehicle_status.nav_state = VehicleStatus.NAVIGATION_STATE_POSCTL
+    SingleControlNode.vehicle_status_callback(controller, vehicle_status)
+
+    assert controller.state == 'PILOT_CONTROL'
+    assert not controller.mission_active
+    assert controller.mission_state == 'ABORTED'
+    assert not controller.motion_enabled
+    assert not controller.manual_control
+    assert controller.manual_velocity == [0.0, 0.0, 0.0]
+    assert controller.velocity_goal == [0.0, 0.0, 0.0]
+    assert controller.offboard_setpoint_counter == 0

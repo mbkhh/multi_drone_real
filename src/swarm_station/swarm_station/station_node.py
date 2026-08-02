@@ -200,43 +200,45 @@ class StationNode(Node):
 		self.command_publisher.publish(msg)
 	
 	def send_mission(self):
-		
-		self.send_formation( "square")
-		self.send_arm_command()
+		if self.last_status is None:
+			self.get_logger().error(
+				"Mission not sent: no current leader status is available."
+			)
+			return
+		if not (
+			self.last_status.control_state == "TAKEOFF"
+			and self.last_status.armed
+			and self.last_status.offboard
+		):
+			self.get_logger().error(
+				"Mission not sent: run 'arm' first and wait until status "
+				"reports armed=True, offboard=True."
+			)
+			return
+
+		points = get_config('swarm_single.mission.waypoints')
+		relative_to_start = get_config(
+			'swarm_single.mission.relative_to_start'
+		)
+		if not isinstance(points, list) or not points:
+			self.get_logger().error(
+				"Mission not sent: configure swarm_single.mission.waypoints."
+			)
+			return
+
 		command = {
 			"command": "mission",
-			"points":[
-				[5.0,0.0,5.0],
-				[5.0,8.0,5.0],
-				[-2.0,8.0,6.0],
-				[3.1,10.0,7.0],
-				[6.0,7.0,7.0],
-				[12.0,8.0,7.0],
-				[12.0,12.0,8.0],
-				[-2.0,12.0,9.0],
-				[-2.0,8.0,9.0],
-				[5.0,0.0,5.0],
-				[5.0,8.0,5.0],
-				[-2.0,8.0,6.0],
-				[3.1,10.0,7.0],
-				[6.0,7.0,7.0],
-				[12.0,8.0,7.0],
-				[12.0,12.0,8.0],
-				[-2.0,12.0,9.0],
-				[-2.0,8.0,9.0],
-				# [5.0,5.0,5.0],
-				# [5.0,0.0,5.0],
-				# [0.0,0.0,5.0],
-				# [0.0,0.0,10.0],
-				# [0.0,0.0,5.0],
-				# [0.0,0.0,10.0],
-				# [0.0,0.0,5.0],
-				# [0.0,0.0,10.0]
-			]
+			"points": points,
+			"relative_to_start": (
+				True if relative_to_start is None else bool(relative_to_start)
+			),
 		}
 		msg = String()
 		msg.data = json.dumps(command)
 		self.command_publisher.publish(msg)
+		self.get_logger().info(
+			f"Mission sent with {len(points)} configured waypoints."
+		)
 
 	def check_for_input(self, input=None):
 		"""
@@ -263,6 +265,16 @@ class StationNode(Node):
 					self.get_logger().info(f"Leader Position: X:{self.last_status.leader_x:.2f}, Y:{self.last_status.leader_y:.2f}, Z:{self.last_status.leader_z:.2f}")
 					self.get_logger().info(f"Swarm Goal: X:{self.last_status.goal_x:.2f}, Y:{self.last_status.goal_y:.2f}, Z:{self.last_status.goal_z:.2f}")
 					self.get_logger().info(f"Formation Status: Type:{self.last_status.pattern_name}, Spacing:{self.last_status.spacing}, Rotate_X:{self.last_status.rotation_x}, Rotate_Y:{self.last_status.rotation_y}, Rotate_Z:{self.last_status.rotation_z}")
+					self.get_logger().info(
+						f"Control: state={self.last_status.control_state}, "
+						f"armed={self.last_status.armed}, "
+						f"offboard={self.last_status.offboard}"
+					)
+					self.get_logger().info(
+						f"Mission: state={self.last_status.mission_state}, "
+						f"waypoint={self.last_status.mission_index}/"
+						f"{self.last_status.mission_count}"
+					)
 					
 				elif command_input.lower() == 'clear' or command_input.lower() == 'cls':
 					os.system('clear')

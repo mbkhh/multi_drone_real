@@ -62,6 +62,12 @@ class SingleControlNode(Node):
         self.yaw_initialized = False
 
         self.mission = []
+        self.mission_active = False
+        self.mission_index = 0
+        self.mission_target = None
+        self.mission_start_time = None
+        self.mission_dwell_start = None
+        self.mission_state = "IDLE"
         self.message = ""
         self.manual_control = False
         self.motion_enabled = False
@@ -90,6 +96,18 @@ class SingleControlNode(Node):
         )
         self.max_goal_altitude = self.config_float(
             'swarm_single.control.max_goal_altitude', 5.0
+        )
+        self.mission_goal_tolerance = self.config_float(
+            'swarm_single.mission.goal_tolerance', 0.4
+        )
+        self.mission_waypoint_dwell = self.config_float(
+            'swarm_single.mission.waypoint_dwell', 1.0
+        )
+        self.mission_timeout = self.config_float(
+            'swarm_single.mission.timeout', 180.0
+        )
+        self.max_mission_waypoints = self.config_int(
+            'swarm_single.mission.max_waypoints', 100
         )
 
         self.navigation = navigation(self)
@@ -150,7 +168,6 @@ class SingleControlNode(Node):
         # Timer runs at 20Hz
         self.timer = self.create_timer(0.05, self.control_loop_callback)
 
-        self.mission_goal_tolerance = 0.4
         self.sended_goal_ack = True
         
         self.get_logger().info(f"SingleControlNode successfully initialized for Drone {self.drone_id}.")
@@ -237,6 +254,7 @@ class SingleControlNode(Node):
 
         elif self.state == DroneState.TAKEOFF:
             self.publish_offboard_control_heartbeat_signal()
+            self.update_mission_progress()
             if self.motion_enabled:
                 self.navigation.navigate_to_goal()
             else:
@@ -318,6 +336,7 @@ class SingleControlNode(Node):
             )
             return
         self.set_goal_transform(current_pose, log_received=False)
+        self.reset_mission_state()
         self.motion_enabled = False
         self.manual_control = False
         self.velocity_goal = [0.0, 0.0, 0.0]
@@ -331,6 +350,8 @@ class SingleControlNode(Node):
 
     def release_to_pilot(self, reason):
         """Latch this node out and cease heartbeat/setpoint publication."""
+        if self.mission_active:
+            self.abort_mission(reason)
         self.state = DroneState.PILOT_CONTROL
         self.motion_enabled = False
         self.manual_control = False
@@ -348,6 +369,8 @@ class SingleControlNode(Node):
         if self.vehicle_status.arming_state != VehicleStatus.ARMING_STATE_ARMED:
             self.get_logger().warning('LAND ignored: vehicle is not armed.')
             return
+        if self.mission_active:
+            self.abort_mission('LAND requested')
         self.motion_enabled = False
         self.manual_control = False
         self.velocity_goal = [0.0, 0.0, 0.0]
@@ -399,6 +422,207 @@ class SingleControlNode(Node):
         value = get_config(key)
         return float(default if value is None else value)
 
+    @staticmethod
+    def config_int(key, default):
+        value = get_config(key)
+        return int(default if value is None else value)
+
+    def reset_mission_state(self):
+        """Clear mission execution without changing the active flight mode."""
+        self.mission = []
+        self.mission_active = False
+        self.mission_index = 0
+        self.mission_target = None
+        self.mission_start_time = None
+        self.mission_dwell_start = None
+        self.mission_state = "IDLE"
+
+    def start_mission(self, points, relative_to_start=True):
+        """Validate and start a waypoint mission using the normal goal path."""
+        if self.state != DroneState.TAKEOFF:
+            self.get_logger().error(
+                'Mission rejected: ARM Offboard and wait for confirmation first.'
+            )
+            return False
+        if self.manual_control:
+            self.get_logger().error(
+                'Mission rejected: manual control is active.'
+            )
+            return False
+        if not self.telemetry_is_fresh():
+            self.get_logger().error(
+                'Mission rejected: PX4 telemetry is missing or stale.'
+            )
+            return False
+        if not isinstance(points, (list, tuple)) or not points:
+            self.get_logger().error(
+                'Mission rejected: at least one waypoint is required.'
+            )
+            return False
+        if len(points) > self.max_mission_waypoints:
+            self.get_logger().error(
+                f'Mission rejected: {len(points)} waypoints exceeds the '
+                f'{self.max_mission_waypoints} waypoint limit.'
+            )
+            return False
+
+        mission_origin = [
+            float(value) for value in self.navigation.current_pos[:3]
+        ]
+        if not all(math.isfinite(value) for value in mission_origin):
+            self.get_logger().error(
+                'Mission rejected: current local position is not finite.'
+            )
+            return False
+
+        resolved_points = []
+        previous = mission_origin
+        for index, point in enumerate(points):
+            if not isinstance(point, (list, tuple)) or len(point) != 3:
+                self.get_logger().error(
+                    f'Mission rejected: waypoint {index + 1} must contain x, y, z.'
+                )
+                return False
+            try:
+                waypoint = [float(value) for value in point]
+            except (TypeError, ValueError):
+                self.get_logger().error(
+                    f'Mission rejected: waypoint {index + 1} is not numeric.'
+                )
+                return False
+            if not all(math.isfinite(value) for value in waypoint):
+                self.get_logger().error(
+                    f'Mission rejected: waypoint {index + 1} is not finite.'
+                )
+                return False
+
+            if relative_to_start:
+                target = [
+                    mission_origin[axis] + waypoint[axis]
+                    for axis in range(3)
+                ]
+            else:
+                target = waypoint
+
+            leg_distance = math.hypot(
+                target[0] - previous[0], target[1] - previous[1]
+            )
+            if leg_distance > self.max_goal_distance:
+                self.get_logger().error(
+                    f'Mission rejected: waypoint {index + 1} has a '
+                    f'{leg_distance:.2f} m horizontal leg, exceeding the '
+                    f'{self.max_goal_distance:.2f} m goal limit.'
+                )
+                return False
+            if not self.min_goal_altitude <= target[2] <= self.max_goal_altitude:
+                self.get_logger().error(
+                    f'Mission rejected: waypoint {index + 1} altitude '
+                    f'{target[2]:.2f} m is outside '
+                    f'[{self.min_goal_altitude:.2f}, '
+                    f'{self.max_goal_altitude:.2f}] m.'
+                )
+                return False
+
+            resolved_points.append(target)
+            previous = target
+
+        self.mission = resolved_points
+        self.mission_active = True
+        self.mission_index = 0
+        self.mission_target = None
+        self.mission_start_time = self.get_clock().now()
+        self.mission_dwell_start = None
+        self.mission_state = "RUNNING"
+        self.message = f'MISSION STARTED: {len(self.mission)} waypoints'
+        return self.activate_current_mission_waypoint()
+
+    def activate_current_mission_waypoint(self):
+        """Send the current waypoint through the tested normal goal handler."""
+        if not self.mission_active or self.mission_index >= len(self.mission):
+            return False
+
+        target = self.mission[self.mission_index]
+        if not self.goal_callback_temp(target):
+            self.abort_mission(
+                f'waypoint {self.mission_index + 1} was rejected'
+            )
+            return False
+
+        self.mission_target = list(target)
+        self.mission_dwell_start = None
+        self.motion_enabled = True
+        self.get_logger().info(
+            f'Mission waypoint {self.mission_index + 1}/{len(self.mission)} '
+            f'activated: [{target[0]:.2f}, {target[1]:.2f}, {target[2]:.2f}]'
+        )
+        return True
+
+    def update_mission_progress(self):
+        """Advance after the vehicle remains within tolerance at a waypoint."""
+        if not self.mission_active or self.mission_target is None:
+            return
+
+        now = self.get_clock().now()
+        if (
+            self.mission_timeout > 0.0
+            and self.mission_start_time is not None
+            and (now - self.mission_start_time).nanoseconds / 1e9
+            > self.mission_timeout
+        ):
+            self.abort_mission('mission timeout')
+            return
+
+        current = [float(value) for value in self.navigation.current_pos[:3]]
+        if not all(math.isfinite(value) for value in current):
+            self.abort_mission('current local position is not finite')
+            return
+
+        distance = math.dist(current, self.mission_target)
+        if distance > self.mission_goal_tolerance:
+            self.mission_dwell_start = None
+            return
+
+        if self.mission_dwell_start is None:
+            self.mission_dwell_start = now
+            return
+        if (
+            (now - self.mission_dwell_start).nanoseconds / 1e9
+            < self.mission_waypoint_dwell
+        ):
+            return
+
+        self.mission_index += 1
+        if self.mission_index >= len(self.mission):
+            self.complete_mission()
+            return
+        self.activate_current_mission_waypoint()
+
+    def complete_mission(self):
+        """End at the final waypoint and keep Offboard armed in zero-velocity hold."""
+        waypoint_count = len(self.mission)
+        self.mission_active = False
+        self.mission_index = waypoint_count
+        self.mission_target = None
+        self.mission_dwell_start = None
+        self.motion_enabled = False
+        self.velocity_goal = [0.0, 0.0, 0.0]
+        self.mission_state = "COMPLETED"
+        self.message = f'MISSION COMPLETE: {waypoint_count} waypoints'
+        self.get_logger().info(self.message)
+
+    def abort_mission(self, reason):
+        """Stop mission-generated motion while leaving PX4 failsafes in charge."""
+        if not self.mission_active:
+            return
+        self.mission_active = False
+        self.mission_target = None
+        self.mission_dwell_start = None
+        self.motion_enabled = False
+        self.velocity_goal = [0.0, 0.0, 0.0]
+        self.mission_state = "ABORTED"
+        self.message = f'MISSION ABORTED: {reason}'
+        self.get_logger().warning(self.message)
+
     def publish_offboard_control_heartbeat_signal(self):
         msg = OffboardControlMode()
         msg.position = False
@@ -414,6 +638,18 @@ class SingleControlNode(Node):
     def vehicle_status_callback(self, vehicle_status):
         self.vehicle_status = vehicle_status
         self.last_vehicle_status_time = self.get_clock().now()
+        # PX4 owns RC mode selection. Release the companion controller as soon
+        # as PX4 confirms a switch away from Offboard; the control-loop check
+        # remains as a redundant guard. No station/network connection is
+        # required for this takeover path.
+        if (
+            self.state == DroneState.TAKEOFF
+            and vehicle_status.nav_state
+            != VehicleStatus.NAVIGATION_STATE_OFFBOARD
+        ):
+            self.release_to_pilot(
+                'PX4 left Offboard mode (RC/pilot takeover)'
+            )
 
     def failsafe_flags_callback(self, failsafe_flags):
         self.failsafe_flags = failsafe_flags

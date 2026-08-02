@@ -158,7 +158,47 @@ Once the station node is running, you can issue the following commands:
 | `arm` | Arm all drones for flight. | `arm` |
 | `set_goal` | Send the swarm to an absolute world coordinate. | `set_goal 10.0 5.0 4.0` |
 | `move` | Move the swarm relative to its current position. | `move y=10.0 z=-1.0` |
+| `mission` | Run the configured real-world waypoint mission after Offboard is confirmed. | `mission` |
 | `set_formation`| Change the swarm's formation. | `set_formation square spacing=4.0` |
 | `manual` | Enter manual control mode (use keyboard/joystick). | `manual` |
 | `manual off` | Exit manual control mode. | `manual off` |
 | `exit` | Shut down the station node. | `exit` |
+
+### Real-world waypoint mission
+
+Configure `mission.waypoints` in `swarm_single.yaml`. By default, each point is
+an ENU offset from the vehicle position when `mission` is accepted: X is east,
+Y is north, and positive Z is up. The shipped default takes off to 2 m and flies
+a 2 m square before returning above its starting point.
+
+Run `arm`, wait for `status` to show `state=TAKEOFF`, `armed=True`, and
+`offboard=True`, then run `mission`. The mission command never arms the vehicle
+automatically. At the final waypoint it remains armed in Offboard with a zero
+velocity setpoint; use `land` explicitly when ready. `move`, manual control,
+`land`, an RC mode change, stale telemetry, or the mission timeout aborts the
+mission.
+
+### RC takeover from Offboard (PX4 v1.14)
+
+RC takeover is handled by PX4, so it remains available if the laptop network
+connection is lost. In QGroundControl, open **Vehicle Setup > Flight Modes** and
+map a dedicated transmitter switch position to **Position** mode. When PX4
+accepts that mode change, the ROS controller immediately aborts any active
+mission, stops its Offboard heartbeat/setpoints, and latches in `PILOT_CONTROL`.
+It will not enter Offboard again until a new explicit station `arm` command.
+
+For the PX4 v1.14 release used by this project, verify these parameters on the
+flight controller:
+
+- `COM_RC_IN_MODE` must allow the RC transmitter (`0` for RC-only operation;
+  do not use `4`, which disables stick input).
+- Set `COM_RC_OVERRIDE=3` to retain automatic-mode override and additionally
+  enable stick override during Offboard. `2` enables Offboard override only.
+- Keep `COM_RC_STICK_OV=30` initially; this is the percentage stick movement
+  that triggers the override. Reduce it only after controlled testing.
+- Set `COM_OBL_RC_ACT=0` so PX4 selects Position mode if the RPi stops supplying
+  the Offboard heartbeat. `COM_OF_LOSS_T` controls that heartbeat-loss delay.
+
+Test the switch and stick override in QGroundControl with propellers removed,
+then repeat at low altitude in a clear area. The dedicated mode switch is the
+primary takeover method; stick override is a second path.

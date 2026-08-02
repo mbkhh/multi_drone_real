@@ -16,6 +16,20 @@ control:
   max_goal_distance: 10.0
   min_goal_altitude: -0.5
   max_goal_altitude: 5.0
+mission:
+  # Mission points are ENU offsets from the vehicle position when the
+  # mission starts. Positive Z is up, matching the station's move command.
+  relative_to_start: true
+  waypoints:
+    - [0.0, 0.0, 2.0]
+    - [2.0, 0.0, 2.0]
+    - [2.0, 2.0, 2.0]
+    - [0.0, 2.0, 2.0]
+    - [0.0, 0.0, 2.0]
+  goal_tolerance: 0.4
+  waypoint_dwell: 1.0
+  timeout: 180.0
+  max_waypoints: 100
 navigation:
   time_step: 0.016
   neighbor_dist: 3.5
