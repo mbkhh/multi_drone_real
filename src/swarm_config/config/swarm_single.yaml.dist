@@ -13,7 +13,7 @@ group:
   # Set enabled: false to recover the already-tested single-drone arm/move
   # behavior. When enabled, ARM and movement fail closed unless every listed
   # drone is online and reports a usable shared frame.
-  enabled: true
+  enabled: false
   required_drone_ids: [1, 2]
   status_timeout: 2.5
   formation:

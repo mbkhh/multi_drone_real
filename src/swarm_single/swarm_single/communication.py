@@ -353,6 +353,12 @@ class Communication():
     def _monitor_group_motion(self):
         if not self.parent_node.group_motion_active:
             return
+        # In single-drone mode there is no follower handshake to monitor.
+        # required_drone_ids remains configured for group flights even when
+        # group.enabled is false, so checking that list here would
+        # incorrectly cancel a standalone move as soon as it starts.
+        if not self.parent_node.group_enabled:
+            return
         if not self.parent_node.is_leader:
             leader_status = self.drone_statuses.get(
                 int(self.parent_node.leader_id)
