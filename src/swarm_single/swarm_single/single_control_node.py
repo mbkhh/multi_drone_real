@@ -88,7 +88,7 @@ class SingleControlNode(Node):
             'swarm_single.control.max_horizontal_speed', 1.0
         )
         self.max_vertical_speed = self.config_float(
-            'swarm_single.control.max_vertical_speed', 0.5
+            'swarm_single.control.max_vertical_speed', 0.8
         )
         self.max_goal_distance = self.config_float(
             'swarm_single.control.max_goal_distance', 10.0
