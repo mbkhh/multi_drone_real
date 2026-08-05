@@ -217,7 +217,21 @@ ros2 run swarm_single control_node --ros-args -p frame_id:=2
 
 # Laptop
 ros2 run swarm_station station
+
+# Second laptop terminal: verify physical GNSS spacing before arming
+ros2 run swarm_station takeoff_spacing
 ```
+
+The spacing monitor subscribes to each PX4 fused global position and prints
+`TAKEOFF SPACING OK` only when all configured pad-to-pad distances are within
+the configured tolerance and every position is fresh and accurate enough. It
+also publishes `/swarm/takeoff_spacing_ok` and `/swarm/takeoff_spacing`. The
+default two-drone acceptable band is 3.5--4.5 m around the intended 4 m layout.
+Each report includes the relative east, north, and up components from the first
+drone to the second. The same JSON report is also visible in
+`ros2 run swarm_logger logger`.
+This is an informational check; it does not arm a vehicle or bypass normal
+physical measurement and clearance checks.
 
 Run `status` before `arm`; it must report `prearm_ready=True`. After `arm`, wait
 until it reports `flight_ready=True` before using a small `move` test or
