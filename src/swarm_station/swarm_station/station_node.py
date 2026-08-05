@@ -39,7 +39,7 @@ class StationNode(Node):
 
 		# --- QoS Profile for Reliable Commands ---
 		self.qos_profile_reliable = QoSProfile(
-			reliability=ReliabilityPolicy.BEST_EFFORT,
+			reliability=ReliabilityPolicy.RELIABLE,
 			history=HistoryPolicy.KEEP_LAST,
 			depth=int(int(get_config('swarm_sim.drone_count'))*2)
 		)
@@ -141,6 +141,15 @@ class StationNode(Node):
 
 		self._send_goal_future.add_done_callback(self.goal_response_callback)
 	def send_fly_goal2(self, x, y, z , absolute = True):
+		if self.last_status is None or not self.last_status.group_ready:
+			group_state = (
+				'no leader status' if self.last_status is None
+				else self.last_status.group_state
+			)
+			self.get_logger().error(
+				f"Move not sent: group is not ready ({group_state})."
+			)
+			return
 		command = {
 			"command": "fly",
 			"x": x,
@@ -172,6 +181,16 @@ class StationNode(Node):
 		# This is where you would update your progress bar in the future
 		self.get_logger().info(f'Received feedback from leader: distance_remaining {feedback_msg.feedback.distance_remaining}')
 	def send_arm_command(self):
+		if self.last_status is None or not self.last_status.group_prearm_ready:
+			group_state = (
+				'no leader status' if self.last_status is None
+				else self.last_status.group_prearm_state
+			)
+			self.get_logger().error(
+				f"Arm not sent: group pre-arm checks are not ready "
+				f"({group_state})."
+			)
+			return
 		msg = String()
 		msg.data =  json.dumps({"command": "arm"})
 		self.command_publisher.publish(msg)
@@ -213,6 +232,12 @@ class StationNode(Node):
 			self.get_logger().error(
 				"Mission not sent: run 'arm' first and wait until status "
 				"reports armed=True, offboard=True."
+			)
+			return
+		if not self.last_status.group_ready:
+			self.get_logger().error(
+				"Mission not sent: group is not ready "
+				f"({self.last_status.group_state})."
 			)
 			return
 
@@ -269,6 +294,14 @@ class StationNode(Node):
 						f"Control: state={self.last_status.control_state}, "
 						f"armed={self.last_status.armed}, "
 						f"offboard={self.last_status.offboard}"
+					)
+					self.get_logger().info(
+						f"Group: prearm_ready="
+						f"{self.last_status.group_prearm_ready}, "
+						f"flight_ready={self.last_status.group_ready}, "
+						f"motion_active="
+						f"{self.last_status.group_motion_active}, "
+						f"state={self.last_status.group_state}"
 					)
 					self.get_logger().info(
 						f"Mission: state={self.last_status.mission_state}, "

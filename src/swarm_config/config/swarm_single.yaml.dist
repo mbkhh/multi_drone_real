@@ -9,6 +9,31 @@ leader_command_topic_name: '/swarm/command'
 broadcast_interval: 1.5
 status_interval: 1
 goal_tolerance: 0.5
+group:
+  # Set enabled: false to recover the already-tested single-drone arm/move
+  # behavior. When enabled, ARM and movement fail closed unless every listed
+  # drone is online and reports a usable shared frame.
+  enabled: true
+  required_drone_ids: [1, 2]
+  status_timeout: 2.5
+  formation:
+    pattern: 'square'
+    spacing: 4.0
+  shared_frame:
+    # Each value is the measured ENU [east, north, up] position of that
+    # vehicle's PX4 local-position origin relative to drone 1's origin.
+    # This default requires drone 2's takeoff point to be exactly 4 m east of
+    # drone 1. Measure and edit these values before flight if the pads differ.
+    mode: 'configured_offsets'
+    origin_offsets:
+      1: [0.0, 0.0, 0.0]
+      2: [4.0, 0.0, 0.0]
+    # Optional mode: 'gps' derives offsets from PX4's global EKF references.
+    # Independent GNSS error then becomes formation-position error, so use it
+    # only when the receivers provide adequate relative accuracy.
+    reference_drone_id: 1
+    max_eph: 2.0
+    max_epv: 3.0
 control:
   telemetry_timeout: 2.5
   max_horizontal_speed: 1.0

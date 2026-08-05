@@ -21,6 +21,14 @@ string control_state
 bool armed
 bool offboard
 
+bool group_prearm_ready
+bool group_ready
+bool group_motion_active
+int16[] ready_members
+int16[] missing_members
+string group_prearm_state
+string group_state
+
 bool mission_active
 uint16 mission_index
 uint16 mission_count

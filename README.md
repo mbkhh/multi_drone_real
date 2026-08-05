@@ -168,8 +168,8 @@ Once the station node is running, you can issue the following commands:
 
 Configure `mission.waypoints` in `swarm_single.yaml`. By default, each point is
 an ENU offset from the vehicle position when `mission` is accepted: X is east,
-Y is north, and positive Z is up. The shipped default takes off to 2 m and flies
-a 2 m square before returning above its starting point.
+Y is north, and positive Z is up. The shipped default climbs to 4 m, flies a
+2 m square, and returns above its starting point.
 
 Run `arm`, wait for `status` to show `state=TAKEOFF`, `armed=True`, and
 `offboard=True`, then run `mission`. The mission command never arms the vehicle
@@ -177,6 +177,55 @@ automatically. At the final waypoint it remains armed in Offboard with a zero
 velocity setpoint; use `land` explicitly when ready. `move`, manual control,
 `land`, an RC mode change, stale telemetry, or the mission timeout aborts the
 mission.
+
+### Two-drone real-world group flight
+
+Use the same `swarm_single.yaml` and `swarm_sim.yaml` on the laptop and both
+RPis. The shipped group configuration requires IDs `1` and `2`, a square
+formation with 4 m spacing, and these shared ENU estimator origins:
+
+```yaml
+group:
+  enabled: true
+  required_drone_ids: [1, 2]
+  formation:
+    pattern: square
+    spacing: 4.0
+  shared_frame:
+    mode: configured_offsets
+    origin_offsets:
+      1: [0.0, 0.0, 0.0]
+      2: [4.0, 0.0, 0.0]
+```
+
+This means drone 2's PX4 EKF origin must be 4 m east of drone 1's origin, at
+the same height. The values describe estimator origins, not just the current
+vehicle positions: place the vehicles first, then boot/initialize PX4. Measure
+and change the offsets on every computer if the real layout differs. X is east,
+Y is north, and Z is up.
+
+On drone 1 run the controller with `frame_id:=1`; on drone 2 use `frame_id:=2`.
+Each value must equal that flight controller's `MAV_SYS_ID` and its
+`/uav_<id>` XRCE-DDS namespace:
+
+```bash
+# RPi on drone 1
+ros2 run swarm_single control_node --ros-args -p frame_id:=1
+
+# RPi on drone 2
+ros2 run swarm_single control_node --ros-args -p frame_id:=2
+
+# Laptop
+ros2 run swarm_station station
+```
+
+Run `status` before `arm`; it must report `prearm_ready=True`. After `arm`, wait
+until it reports `flight_ready=True` before using a small `move` test or
+`mission`. Group movement is rejected if either drone is missing, stale, using
+a different group configuration, lacks a shared frame, or has not confirmed
+armed Offboard. During motion, losing either member or using RC to take one
+vehicle out of Offboard causes the ROS-controlled vehicles to hold. The RC
+vehicle remains under PX4/pilot control.
 
 ### RC takeover from Offboard (PX4 v1.14)
 
