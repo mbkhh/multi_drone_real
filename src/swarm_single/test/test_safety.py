@@ -1,9 +1,12 @@
+import json
 import math
 from types import SimpleNamespace
 
 from builtin_interfaces.msg import Time
 from px4_msgs.msg import VehicleStatus
+from std_msgs.msg import String
 
+from swarm_single.communication import Communication
 from swarm_single.single_control_node import SingleControlNode
 
 
@@ -198,6 +201,65 @@ def test_arm_world_origin_calibration_is_not_repeated():
     controller.latest_px4_position_enu = [50.0, 60.0, 7.0]
     assert SingleControlNode.calibrate_world_origin(controller)
     assert controller.px4_position_origin_enu == [10.0, 20.0, 2.0]
+
+
+def make_takeoff_parent(position):
+    vehicle_status = VehicleStatus()
+    vehicle_status.arming_state = VehicleStatus.ARMING_STATE_ARMED
+    vehicle_status.nav_state = VehicleStatus.NAVIGATION_STATE_OFFBOARD
+    parent = SimpleNamespace(
+        state='TAKEOFF',
+        vehicle_status=vehicle_status,
+        manual_control=False,
+        navigation=SimpleNamespace(
+            current_pos=[*position, 0.0, 0.0, 0.0, 1.0]
+        ),
+        mission_active=False,
+        motion_enabled=False,
+        accepted_goal=None,
+        get_logger=lambda: DummyLogger(),
+    )
+
+    def accept_goal(goal):
+        parent.accepted_goal = list(goal)
+        return True
+
+    parent.goal_callback_temp = accept_goal
+    parent.abort_mission = lambda _reason: None
+    return parent
+
+
+def test_leader_takeoff_is_relayed_and_each_drone_climbs_from_own_position():
+    leader = make_takeoff_parent([0.0, 0.0, 0.0])
+    follower = make_takeoff_parent([0.0, 5.0, 0.0])
+    leader_communication = object.__new__(Communication)
+    leader_communication.parent_node = leader
+    leader_communication.command_publisher = DummyPublisher()
+    follower_communication = object.__new__(Communication)
+    follower_communication.parent_node = follower
+
+    station_command = String()
+    station_command.data = json.dumps({"command": "takeoff", "height": 3.0})
+    leader_communication.command_leader_callback(station_command)
+    follower_communication.command_callback(
+        leader_communication.command_publisher.last_message
+    )
+
+    assert leader.accepted_goal == [0.0, 0.0, 3.0]
+    assert follower.accepted_goal == [0.0, 5.0, 3.0]
+    assert leader.motion_enabled
+    assert follower.motion_enabled
+
+
+def test_takeoff_is_rejected_before_offboard_arming_completes():
+    parent = make_takeoff_parent([0.0, 0.0, 0.0])
+    parent.state = 'ARMING'
+    communication = object.__new__(Communication)
+    communication.parent_node = parent
+
+    assert not communication.execute_takeoff(3.0)
+    assert parent.accepted_goal is None
+    assert not parent.motion_enabled
 
 
 def make_mission_stub():

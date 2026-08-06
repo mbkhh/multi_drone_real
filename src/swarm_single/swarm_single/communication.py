@@ -236,6 +236,9 @@ class Communication():
             self.parent_node.request_offboard_control()
             self.parent_node.get_logger().info("Received ARM command.")
 
+        elif command_type == "takeoff":
+            self.execute_takeoff(cmd.get("height", 3.0))
+
         elif command_type == "start_animation":
             start_time = int(cmd.get("start_time"))
 
@@ -279,6 +282,18 @@ class Communication():
             self.parent_node.get_logger().info(
                 "Leader: publishing ARM command."
             )
+        elif command_type == "takeoff":
+            height = cmd.get("height", 3.0)
+            if self.execute_takeoff(height):
+                out_msg = String()
+                out_msg.data = json.dumps({
+                    "command": "takeoff",
+                    "height": float(height),
+                })
+                self.command_publisher.publish(out_msg)
+                self.parent_node.get_logger().info(
+                    f"Leader: publishing {float(height):.2f} m TAKEOFF command."
+                )
         elif command_type == "fly":
             x = float(cmd.get("x"))
             y = float(cmd.get("y"))
@@ -341,7 +356,57 @@ class Communication():
                 )
                 self.send_mission()
 
-            
+    def execute_takeoff(self, height):
+        try:
+            height = float(height)
+        except (TypeError, ValueError):
+            self.parent_node.get_logger().error(
+                'TAKEOFF rejected: height must be numeric.'
+            )
+            return False
+        if not math.isfinite(height) or height <= 0.0:
+            self.parent_node.get_logger().error(
+                'TAKEOFF rejected: height must be finite and greater than zero.'
+            )
+            return False
+        if (
+            self.parent_node.state != "TAKEOFF"
+            or self.parent_node.vehicle_status.arming_state
+            != VehicleStatus.ARMING_STATE_ARMED
+            or self.parent_node.vehicle_status.nav_state
+            != VehicleStatus.NAVIGATION_STATE_OFFBOARD
+        ):
+            self.parent_node.get_logger().warning(
+                'TAKEOFF rejected: this drone is not armed in Offboard mode.'
+            )
+            return False
+        if self.parent_node.manual_control:
+            self.parent_node.get_logger().warning(
+                'TAKEOFF rejected: manual control is active.'
+            )
+            return False
+
+        current = [
+            float(value)
+            for value in self.parent_node.navigation.current_pos[:3]
+        ]
+        if not all(math.isfinite(value) for value in current):
+            self.parent_node.get_logger().error(
+                'TAKEOFF rejected: current position is not finite.'
+            )
+            return False
+        target = [current[0], current[1], current[2] + height]
+        if not self.parent_node.goal_callback_temp(target):
+            return False
+        if self.parent_node.mission_active:
+            self.parent_node.abort_mission('replaced by TAKEOFF command')
+        self.parent_node.motion_enabled = True
+        self.parent_node.get_logger().warning(
+            f'TAKEOFF accepted: climbing {height:.2f} m to ENU '
+            f'z={target[2]:.2f}.'
+        )
+        return True
+
     def send_mission(self):
         command = {
             "command": "mission",

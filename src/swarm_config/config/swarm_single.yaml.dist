@@ -16,6 +16,7 @@ real_world:
     '2': [0.0, 5.0, 0.0]
 control:
   telemetry_timeout: 2.5
+  takeoff_height: 3.0
   max_horizontal_speed: 1.0
   max_vertical_speed: 0.5
   max_goal_distance: 10.0

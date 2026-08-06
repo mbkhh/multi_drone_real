@@ -175,6 +175,35 @@ class StationNode(Node):
 		msg = String()
 		msg.data =  json.dumps({"command": "arm"})
 		self.command_publisher.publish(msg)
+	def send_takeoff_command(self):
+		if self.last_status is None:
+			self.get_logger().error(
+				"TAKEOFF not sent: no current leader status is available."
+			)
+			return
+		if not (
+			self.last_status.control_state == "TAKEOFF"
+			and self.last_status.armed
+			and self.last_status.offboard
+		):
+			self.get_logger().error(
+				"TAKEOFF not sent: run 'arm' first and wait until status "
+				"reports armed=True, offboard=True."
+			)
+			return
+		expected_drones = int(get_config('swarm_sim.drone_count'))
+		connected_drones = len(set(self.last_status.swarm_members))
+		if connected_drones < expected_drones:
+			self.get_logger().error(
+				f"TAKEOFF not sent: {connected_drones}/{expected_drones} "
+				"configured drones are connected."
+			)
+			return
+		height = get_config('swarm_single.control.takeoff_height')
+		height = 3.0 if height is None else float(height)
+		msg = String()
+		msg.data = json.dumps({"command": "takeoff", "height": height})
+		self.command_publisher.publish(msg)
 		
 	def send_disarm_leader_command(self):
 		msg = String()
@@ -289,6 +318,8 @@ class StationNode(Node):
 						match command[0].lower():
 							case 'arm':
 								self.send_arm_command()
+							case 'takeoff':
+								self.send_takeoff_command()
 							case 'disarm_leader':
 								self.send_disarm_leader_command()
 							case 'land':
