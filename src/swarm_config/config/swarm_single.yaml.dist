@@ -19,13 +19,6 @@ group:
   formation:
     pattern: 'square'
     spacing: 4.0
-  takeoff_spacing_check:
-    # Global-position distance must match the configured origin layout within
-    # this tolerance. The default 4 m layout therefore accepts 3.5--4.5 m.
-    distance_tolerance: 0.5
-    position_timeout: 2.5
-    max_eph: 1.0
-    check_interval: 1.0
   shared_frame:
     # Each value is the measured ENU [east, north, up] position of that
     # vehicle's PX4 local-position origin relative to drone 1's origin.

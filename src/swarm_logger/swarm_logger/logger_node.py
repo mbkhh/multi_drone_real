@@ -29,7 +29,7 @@ from rclpy.qos import (
     QoSProfile,
     ReliabilityPolicy,
 )
-from std_msgs.msg import Bool, Header, String
+from std_msgs.msg import Header, String
 from swarm_config.config_utils import get_config
 from swarm_msgs.msg import FormationCommand, ManualControl, Status
 
@@ -80,9 +80,9 @@ class SwarmLogger(Node):
         )
 
     def _subscribe(self, message_type, topic, qos):
-        def callback(message, topic_name=topic):
-            self._enqueue(topic_name, message)
-
+        callback = lambda message, topic_name=topic: self._enqueue(
+            topic_name, message
+        )
         subscription = self.create_subscription(
             message_type, topic, callback, qos
         )
@@ -95,8 +95,6 @@ class SwarmLogger(Node):
             (String, '/swarm/command'),
             (FormationCommand, '/swarm/formation_command'),
             (ManualControl, '/manual_controller'),
-            (Bool, '/swarm/takeoff_spacing_ok'),
-            (String, '/swarm/takeoff_spacing'),
             # Leader-to-follower topics are relative in swarm_single and
             # currently resolve to these global names.
             (String, '/command'),

@@ -23,7 +23,6 @@ setup(
 			'manual=swarm_station.manual_controller:main',
 			'lidar=swarm_station.lidar_sensor:main',
 			'station=swarm_station.station_node:main',
-			'takeoff_spacing=swarm_station.takeoff_spacing_node:main',
 		],
 	},
 )
