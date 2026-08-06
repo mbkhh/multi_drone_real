@@ -42,7 +42,6 @@ class SingleControlNode(Node):
         self.frame_id = str(
             self.get_parameter('frame_id').get_parameter_value().integer_value
         )
-        self.drone_id = self.frame_id
         self.px4_model = get_config('swarm_sim.px4_model')
         self.goal_frame = get_config('swarm_single.goal_frame_name')
 
@@ -72,7 +71,6 @@ class SingleControlNode(Node):
         self.message = ""
         self.manual_control = False
         self.motion_enabled = False
-        self.group_motion_active = False
         self.state = DroneState.IDLE
         self.offboard_was_confirmed = False
         self.last_vehicle_status_time = None
@@ -112,60 +110,11 @@ class SingleControlNode(Node):
             'swarm_single.mission.max_waypoints', 100
         )
 
-        self.group_enabled = self.config_bool(
-            'swarm_single.group.enabled', False
-        )
-        configured_ids = get_config(
-            'swarm_single.group.required_drone_ids'
-        )
-        if not isinstance(configured_ids, list) or not configured_ids:
-            drone_count = self.config_int('swarm_sim.drone_count', 1)
-            configured_ids = list(range(1, drone_count + 1))
-        self.required_drone_ids = sorted(
-            {int(drone_id) for drone_id in configured_ids}
-        )
-        self.group_status_timeout = self.config_float(
-            'swarm_single.group.status_timeout', self.telemetry_timeout
-        )
-        self.shared_frame_mode = str(
-            get_config('swarm_single.group.shared_frame.mode')
-            or 'configured_offsets'
-        ).lower()
-        self.shared_frame_reference_id = self.config_int(
-            'swarm_single.group.shared_frame.reference_drone_id',
-            self.required_drone_ids[0],
-        )
-        self.shared_frame_max_eph = self.config_float(
-            'swarm_single.group.shared_frame.max_eph', 2.0
-        )
-        self.shared_frame_max_epv = self.config_float(
-            'swarm_single.group.shared_frame.max_epv', 3.0
-        )
-        self.shared_frame_reference = None
-        self.last_shared_frame_reference_time = None
-        self.configured_origin_offset = self.get_configured_origin_offset()
-        self.shared_frame_ready = not self.group_enabled
-        self.shared_frame_error = ''
-        if self.group_enabled:
-            if self.shared_frame_mode == 'configured_offsets':
-                self.shared_frame_ready = self.configured_origin_offset is not None
-                if not self.shared_frame_ready:
-                    self.shared_frame_error = (
-                        f'no configured ENU origin offset for drone {self.drone_id}'
-                    )
-            elif self.shared_frame_mode == 'gps':
-                self.shared_frame_ready = False
-                self.shared_frame_error = 'waiting for global EKF references'
-            else:
-                self.shared_frame_ready = False
-                self.shared_frame_error = (
-                    f'unsupported shared-frame mode {self.shared_frame_mode!r}'
-                )
-
-        self.vehicle_status = VehicleStatus()
         self.navigation = navigation(self)
         self.formation = PatternController(self)
         self.communication = Communication(self)
+
+        self.drone_id = self.frame_id
         
         # QoS Profile for telemetry and setpoints (Depth = 1)
         qos_profile = QoSProfile(
@@ -200,19 +149,6 @@ class SingleControlNode(Node):
             self.vehicle_local_position_callback,
             qos_profile,
         )
-        self.reference_local_position_subscriber = None
-        if (
-            self.group_enabled
-            and self.shared_frame_mode == 'gps'
-            and int(self.drone_id) != self.shared_frame_reference_id
-        ):
-            self.reference_local_position_subscriber = self.create_subscription(
-                VehicleLocalPosition,
-                f'/uav_{self.shared_frame_reference_id}/fmu/out/'
-                'vehicle_local_position_v1',
-                self.reference_local_position_callback,
-                qos_profile,
-            )
         self.failsafe_flags_subscriber = self.create_subscription(
             FailsafeFlags,
             f"/uav_{self.drone_id}/fmu/out/failsafe_flags",
@@ -227,18 +163,14 @@ class SingleControlNode(Node):
         )
 
         self.offboard_setpoint_counter = 0
+        self.vehicle_status = VehicleStatus()
+
         # Timer runs at 20Hz
         self.timer = self.create_timer(0.05, self.control_loop_callback)
 
         self.sended_goal_ack = True
         
         self.get_logger().info(f"SingleControlNode successfully initialized for Drone {self.drone_id}.")
-        if self.group_enabled:
-            self.get_logger().warning(
-                f'Group mode enabled for drones {self.required_drone_ids}; '
-                f'shared frame mode={self.shared_frame_mode}, '
-                f'ready={self.shared_frame_ready}.'
-            )
 
     def control_loop_callback(self):
         """Contain controller errors so PX4 can execute its configured failsafe."""
@@ -373,12 +305,6 @@ class SingleControlNode(Node):
                 'failsafe telemetry is missing/stale.'
             )
             return
-        if self.group_enabled and not self.shared_frame_is_ready():
-            self.get_logger().error(
-                f'Offboard rejected: shared group frame is not ready '
-                f'({self.shared_frame_error}).'
-            )
-            return
         # if not self.vehicle_status.pre_flight_checks_pass:
         #     self.get_logger().error(
         #         'Offboard rejected: PX4 preflight checks have not passed.'
@@ -412,7 +338,6 @@ class SingleControlNode(Node):
         self.set_goal_transform(current_pose, log_received=False)
         self.reset_mission_state()
         self.motion_enabled = False
-        self.group_motion_active = False
         self.manual_control = False
         self.velocity_goal = [0.0, 0.0, 0.0]
         self.offboard_setpoint_counter = 0
@@ -425,14 +350,10 @@ class SingleControlNode(Node):
 
     def release_to_pilot(self, reason):
         """Latch this node out and cease heartbeat/setpoint publication."""
-        was_group_motion_active = getattr(
-            self, 'group_motion_active', False
-        )
         if self.mission_active:
             self.abort_mission(reason)
         self.state = DroneState.PILOT_CONTROL
         self.motion_enabled = False
-        self.group_motion_active = False
         self.manual_control = False
         self.manual_velocity = [0.0, 0.0, 0.0]
         self.velocity_goal = [0.0, 0.0, 0.0]
@@ -442,24 +363,6 @@ class SingleControlNode(Node):
             f'{reason}. ROS control released; PX4/RC/failsafe owns control. '
             'A new station ARM command is required to re-enter Offboard.'
         )
-        if (
-            was_group_motion_active
-            and getattr(self, 'is_leader', False)
-            and hasattr(self, 'communication')
-        ):
-            self.communication.broadcast_group_stop(reason)
-
-    def stop_group_motion(self, reason):
-        """Hold this vehicle without taking control away from PX4 or the RC."""
-        if self.mission_active:
-            self.abort_mission(reason)
-        self.motion_enabled = False
-        self.group_motion_active = False
-        self.manual_control = False
-        self.manual_velocity = [0.0, 0.0, 0.0]
-        self.velocity_goal = [0.0, 0.0, 0.0]
-        self.message = f'GROUP MOTION STOPPED: {reason}'
-        self.get_logger().warning(self.message)
 
     def request_land(self):
         """Ask PX4 to enter its native AUTO_LAND mode once."""
@@ -469,7 +372,6 @@ class SingleControlNode(Node):
         if self.mission_active:
             self.abort_mission('LAND requested')
         self.motion_enabled = False
-        self.group_motion_active = False
         self.manual_control = False
         self.velocity_goal = [0.0, 0.0, 0.0]
         self.offboard_setpoint_counter = 0
@@ -524,153 +426,6 @@ class SingleControlNode(Node):
     def config_int(key, default):
         value = get_config(key)
         return int(default if value is None else value)
-
-    @staticmethod
-    def config_bool(key, default):
-        value = get_config(key)
-        return bool(default if value is None else value)
-
-    def get_configured_origin_offset(self):
-        """Return this drone's measured origin in the common ENU frame."""
-        offsets = get_config(
-            'swarm_single.group.shared_frame.origin_offsets'
-        )
-        if not isinstance(offsets, dict):
-            return None
-        raw_offset = offsets.get(int(self.drone_id))
-        if raw_offset is None:
-            raw_offset = offsets.get(str(self.drone_id))
-        if not isinstance(raw_offset, (list, tuple)) or len(raw_offset) != 3:
-            return None
-        try:
-            offset = [float(value) for value in raw_offset]
-        except (TypeError, ValueError):
-            return None
-        return offset if all(math.isfinite(value) for value in offset) else None
-
-    def global_reference_is_valid(self, local_position):
-        """Check whether PX4's EKF global reference is usable for alignment."""
-        values = (
-            local_position.ref_lat,
-            local_position.ref_lon,
-            local_position.ref_alt,
-            local_position.eph,
-            local_position.epv,
-        )
-        return (
-            local_position.xy_global
-            and local_position.z_global
-            and not local_position.dead_reckoning
-            and all(math.isfinite(float(value)) for value in values)
-            and float(local_position.eph) <= self.shared_frame_max_eph
-            and float(local_position.epv) <= self.shared_frame_max_epv
-        )
-
-    def reference_local_position_callback(self, local_position):
-        """Capture the reference drone's global EKF origin for GPS alignment."""
-        if not self.global_reference_is_valid(local_position):
-            self.shared_frame_ready = False
-            self.shared_frame_error = (
-                f'drone {self.shared_frame_reference_id} global EKF reference '
-                'is invalid or inaccurate'
-            )
-            return
-        self.shared_frame_reference = (
-            float(local_position.ref_lat),
-            float(local_position.ref_lon),
-            float(local_position.ref_alt),
-        )
-        self.last_shared_frame_reference_time = self.get_clock().now()
-
-    def shared_frame_is_ready(self):
-        if not self.group_enabled:
-            return True
-        if self.shared_frame_mode == 'configured_offsets':
-            return self.configured_origin_offset is not None
-        if (
-            self.shared_frame_mode != 'gps'
-            or self.shared_frame_reference is None
-            or self.last_shared_frame_reference_time is None
-        ):
-            return False
-        age = (
-            self.get_clock().now() - self.last_shared_frame_reference_time
-        ).nanoseconds / 1e9
-        if age > self.group_status_timeout:
-            self.shared_frame_ready = False
-            self.shared_frame_error = 'reference drone global EKF data is stale'
-            return False
-        return self.shared_frame_ready
-
-    def local_position_to_shared_enu(self, local_position):
-        """Convert this PX4-local NED position into the configured common ENU."""
-        local_enu = [
-            float(local_position.y),
-            float(local_position.x),
-            float(-local_position.z),
-        ]
-        if not self.group_enabled:
-            self.shared_frame_ready = True
-            return local_enu
-
-        if self.shared_frame_mode == 'configured_offsets':
-            if self.configured_origin_offset is None:
-                self.shared_frame_ready = False
-                return None
-            self.shared_frame_ready = True
-            self.shared_frame_error = ''
-            return [
-                self.configured_origin_offset[axis] + local_enu[axis]
-                for axis in range(3)
-            ]
-
-        if self.shared_frame_mode != 'gps':
-            self.shared_frame_ready = False
-            return None
-        if not self.global_reference_is_valid(local_position):
-            self.shared_frame_ready = False
-            self.shared_frame_error = (
-                f'drone {self.drone_id} global EKF reference is invalid or '
-                'inaccurate'
-            )
-            return None
-        if (
-            self.shared_frame_reference is None
-            or self.last_shared_frame_reference_time is None
-        ):
-            self.shared_frame_ready = False
-            self.shared_frame_error = 'waiting for reference drone global EKF data'
-            return None
-        reference_age = (
-            self.get_clock().now() - self.last_shared_frame_reference_time
-        ).nanoseconds / 1e9
-        if reference_age > self.group_status_timeout:
-            self.shared_frame_ready = False
-            self.shared_frame_error = 'reference drone global EKF data is stale'
-            return None
-
-        reference_lat, reference_lon, reference_alt = (
-            self.shared_frame_reference
-        )
-        own_lat = float(local_position.ref_lat)
-        own_lon = float(local_position.ref_lon)
-        own_alt = float(local_position.ref_alt)
-        earth_radius = 6378137.0
-        mean_lat = math.radians((reference_lat + own_lat) / 2.0)
-        north_offset = earth_radius * math.radians(own_lat - reference_lat)
-        east_offset = (
-            earth_radius
-            * math.cos(mean_lat)
-            * math.radians(own_lon - reference_lon)
-        )
-        up_offset = own_alt - reference_alt
-        self.shared_frame_ready = True
-        self.shared_frame_error = ''
-        return [
-            east_offset + local_enu[0],
-            north_offset + local_enu[1],
-            up_offset + local_enu[2],
-        ]
 
     def reset_mission_state(self):
         """Clear mission execution without changing the active flight mode."""
@@ -909,16 +664,6 @@ class SingleControlNode(Node):
         if not (local_position.xy_valid and local_position.z_valid):
             return
         self.last_local_position_time = self.get_clock().now()
-        if (
-            self.group_enabled
-            and self.shared_frame_mode == 'gps'
-            and int(self.drone_id) == self.shared_frame_reference_id
-        ):
-            self.reference_local_position_callback(local_position)
-
-        shared_position = self.local_position_to_shared_enu(local_position)
-        if shared_position is None:
-            return
 
         transform = TransformStamped()
         transform.header.stamp = self.get_clock().now().to_msg()
@@ -926,29 +671,14 @@ class SingleControlNode(Node):
         transform.child_frame_id = f'{self.px4_model}_{self.frame_id}/odom'
 
         # PX4 local position is NED. The navigation code and TF tree use ENU.
-        transform.transform.translation.x = shared_position[0]
-        transform.transform.translation.y = shared_position[1]
-        transform.transform.translation.z = shared_position[2]
+        transform.transform.translation.x = float(local_position.y)
+        transform.transform.translation.y = float(local_position.x)
+        transform.transform.translation.z = float(-local_position.z)
 
         yaw_enu = (math.pi / 2.0) - float(local_position.heading)
         transform.transform.rotation.z = math.sin(yaw_enu / 2.0)
         transform.transform.rotation.w = math.cos(yaw_enu / 2.0)
         self.local_position_tf_broadcaster.sendTransform(transform)
-
-        # Formation offsets are defined in the shared ENU axes and must not
-        # rotate when the leader yaws. This translation-only frame follows the
-        # vehicle position while retaining world orientation.
-        formation_origin = TransformStamped()
-        formation_origin.header.stamp = transform.header.stamp
-        formation_origin.header.frame_id = 'world'
-        formation_origin.child_frame_id = (
-            f'{self.px4_model}_{self.frame_id}/formation_origin'
-        )
-        formation_origin.transform.translation.x = shared_position[0]
-        formation_origin.transform.translation.y = shared_position[1]
-        formation_origin.transform.translation.z = shared_position[2]
-        formation_origin.transform.rotation.w = 1.0
-        self.local_position_tf_broadcaster.sendTransform(formation_origin)
 
         self.navigation.vel = [
             float(local_position.vx),
@@ -956,9 +686,9 @@ class SingleControlNode(Node):
             float(local_position.vz),
         ]
         self.navigation.current_pos = [
-            shared_position[0],
-            shared_position[1],
-            shared_position[2],
+            float(local_position.y),
+            float(local_position.x),
+            float(-local_position.z),
             0.0,
             0.0,
             transform.transform.rotation.z,
@@ -1020,10 +750,7 @@ class SingleControlNode(Node):
         msg.param5 = float(params.get("param5", 0.0))
         msg.param6 = float(params.get("param6", 0.0))
         msg.param7 = float(params.get("param7", 0.0))
-        # PX4 accepts commands addressed to its MAV_SYS_ID. frame_id is also
-        # used for the /uav_<id> DDS namespace, so each node targets only its
-        # own flight controller in a multi-vehicle ROS domain.
-        msg.target_system = int(self.drone_id)
+        msg.target_system = 1
         msg.target_component = 1
         msg.source_system = 1 # Changed to 1 to match the working code
         msg.source_component = 1

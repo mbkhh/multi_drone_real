@@ -1,5 +1,5 @@
 spawn_spacing: 5
-drone_count: 2
+drone_count: 1
 px4_model: 'x500_depth'
 frame_id: '4002'
 path_parameters:

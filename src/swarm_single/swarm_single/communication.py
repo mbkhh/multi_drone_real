@@ -28,28 +28,6 @@ class Communication():
         self.broadcast_interval = get_config('swarm_single.broadcast_interval')
         self.status_interval = get_config('swarm_single.status_interval')
         self.neighbor_timeout = self.broadcast_interval * 4
-        self.default_formation_pattern = str(
-            get_config('swarm_single.group.formation.pattern') or 'square'
-        )
-        self.default_formation_spacing = float(
-            get_config('swarm_single.group.formation.spacing') or 4.0
-        )
-        self.group_config_signature = json.dumps(
-            {
-                'required_drone_ids': self.parent_node.required_drone_ids,
-                'shared_frame_mode': self.parent_node.shared_frame_mode,
-                'origin_offsets': get_config(
-                    'swarm_single.group.shared_frame.origin_offsets'
-                ),
-                'reference_drone_id': (
-                    self.parent_node.shared_frame_reference_id
-                ),
-                'formation_pattern': self.default_formation_pattern,
-                'formation_spacing': self.default_formation_spacing,
-            },
-            sort_keys=True,
-            separators=(',', ':'),
-        )
 
 
         self.GOAL_TOLERANCE = get_config('swarm_single.goal_tolerance')
@@ -61,10 +39,9 @@ class Communication():
         self.timeout_timer = self.parent_node.create_timer(self.neighbor_timeout, self._check_neighbor_timeouts)
         
         self.qos_profile_reliable = QoSProfile(
-            reliability=ReliabilityPolicy.RELIABLE,
-            durability=DurabilityPolicy.VOLATILE,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
             history=HistoryPolicy.KEEP_LAST,
-            depth=max(10, int(get_config('swarm_sim.drone_count')) * 2)
+            depth=int(int(get_config('swarm_sim.drone_count'))*2)
         )
 
         self.qos_profile = QoSProfile(
@@ -88,31 +65,6 @@ class Communication():
         self.manual_control_subscriber = None
         self.status_timer = None
 
-        # Every drone publishes its own readiness. The leader uses only fresh
-        # reports from the explicitly configured member IDs before it permits
-        # arming or movement.
-        self.drone_statuses = {}
-        self.drone_status_topic = '/swarm/drone_status'
-        self.drone_status_publisher = self.parent_node.create_publisher(
-            String, self.drone_status_topic, self.qos_profile_reliable
-        )
-        self.drone_status_subscriber = self.parent_node.create_subscription(
-            String,
-            self.drone_status_topic,
-            self._drone_status_callback,
-            self.qos_profile_reliable,
-        )
-        self.drone_status_timer = self.parent_node.create_timer(
-            min(0.5, float(self.status_interval)),
-            self._broadcast_drone_status,
-        )
-        self.group_monitor_timer = self.parent_node.create_timer(
-            0.25, self._monitor_group_motion
-        )
-        self.pending_group_motion_reason = None
-        self.pending_group_motion_start = None
-        self.follower_group_start_time = None
-
         # --- Action Server State --- ### NEW ###
         self._action_goal_handle = None
         self._action_target_pos = None
@@ -125,18 +77,10 @@ class Communication():
         """Handles manual control commands from the user."""
         #self.parent_node.get_logger().info(f"Manual Control: {msg.vx}, {msg.vy}, {msg.vz}, {msg.vyaw}")
         if msg.manual_mode:
-            if (
-                not self.parent_node.group_motion_active
-                and not self.begin_group_motion('manual control')
-            ):
-                return
             if self.parent_node.mission_active:
                 self.parent_node.abort_mission('manual control requested')
             self.parent_node.manual_control = True
-            if (
-                self.parent_node.state == "TAKEOFF"
-                and self.pending_group_motion_reason is None
-            ):
+            if self.parent_node.state == "TAKEOFF":
                 self.parent_node.motion_enabled = True
             yaw = self.parent_node.yaw + msg.vyaw/30.0
             if yaw > math.pi:
@@ -156,279 +100,12 @@ class Communication():
         msg.frame_id = self.parent_node.frame_id
         self.liveness_publisher.publish(msg)
 
-    def _own_drone_status(self):
-        telemetry_fresh = self.parent_node.telemetry_is_fresh()
-        shared_frame_ready = self.parent_node.shared_frame_is_ready()
-        failsafe_flags = self.parent_node.failsafe_flags
-        prearm_ready = (
-            telemetry_fresh
-            and shared_frame_ready
-            and not self.parent_node.vehicle_status.failsafe
-            and not failsafe_flags.manual_control_signal_lost
-            and not failsafe_flags.local_position_invalid
-            and not failsafe_flags.local_velocity_invalid
-        )
-        return {
-            'drone_id': int(self.parent_node.drone_id),
-            'leader_id': int(self.parent_node.leader_id),
-            'control_state': str(self.parent_node.state),
-            'armed': (
-                self.parent_node.vehicle_status.arming_state
-                == VehicleStatus.ARMING_STATE_ARMED
-            ),
-            'offboard': (
-                self.parent_node.vehicle_status.nav_state
-                == VehicleStatus.NAVIGATION_STATE_OFFBOARD
-            ),
-            'telemetry_fresh': telemetry_fresh,
-            'shared_frame_ready': shared_frame_ready,
-            'prearm_ready': prearm_ready,
-            'group_motion_active': self.parent_node.group_motion_active,
-            'group_config_signature': self.group_config_signature,
-        }
-
-    def _broadcast_drone_status(self):
-        msg = String()
-        msg.data = json.dumps(self._own_drone_status())
-        self.drone_status_publisher.publish(msg)
-
-    def _drone_status_callback(self, msg: String):
-        try:
-            status = json.loads(msg.data)
-            drone_id = int(status['drone_id'])
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
-            self.parent_node.get_logger().warning(
-                'Ignoring malformed /swarm/drone_status payload.'
-            )
-            return
-        if drone_id == int(self.parent_node.drone_id):
-            return
-        self.drone_statuses[drone_id] = (
-            status,
-            self.parent_node.get_clock().now(),
-        )
-
-    def group_readiness(self, require_offboard):
-        """Return a fail-closed aggregate readiness snapshot."""
-        if not self.parent_node.group_enabled:
-            own_id = int(self.parent_node.drone_id)
-            return {
-                'ready': True,
-                'ready_members': [own_id],
-                'missing_members': [],
-                'state': 'single-drone mode',
-            }
-
-        now = self.parent_node.get_clock().now()
-        actual_members = set(self.parent_node.last_seen_neighbors)
-        actual_members.add(int(self.parent_node.drone_id))
-        expected_members = set(self.parent_node.required_drone_ids)
-        missing = expected_members - actual_members
-        unexpected = actual_members - expected_members
-        ready_members = []
-        unready_reasons = []
-
-        for drone_id in sorted(expected_members):
-            if drone_id == int(self.parent_node.drone_id):
-                status = self._own_drone_status()
-            else:
-                record = self.drone_statuses.get(drone_id)
-                if record is None:
-                    missing.add(drone_id)
-                    continue
-                status, received_time = record
-                age = (now - received_time).nanoseconds / 1e9
-                if age > self.parent_node.group_status_timeout:
-                    missing.add(drone_id)
-                    continue
-
-            if int(status.get('leader_id', -1)) != int(
-                self.parent_node.leader_id
-            ):
-                unready_reasons.append(
-                    f'drone {drone_id} has a different leader'
-                )
-                continue
-            if status.get('group_config_signature') != (
-                self.group_config_signature
-            ):
-                unready_reasons.append(
-                    f'drone {drone_id} has different group configuration'
-                )
-                continue
-
-            if require_offboard:
-                status_ready = (
-                    bool(status.get('telemetry_fresh'))
-                    and bool(status.get('shared_frame_ready'))
-                    and bool(status.get('armed'))
-                    and bool(status.get('offboard'))
-                    and status.get('control_state') == 'TAKEOFF'
-                )
-            else:
-                status_ready = bool(status.get('prearm_ready'))
-
-            if status_ready:
-                ready_members.append(drone_id)
-            else:
-                phase = 'flight' if require_offboard else 'pre-arm'
-                unready_reasons.append(f'drone {drone_id} is not {phase} ready')
-
-        reasons = []
-        if missing:
-            reasons.append(f'missing/stale drones {sorted(missing)}')
-        if unexpected:
-            reasons.append(f'unexpected drones {sorted(unexpected)}')
-        reasons.extend(unready_reasons)
-        ready = not reasons and len(ready_members) == len(expected_members)
-        return {
-            'ready': ready,
-            'ready_members': ready_members,
-            'missing_members': sorted(missing),
-            'state': 'READY' if ready else '; '.join(reasons),
-        }
-
-    def broadcast_swarm_command(self, command, **fields):
-        if self.command_publisher is None:
-            return
-        payload = {'command': command}
-        payload.update(fields)
-        msg = String()
-        msg.data = json.dumps(payload)
-        self.command_publisher.publish(msg)
-
-    def begin_group_motion(self, reason):
-        if self.parent_node.state != 'TAKEOFF':
-            self.parent_node.message = (
-                'GROUP MOVE REJECTED: leader is not in armed Offboard hold'
-            )
-            self.parent_node.get_logger().error(self.parent_node.message)
-            return False
-        readiness = self.group_readiness(require_offboard=True)
-        if not readiness['ready']:
-            self.parent_node.message = (
-                f'GROUP MOVE REJECTED: {readiness["state"]}'
-            )
-            self.parent_node.get_logger().error(self.parent_node.message)
-            return False
-        self.parent_node.group_motion_active = True
-        if (
-            self.parent_node.group_enabled
-            and len(self.parent_node.required_drone_ids) > 1
-        ):
-            self.parent_node.motion_enabled = False
-            self.pending_group_motion_reason = str(reason)
-            self.pending_group_motion_start = (
-                self.parent_node.get_clock().now()
-            )
-        else:
-            self.parent_node.motion_enabled = True
-            self.pending_group_motion_reason = None
-            self.pending_group_motion_start = None
-        self.broadcast_swarm_command('group_motion_start', reason=reason)
-        return True
-
-    def broadcast_group_stop(self, reason):
-        self.pending_group_motion_reason = None
-        self.pending_group_motion_start = None
-        self.broadcast_swarm_command('group_stop', reason=str(reason))
-
-    def _group_motion_acknowledged(self):
-        now = self.parent_node.get_clock().now()
-        for drone_id in self.parent_node.required_drone_ids:
-            if drone_id == int(self.parent_node.drone_id):
-                status = self._own_drone_status()
-            else:
-                record = self.drone_statuses.get(drone_id)
-                if record is None:
-                    return False
-                status, received_time = record
-                age = (now - received_time).nanoseconds / 1e9
-                if age > self.parent_node.group_status_timeout:
-                    return False
-            if not bool(status.get('group_motion_active')):
-                return False
-        return True
-
-    def _monitor_group_motion(self):
-        if not self.parent_node.group_motion_active:
-            return
-        if not self.parent_node.is_leader:
-            leader_status = self.drone_statuses.get(
-                int(self.parent_node.leader_id)
-            )
-            if leader_status is not None:
-                status, received_time = leader_status
-                age = (
-                    self.parent_node.get_clock().now() - received_time
-                ).nanoseconds / 1e9
-                if (
-                    age <= self.parent_node.group_status_timeout
-                    and bool(status.get('group_motion_active'))
-                    and bool(status.get('offboard'))
-                    and status.get('control_state') == 'TAKEOFF'
-                ):
-                    self.follower_group_start_time = None
-                    return
-
-            if self.follower_group_start_time is not None:
-                grace = (
-                    self.parent_node.get_clock().now()
-                    - self.follower_group_start_time
-                ).nanoseconds / 1e9
-                if grace <= self.parent_node.group_status_timeout:
-                    return
-            self.parent_node.stop_group_motion(
-                'leader group status is inactive or stale'
-            )
-            return
-
-        readiness = self.group_readiness(require_offboard=True)
-        if not readiness['ready']:
-            reason = f'group readiness lost: {readiness["state"]}'
-            self.parent_node.stop_group_motion(reason)
-            self.broadcast_group_stop(reason)
-            return
-        if self.pending_group_motion_reason is None:
-            if not self._group_motion_acknowledged():
-                reason = 'a member left coordinated group motion'
-                self.parent_node.stop_group_motion(reason)
-                self.broadcast_group_stop(reason)
-            return
-        if self._group_motion_acknowledged():
-            reason = self.pending_group_motion_reason
-            self.pending_group_motion_reason = None
-            self.pending_group_motion_start = None
-            self.parent_node.motion_enabled = True
-            self.parent_node.get_logger().info(
-                f'All followers acknowledged {reason}; leader motion enabled.'
-            )
-            return
-
-        elapsed = (
-            self.parent_node.get_clock().now()
-            - self.pending_group_motion_start
-        ).nanoseconds / 1e9
-        if elapsed > self.parent_node.group_status_timeout:
-            reason = 'follower group-motion acknowledgement timed out'
-            self.parent_node.stop_group_motion(reason)
-            self.broadcast_group_stop(reason)
-            return
-        # Re-publish while waiting so a command lost during DDS discovery does
-        # not leave the group permanently split.
-        self.broadcast_swarm_command(
-            'group_motion_start', reason=self.pending_group_motion_reason
-        )
-
     def _broadcast_status(self):
         self.parent_node.get_logger().info("publishing status")
 
         msg = Status()
         msg.timestamp = int(self.parent_node.get_clock().now().nanoseconds / 1000)
-        msg.swarm_members = sorted(
-            list(self.parent_node.last_seen_neighbors.keys())
-            + [int(self.parent_node.frame_id)]
-        )
+        msg.swarm_members = list(self.parent_node.last_seen_neighbors.keys()) + [int(self.parent_node.frame_id)]
         msg.leader_id       = self.parent_node.leader_id
         msg.pattern_name    = str(self.parent_node.formation.pattern_name)
         msg.spacing         = float(self.parent_node.formation.spacing)
@@ -451,15 +128,6 @@ class Communication():
             self.parent_node.vehicle_status.nav_state
             == VehicleStatus.NAVIGATION_STATE_OFFBOARD
         )
-        prearm = self.group_readiness(require_offboard=False)
-        flight = self.group_readiness(require_offboard=True)
-        msg.group_prearm_ready = prearm['ready']
-        msg.group_ready = flight['ready']
-        msg.group_motion_active = self.parent_node.group_motion_active
-        msg.ready_members = flight['ready_members']
-        msg.missing_members = flight['missing_members']
-        msg.group_prearm_state = prearm['state']
-        msg.group_state = flight['state']
         msg.mission_active  = self.parent_node.mission_active
         msg.mission_count   = len(self.parent_node.mission)
         if self.parent_node.mission_active:
@@ -492,73 +160,31 @@ class Communication():
             self.parent_node.get_logger().info(f"Connection lost with neighbor {neighbor_id}! Removing from swarm topology.")
             del self.parent_node.last_seen_neighbors[neighbor_id]
         
-        if bool(timed_out_neighbors):
-            if self.parent_node.group_motion_active:
-                reason = f'lost swarm neighbors {sorted(timed_out_neighbors)}'
-                self.parent_node.stop_group_motion(reason)
-                if self.parent_node.is_leader:
-                    self.broadcast_group_stop(reason)
-            self.referendum_conducting()
+        if bool(timed_out_neighbors): self.referendum_conducting()
 
     def referendum_conducting(self):
         swarm_members = list(self.parent_node.last_seen_neighbors.keys()) + [int(self.parent_node.frame_id)]
         leader_id = min(swarm_members)
-        expected_members = set(self.parent_node.required_drone_ids)
-        topology_complete = set(swarm_members) == expected_members
-        if self.parent_node.group_enabled and not topology_complete:
-            self.parent_node.leader_id = leader_id
-            if self.parent_node.group_motion_active:
-                reason = (
-                    f'group topology changed: present={sorted(swarm_members)}, '
-                    f'required={sorted(expected_members)}'
-                )
-                self.parent_node.stop_group_motion(reason)
-                if self.parent_node.is_leader:
-                    self.broadcast_group_stop(reason)
-            if self.parent_node.is_leader:
-                self.step_down_as_leader()
-            if self.parent_node.formation.pattern_name is None:
-                self.parent_node.formation.set_pattern(
-                    self.default_formation_pattern,
-                    self.default_formation_spacing,
-                )
-            else:
-                self.parent_node.formation.refresh_pattern()
-            self.parent_node.get_logger().warning(
-                f'Group topology incomplete: present={sorted(swarm_members)}, '
-                f'required={sorted(expected_members)}. Station commands remain '
-                'disabled.'
-            )
-            return
-        leader_changed = leader_id != self.parent_node.leader_id
-        if leader_changed:
+        if leader_id != self.parent_node.leader_id:
             self.parent_node.leader_id = leader_id
 
             self.parent_node.get_logger().info(f"Topology update: This is drone {self.parent_node.frame_id} and leader is {leader_id}")
 
-        if leader_changed or self.leader_velocity_subscriber is None:
-            if self.leader_velocity_subscriber is not None:
-                self.parent_node.destroy_subscription(
-                    self.leader_velocity_subscriber
-                )
+            if self.leader_velocity_subscriber != None:
+                self.parent_node.destroy_subscription(self.leader_velocity_subscriber)
             self.leader_velocity_subscriber =self.parent_node.create_subscription(
             VehicleLocalPosition, f"/uav_{leader_id}/fmu/out/vehicle_local_position_v1", self.vehicle_local_position_callback, self.qos_profile)
-        if leader_id == int(self.parent_node.frame_id) and not self.parent_node.is_leader:
-            self.become_leader()
-        elif leader_id != int(self.parent_node.frame_id) and self.parent_node.is_leader:
-            self.step_down_as_leader()
-        if self.parent_node.formation.pattern_name is None:
-            self.parent_node.formation.set_pattern(
-                self.default_formation_pattern,
-                self.default_formation_spacing,
-            )
-        else:
-            self.parent_node.formation.refresh_pattern()
+            if leader_id == int(self.parent_node.frame_id) and not self.parent_node.is_leader:
+                self.become_leader()
+            elif leader_id != int(self.parent_node.frame_id) and self.parent_node.is_leader:
+                self.step_down_as_leader()
+        self.parent_node.formation.refresh_pattern()
 
     def become_leader(self, ):
         self.parent_node.get_logger().info('Transitioning to LEADER role. Establishing Station connection...')
         self.parent_node.goal_callback_temp( [self.parent_node.navigation.current_pos[0], self.parent_node.navigation.current_pos[1], self.parent_node.navigation.current_pos[2]])
         self.parent_node.is_leader = True
+        self.send_formation_command('square', 4)
         self.status_publisher = self.parent_node.create_publisher(Status, "/swarm/status",self.qos_profile_reliable)
         self.manual_control_subscriber = self.parent_node.create_subscription(ManualControl, self.manual_control_topic_name, self.manual_control_handler, 10)
         self.status_timer = self.parent_node.create_timer(self.status_interval, self._broadcast_status)
@@ -566,14 +192,6 @@ class Communication():
 
         self.formation_publisher = self.parent_node.create_publisher(FormationCommand, self.formation_topic_name, 10)
         self.command_publisher = self.parent_node.create_publisher(String, self.command_topic_name, 10)
-        self.parent_node.formation.set_pattern(
-            self.default_formation_pattern,
-            self.default_formation_spacing,
-        )
-        self.send_formation_command(
-            self.default_formation_pattern,
-            self.default_formation_spacing,
-        )
         if (self.formation_subscriber is not None):
             self.parent_node.destroy_subscription(self.formation_subscriber)
             self.parent_node.destroy_subscription(self.command_subscriber)
@@ -618,38 +236,6 @@ class Communication():
             self.parent_node.request_offboard_control()
             self.parent_node.get_logger().info("Received ARM command.")
 
-        elif command_type in ('group_motion_start', 'mission'):
-            # Followers track their formation transform; they never execute
-            # the leader's absolute mission coordinates.
-            if (
-                self.parent_node.state == "TAKEOFF"
-                and self.parent_node.telemetry_is_fresh()
-                and self.parent_node.shared_frame_is_ready()
-            ):
-                self.parent_node.group_motion_active = True
-                self.parent_node.motion_enabled = True
-                self.follower_group_start_time = (
-                    self.parent_node.get_clock().now()
-                )
-                self.parent_node.get_logger().info(
-                    'Follower group tracking enabled.'
-                )
-            else:
-                self.parent_node.stop_group_motion(
-                    'group start ignored because this follower is not ready'
-                )
-
-        elif command_type == 'group_stop':
-            self.follower_group_start_time = None
-            self.parent_node.stop_group_motion(
-                cmd.get('reason', 'leader requested group hold')
-            )
-
-        elif command_type == 'land':
-            self.follower_group_start_time = None
-            self.parent_node.stop_group_motion('group LAND requested')
-            self.parent_node.request_land()
-
         elif command_type == "start_animation":
             start_time = int(cmd.get("start_time"))
 
@@ -660,6 +246,18 @@ class Communication():
             self.parent_node.formation.start_animation(start_time=start_time, speed_x= speed_x, speed_y= speed_y, speed_z= speed_z)
         elif command_type == "stop_animation":
             self.parent_node.formation.stop_animation()
+        elif command_type == 'mission':
+            # Followers do not execute the leader's coordinates. They enable
+            # their existing formation goal and follow the leader instead.
+            if self.parent_node.state == "TAKEOFF":
+                self.parent_node.motion_enabled = True
+                self.parent_node.get_logger().info(
+                    'Follower mission tracking enabled.'
+                )
+            else:
+                self.parent_node.get_logger().warning(
+                    'Follower ignored mission start because Offboard is not active.'
+                )
         elif command_type == "leader_is_dead":
             del self.parent_node.last_seen_neighbors[self.parent_node.leader_id]
             self.referendum_conducting()
@@ -674,27 +272,14 @@ class Communication():
             return
         command_type = cmd.get("command")
         if command_type == "arm":
-            readiness = self.group_readiness(require_offboard=False)
-            if not readiness['ready']:
-                self.parent_node.message = (
-                    f'GROUP ARM REJECTED: {readiness["state"]}'
-                )
-                self.parent_node.get_logger().error(self.parent_node.message)
-                return
             self.parent_node.request_offboard_control()
-            if self.parent_node.state in ('ARMING', 'TAKEOFF'):
-                self.broadcast_swarm_command('arm')
-                self.parent_node.get_logger().info(
-                    "Leader: publishing ARM command."
-                )
+            out_msg = String()
+            out_msg.data = json.dumps({"command": "arm"})
+            self.command_publisher.publish(out_msg)
+            self.parent_node.get_logger().info(
+                "Leader: publishing ARM command."
+            )
         elif command_type == "fly":
-            readiness = self.group_readiness(require_offboard=True)
-            if not readiness['ready']:
-                self.parent_node.message = (
-                    f'GROUP MOVE REJECTED: {readiness["state"]}'
-                )
-                self.parent_node.get_logger().error(self.parent_node.message)
-                return
             x = float(cmd.get("x"))
             y = float(cmd.get("y"))
             z = float(cmd.get("z"))
@@ -709,7 +294,7 @@ class Communication():
                     self.parent_node.abort_mission(
                         'replaced by a station move/set_goal command'
                     )
-                self.begin_group_motion('station move/set_goal')
+                self.parent_node.motion_enabled = True
             elif goal_accepted:
                 self.parent_node.get_logger().warning(
                     "Goal stored but motion is disabled: explicitly ARM Offboard first."
@@ -718,9 +303,6 @@ class Communication():
         elif command_type == "disarm_leader":
             self.parent_node.request_safe_disarm()
         elif command_type == "land":
-            self.pending_group_motion_reason = None
-            self.pending_group_motion_start = None
-            self.broadcast_swarm_command('land')
             self.parent_node.request_land()
         elif command_type == "start_animation":
             start_time = int(self.parent_node.get_clock().now().nanoseconds / 1000000)
@@ -750,13 +332,6 @@ class Communication():
         elif command_type == 'mission':
             mission = cmd.get("points")
             relative_to_start = cmd.get("relative_to_start", True)
-            readiness = self.group_readiness(require_offboard=True)
-            if not readiness['ready']:
-                self.parent_node.message = (
-                    f'GROUP MISSION REJECTED: {readiness["state"]}'
-                )
-                self.parent_node.get_logger().error(self.parent_node.message)
-                return
             if self.parent_node.start_mission(
                 mission,
                 relative_to_start=relative_to_start,
@@ -764,10 +339,7 @@ class Communication():
                 self.parent_node.get_logger().info(
                     f"Leader accepted mission with {len(mission)} waypoints."
                 )
-                if not self.begin_group_motion('mission'):
-                    self.parent_node.abort_mission(
-                        'group readiness lost before coordinated start'
-                    )
+                self.send_mission()
 
             
     def send_mission(self):
@@ -784,11 +356,6 @@ class Communication():
         self.parent_node.navigation.vel = [vehicle_local_position.vx, vehicle_local_position.vy, vehicle_local_position.vz ]
 
     def formation_leader_callback(self, msg: FormationCommand):
-        if self.parent_node.group_motion_active:
-            self.parent_node.get_logger().error(
-                'Formation change rejected while group motion is active.'
-            )
-            return
         self.parent_node.formation.set_pattern(
             pattern_name=msg.pattern_name,
             spacing=msg.spacing,
@@ -811,7 +378,7 @@ class Communication():
             self.formation_publisher.publish(msg)
             self.parent_node.get_logger().info(f"Published formation command: '{name}' with spacing {spacing}")
 
-    def formation_command_callback(self, msg: FormationCommand):
+    def formation_command_callback(self, msg: ManualControl):
         self.parent_node.get_logger().info(
             f"Received new formation command: '{msg.pattern_name}' with spacing {msg.spacing}"
         )
@@ -829,12 +396,6 @@ class Communication():
         if self.parent_node.state != "TAKEOFF":
             self.parent_node.get_logger().warning(
                 'Fly action rejected: Offboard is not active.'
-            )
-            return GoalResponse.REJECT
-        readiness = self.group_readiness(require_offboard=True)
-        if not readiness['ready']:
-            self.parent_node.get_logger().warning(
-                f'Fly action rejected: {readiness["state"]}'
             )
             return GoalResponse.REJECT
         return GoalResponse.ACCEPT
@@ -867,11 +428,7 @@ class Communication():
             result_msg.result = 'Rejected by safety limits'
             return result_msg
         if self.parent_node.state == "TAKEOFF":
-            if not self.begin_group_motion('fly action'):
-                goal_handle.abort()
-                result_msg = Fly.Result()
-                result_msg.result = 'Group readiness lost before movement'
-                return result_msg
+            self.parent_node.motion_enabled = True
         
 
         # Create feedback message
@@ -882,8 +439,6 @@ class Communication():
         while rclpy.ok():
             if goal_handle.is_cancel_requested:
                 self.parent_node.get_logger().info('Goal canceled by client')
-                self.parent_node.stop_group_motion('fly action cancelled')
-                self.broadcast_group_stop('fly action cancelled')
                 goal_handle.canceled()
                 result_msg.result = 'Cancelled'
                 return result_msg

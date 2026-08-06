@@ -2,9 +2,8 @@ import math
 from types import SimpleNamespace
 
 from builtin_interfaces.msg import Time
-from px4_msgs.msg import VehicleCommand, VehicleLocalPosition, VehicleStatus
+from px4_msgs.msg import VehicleStatus
 
-from swarm_single.communication import Communication
 from swarm_single.single_control_node import SingleControlNode
 
 
@@ -105,124 +104,6 @@ def test_non_finite_velocity_is_rejected():
 
     assert controller.trajectory_setpoint_publisher.last_message is None
     assert controller.released_reason == 'Non-finite velocity setpoint rejected'
-
-
-def test_vehicle_command_targets_this_drone_mav_sys_id():
-    controller = SimpleNamespace(
-        drone_id='2',
-        vehicle_command_publisher=DummyPublisher(),
-        get_clock=lambda: DummyClock(),
-    )
-
-    SingleControlNode.publish_vehicle_command(
-        controller,
-        VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM,
-        param1=1.0,
-    )
-
-    message = controller.vehicle_command_publisher.last_message
-    assert message.target_system == 2
-    assert message.target_component == 1
-    assert message.param1 == 1.0
-
-
-def test_configured_origin_converts_px4_local_ned_to_shared_enu():
-    controller = SimpleNamespace(
-        group_enabled=True,
-        shared_frame_mode='configured_offsets',
-        configured_origin_offset=[4.0, 1.0, 0.5],
-        shared_frame_ready=False,
-        shared_frame_error='waiting',
-    )
-    local_position = VehicleLocalPosition()
-    local_position.x = 2.0   # north
-    local_position.y = 1.5   # east
-    local_position.z = -3.0  # down
-
-    shared = SingleControlNode.local_position_to_shared_enu(
-        controller, local_position
-    )
-
-    assert shared == [5.5, 3.0, 3.5]
-    assert controller.shared_frame_ready
-
-
-def test_leader_waits_for_follower_group_motion_acknowledgement():
-    clock = DummyClock()
-    parent = SimpleNamespace(
-        state='TAKEOFF',
-        group_enabled=True,
-        required_drone_ids=[1, 2],
-        drone_id='1',
-        group_status_timeout=2.5,
-        group_motion_active=False,
-        motion_enabled=False,
-        is_leader=True,
-        message='',
-        get_clock=lambda: clock,
-        get_logger=lambda: DummyLogger(),
-    )
-    communication = Communication.__new__(Communication)
-    communication.parent_node = parent
-    communication.pending_group_motion_reason = None
-    communication.pending_group_motion_start = None
-    communication.drone_statuses = {
-        2: ({'group_motion_active': False}, clock.now())
-    }
-    communication.group_readiness = lambda require_offboard: {
-        'ready': True,
-        'state': 'READY',
-    }
-    communication.broadcast_swarm_command = lambda *_args, **_kwargs: None
-    communication._own_drone_status = lambda: {
-        'group_motion_active': parent.group_motion_active
-    }
-
-    assert communication.begin_group_motion('test move')
-    assert parent.group_motion_active
-    assert not parent.motion_enabled
-
-    communication.drone_statuses[2] = (
-        {'group_motion_active': True},
-        clock.now(),
-    )
-    communication._monitor_group_motion()
-
-    assert parent.motion_enabled
-    assert communication.pending_group_motion_reason is None
-
-
-def test_follower_holds_when_leader_group_status_is_inactive():
-    clock = DummyClock()
-    parent = SimpleNamespace(
-        drone_id='2',
-        leader_id=1,
-        is_leader=False,
-        group_motion_active=True,
-        group_status_timeout=2.5,
-        stopped_reason=None,
-        get_clock=lambda: clock,
-    )
-    parent.stop_group_motion = lambda reason: setattr(
-        parent, 'stopped_reason', reason
-    )
-    communication = Communication.__new__(Communication)
-    communication.parent_node = parent
-    communication.follower_group_start_time = None
-    communication.drone_statuses = {
-        1: (
-            {
-                'group_motion_active': False,
-                'offboard': True,
-                'control_state': 'TAKEOFF',
-            },
-            clock.now(),
-        )
-    }
-
-    communication._monitor_group_motion()
-
-    assert parent.stopped_reason == 'leader group status is inactive or stale'
 
 
 def make_goal_stub():
@@ -378,14 +259,6 @@ def test_rc_mode_change_aborts_mission_and_latches_pilot_control():
     controller.manual_velocity = [0.2, 0.1, -0.1]
     controller.offboard_setpoint_counter = 42
     controller.offboard_was_confirmed = True
-    controller.group_motion_active = True
-    controller.is_leader = True
-    controller.group_stop_reason = None
-    controller.communication = SimpleNamespace(
-        broadcast_group_stop=lambda reason: setattr(
-            controller, 'group_stop_reason', reason
-        )
-    )
     controller.release_to_pilot = lambda reason: (
         SingleControlNode.release_to_pilot(controller, reason)
     )
@@ -402,6 +275,3 @@ def test_rc_mode_change_aborts_mission_and_latches_pilot_control():
     assert controller.manual_velocity == [0.0, 0.0, 0.0]
     assert controller.velocity_goal == [0.0, 0.0, 0.0]
     assert controller.offboard_setpoint_counter == 0
-    assert controller.group_stop_reason == (
-        'PX4 left Offboard mode (RC/pilot takeover)'
-    )

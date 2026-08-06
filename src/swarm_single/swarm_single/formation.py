@@ -182,11 +182,7 @@ class PatternController:
             self.parent.get_logger().info("I am the leader. Setting goal to hold position.")
             return
         else:
-            # Use a translation-only leader frame so ENU formation offsets do
-            # not rotate unexpectedly when the leader changes yaw.
-            parent_frame = (
-                f'{self.parent.px4_model}_{leader_id}/formation_origin'
-            )
+            parent_frame = f'{self.parent.px4_model}_{leader_id}/odom'
             
             follower_ids = sorted([_id for _id in all_drone_ids if _id != leader_id])
             
