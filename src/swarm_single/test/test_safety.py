@@ -97,6 +97,41 @@ def test_setpoint_is_clamped_and_unused_fields_are_nan():
     assert controller.released_reason is None
 
 
+def test_arm_activates_goal_tracking_only_in_single_drone_mode():
+    for group_enabled, expected_motion_enabled in ((False, True), (True, False)):
+        controller = SimpleNamespace(
+            state='IDLE',
+            group_enabled=group_enabled,
+            vehicle_status=SimpleNamespace(failsafe=False),
+            failsafe_flags=SimpleNamespace(
+                manual_control_signal_lost=False,
+                local_position_invalid=False,
+                local_velocity_invalid=False,
+            ),
+            navigation=SimpleNamespace(
+                current_pos=[1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+            ),
+            motion_enabled=False,
+            group_motion_active=True,
+            manual_control=True,
+            velocity_goal=[1.0, 1.0, 1.0],
+            offboard_setpoint_counter=10,
+            offboard_was_confirmed=True,
+            telemetry_is_fresh=lambda: True,
+            shared_frame_is_ready=lambda: True,
+            set_goal_transform=lambda _goal, log_received=True: None,
+            reset_mission_state=lambda: None,
+            get_logger=lambda: DummyLogger(),
+        )
+
+        SingleControlNode.request_offboard_control(controller)
+
+        assert controller.state == 'ARMING'
+        assert controller.motion_enabled is expected_motion_enabled
+        assert not controller.group_motion_active
+        assert not controller.manual_control
+
+
 def test_non_finite_velocity_is_rejected():
     controller = make_controller_stub()
     controller.velocity_goal = [math.nan, 0.0, 0.0]
@@ -250,8 +285,6 @@ def make_goal_stub():
             current_pos=[0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
         ),
         max_goal_distance=10.0,
-        min_goal_altitude=-0.5,
-        max_goal_altitude=5.0,
         get_logger=lambda: DummyLogger(),
         get_clock=lambda: DummyClock(),
         px4_model='real_drone',
@@ -263,7 +296,7 @@ def make_goal_stub():
     )
 
 
-def test_goal_safety_envelope():
+def test_goal_validation_has_no_software_altitude_limit():
     controller = make_goal_stub()
     controller.set_goal_transform = lambda goal, log_received=True: (
         SingleControlNode.set_goal_transform(controller, goal, log_received)
@@ -273,7 +306,7 @@ def test_goal_safety_envelope():
         controller, [math.nan, 0.0, 1.0]
     )
     assert not SingleControlNode.goal_callback_temp(controller, [11.0, 0.0, 1.0])
-    assert not SingleControlNode.goal_callback_temp(controller, [0.0, 0.0, 6.0])
+    assert SingleControlNode.goal_callback_temp(controller, [0.0, 0.0, 6.0])
 
     assert SingleControlNode.goal_callback_temp(controller, [2.0, 3.0, 2.0])
     assert controller.leader_goal == [2.0, 3.0, 2.0]
@@ -302,8 +335,6 @@ def make_mission_stub():
         ),
         max_mission_waypoints=10,
         max_goal_distance=10.0,
-        min_goal_altitude=-0.5,
-        max_goal_altitude=5.0,
         mission_goal_tolerance=0.4,
         mission_waypoint_dwell=1.0,
         mission_timeout=60.0,
@@ -354,6 +385,19 @@ def test_relative_mission_reuses_normal_goal_path():
     assert controller.accepted_goals == [[10.0, 20.0, 2.0]]
     assert controller.mission_active
     assert controller.motion_enabled
+
+
+def test_mission_has_no_software_altitude_limit():
+    controller, _clock = make_mission_stub()
+
+    accepted = SingleControlNode.start_mission(
+        controller,
+        [[0.0, 0.0, 20.0]],
+        relative_to_start=True,
+    )
+
+    assert accepted
+    assert controller.mission == [[10.0, 20.0, 20.0]]
 
 
 def test_mission_advances_and_completes_after_dwell():

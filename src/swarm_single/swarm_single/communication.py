@@ -300,7 +300,7 @@ class Communication():
     def begin_group_motion(self, reason):
         if self.parent_node.state != 'TAKEOFF':
             self.parent_node.message = (
-                'GROUP MOVE REJECTED: leader is not in armed Offboard hold'
+                'GROUP MOVE REJECTED: leader is not armed in Offboard'
             )
             self.parent_node.get_logger().error(self.parent_node.message)
             return False

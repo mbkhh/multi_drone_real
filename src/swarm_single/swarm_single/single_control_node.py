@@ -88,16 +88,10 @@ class SingleControlNode(Node):
             'swarm_single.control.max_horizontal_speed', 1.0
         )
         self.max_vertical_speed = self.config_float(
-            'swarm_single.control.max_vertical_speed', 0.8
+            'swarm_single.control.max_vertical_speed', 0.5
         )
         self.max_goal_distance = self.config_float(
             'swarm_single.control.max_goal_distance', 10.0
-        )
-        self.min_goal_altitude = self.config_float(
-            'swarm_single.control.min_goal_altitude', -0.5
-        )
-        self.max_goal_altitude = self.config_float(
-            'swarm_single.control.max_goal_altitude', 5.0
         )
         self.mission_goal_tolerance = self.config_float(
             'swarm_single.mission.goal_tolerance', 0.4
@@ -272,9 +266,14 @@ class SingleControlNode(Node):
             return
 
         if self.state == DroneState.ARMING:
-            # Stream a zero-velocity setpoint while preparing Offboard. An ARM
-            # command must never also be an implicit takeoff command.
-            self.velocity_goal = [0.0, 0.0, 0.0]
+            # Match the original single-drone controller: keep resolving the
+            # current goal while PX4 enters Offboard instead of forcing a
+            # separate zero-velocity HOLD state. A real group still waits for
+            # its coordinated movement handshake before tracking formation.
+            if self.group_enabled:
+                self.velocity_goal = [0.0, 0.0, 0.0]
+            else:
+                self.navigation.navigate_to_goal()
             self.publish_offboard_control_heartbeat_signal()
             self.publish_position_setpoint()
             self.offboard_setpoint_counter += 1
@@ -311,9 +310,14 @@ class SingleControlNode(Node):
             ):
                 self.state = DroneState.TAKEOFF
                 self.offboard_setpoint_counter = 0
-                self.get_logger().info(
-                    "Offboard armed in HOLD. Waiting for an explicit movement command."
-                )
+                if self.group_enabled:
+                    self.get_logger().info(
+                        'Offboard armed; waiting for coordinated group movement.'
+                    )
+                else:
+                    self.get_logger().info(
+                        'Offboard armed; local goal tracking is active.'
+                    )
 
             elif self.offboard_setpoint_counter >= 100:
                 self.release_to_pilot(
@@ -411,7 +415,10 @@ class SingleControlNode(Node):
             return
         self.set_goal_transform(current_pose, log_received=False)
         self.reset_mission_state()
-        self.motion_enabled = False
+        # Single-drone operation follows the original controller and tracks
+        # its current goal immediately. Group operation remains gated until
+        # every member acknowledges the coordinated movement command.
+        self.motion_enabled = not self.group_enabled
         self.group_motion_active = False
         self.manual_control = False
         self.velocity_goal = [0.0, 0.0, 0.0]
@@ -419,8 +426,7 @@ class SingleControlNode(Node):
         self.offboard_was_confirmed = False
         self.state = DroneState.ARMING
         self.get_logger().warning(
-            'Explicit ARM received: preparing Offboard with zero velocity, '
-            'then switching mode and arming PX4.'
+            'Explicit ARM received: preparing Offboard, then arming PX4.'
         )
 
     def release_to_pilot(self, reason):
@@ -759,15 +765,6 @@ class SingleControlNode(Node):
                     f'{self.max_goal_distance:.2f} m goal limit.'
                 )
                 return False
-            if not self.min_goal_altitude <= target[2] <= self.max_goal_altitude:
-                self.get_logger().error(
-                    f'Mission rejected: waypoint {index + 1} altitude '
-                    f'{target[2]:.2f} m is outside '
-                    f'[{self.min_goal_altitude:.2f}, '
-                    f'{self.max_goal_altitude:.2f}] m.'
-                )
-                return False
-
             resolved_points.append(target)
             previous = target
 
@@ -1047,14 +1044,6 @@ class SingleControlNode(Node):
                 f'exceeds {self.max_goal_distance:.2f} m safety limit.'
             )
             return False
-        if not self.min_goal_altitude <= goal[2] <= self.max_goal_altitude:
-            self.get_logger().error(
-                f'Goal rejected: altitude {goal[2]:.2f} m is outside '
-                f'[{self.min_goal_altitude:.2f}, '
-                f'{self.max_goal_altitude:.2f}] m.'
-            )
-            return False
-
         self.set_goal_transform(goal)
         return True
 
