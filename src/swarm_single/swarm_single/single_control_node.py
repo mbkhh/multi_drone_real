@@ -44,6 +44,35 @@ class SingleControlNode(Node):
         )
         self.px4_model = get_config('swarm_sim.px4_model')
         self.goal_frame = get_config('swarm_single.goal_frame_name')
+        self.declare_parameter('use_configured_world_origin', True)
+        self.use_configured_world_origin = (
+            self.get_parameter('use_configured_world_origin')
+            .get_parameter_value().bool_value
+        )
+        configured_start = [0.0, 0.0, 0.0]
+        if self.use_configured_world_origin:
+            configured_start = self.config_vector3(
+                f'swarm_single.real_world.initial_positions.{self.frame_id}'
+            )
+        self.declare_parameter('initial_world_position', configured_start)
+        self.initial_world_position = [
+            float(value) for value in (
+                self.get_parameter('initial_world_position')
+                .get_parameter_value().double_array_value
+            )
+        ]
+        if (
+            len(self.initial_world_position) != 3
+            or not all(
+                math.isfinite(value) for value in self.initial_world_position
+            )
+        ):
+            raise ValueError(
+                'initial_world_position must contain three finite ENU values.'
+            )
+        self.latest_px4_position_enu = None
+        self.px4_position_origin_enu = None
+        self.world_origin_calibrated = False
 
         self.last_seen_neighbors: Dict[int, rclpy.time.Time] = {}
                     
@@ -169,7 +198,12 @@ class SingleControlNode(Node):
         self.timer = self.create_timer(0.05, self.control_loop_callback)
 
         self.sended_goal_ack = True
-        
+
+        if self.use_configured_world_origin:
+            self.get_logger().info(
+                f'Drone {self.drone_id} configured ARM position (ENU): '
+                f'{self.initial_world_position}. Waiting for first ARM calibration.'
+            )
         self.get_logger().info(f"SingleControlNode successfully initialized for Drone {self.drone_id}.")
 
     def control_loop_callback(self):
@@ -327,6 +361,22 @@ class SingleControlNode(Node):
             )
             return
 
+        if (
+            self.use_configured_world_origin
+            and not self.world_origin_calibrated
+        ):
+            if (
+                self.vehicle_status.arming_state
+                == VehicleStatus.ARMING_STATE_ARMED
+            ):
+                self.get_logger().error(
+                    'Offboard rejected: the shared world origin cannot be '
+                    'initialized for the first time while the vehicle is armed.'
+                )
+                return
+            if not self.calibrate_world_origin():
+                return
+
         # Reset the relative-goal origin to the measured current pose. This
         # prevents an old goal from causing motion after pilot takeover.
         current_pose = [float(value) for value in self.navigation.current_pos[:3]]
@@ -426,6 +476,60 @@ class SingleControlNode(Node):
     def config_int(key, default):
         value = get_config(key)
         return int(default if value is None else value)
+
+    @staticmethod
+    def config_vector3(key):
+        value = get_config(key)
+        if not isinstance(value, (list, tuple)) or len(value) != 3:
+            raise ValueError(
+                f"Configuration '{key}' must contain exactly three values."
+            )
+        try:
+            vector = [float(component) for component in value]
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                f"Configuration '{key}' must contain numeric values."
+            ) from error
+        if not all(math.isfinite(component) for component in vector):
+            raise ValueError(
+                f"Configuration '{key}' must contain finite values."
+            )
+        return vector
+
+    def world_position_from_px4_enu(self, px4_position_enu):
+        if not self.use_configured_world_origin:
+            return list(px4_position_enu)
+        if self.px4_position_origin_enu is None:
+            self.px4_position_origin_enu = list(px4_position_enu)
+        return [
+            self.initial_world_position[axis]
+            + px4_position_enu[axis]
+            - self.px4_position_origin_enu[axis]
+            for axis in range(3)
+        ]
+
+    def calibrate_world_origin(self):
+        if not self.use_configured_world_origin:
+            return True
+        if self.world_origin_calibrated:
+            return True
+        if self.latest_px4_position_enu is None or not all(
+            math.isfinite(value) for value in self.latest_px4_position_enu
+        ):
+            self.get_logger().error(
+                'Offboard rejected: no finite PX4 local position is available '
+                'for world-frame calibration.'
+            )
+            return False
+
+        self.px4_position_origin_enu = list(self.latest_px4_position_enu)
+        self.world_origin_calibrated = True
+        self.navigation.current_pos[:3] = list(self.initial_world_position)
+        self.get_logger().warning(
+            f'Drone {self.drone_id} world origin calibrated: current position '
+            f'is {self.initial_world_position} ENU.'
+        )
+        return True
 
     def reset_mission_state(self):
         """Clear mission execution without changing the active flight mode."""
@@ -663,6 +767,15 @@ class SingleControlNode(Node):
         """Publish the real PX4 NED pose into the ENU TF tree used by navigation."""
         if not (local_position.xy_valid and local_position.z_valid):
             return
+        px4_position_enu = [
+            float(local_position.y),
+            float(local_position.x),
+            float(-local_position.z),
+        ]
+        if not all(math.isfinite(value) for value in px4_position_enu):
+            return
+        self.latest_px4_position_enu = px4_position_enu
+        world_position = self.world_position_from_px4_enu(px4_position_enu)
         self.last_local_position_time = self.get_clock().now()
 
         transform = TransformStamped()
@@ -671,9 +784,9 @@ class SingleControlNode(Node):
         transform.child_frame_id = f'{self.px4_model}_{self.frame_id}/odom'
 
         # PX4 local position is NED. The navigation code and TF tree use ENU.
-        transform.transform.translation.x = float(local_position.y)
-        transform.transform.translation.y = float(local_position.x)
-        transform.transform.translation.z = float(-local_position.z)
+        transform.transform.translation.x = world_position[0]
+        transform.transform.translation.y = world_position[1]
+        transform.transform.translation.z = world_position[2]
 
         yaw_enu = (math.pi / 2.0) - float(local_position.heading)
         transform.transform.rotation.z = math.sin(yaw_enu / 2.0)
@@ -686,9 +799,9 @@ class SingleControlNode(Node):
             float(local_position.vz),
         ]
         self.navigation.current_pos = [
-            float(local_position.y),
-            float(local_position.x),
-            float(-local_position.z),
+            world_position[0],
+            world_position[1],
+            world_position[2],
             0.0,
             0.0,
             transform.transform.rotation.z,

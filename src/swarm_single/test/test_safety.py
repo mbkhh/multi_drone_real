@@ -154,6 +154,52 @@ def test_current_hold_pose_can_be_outside_commanded_goal_envelope():
     assert controller.goal_tf_broadcaster.last_transform is not None
 
 
+def make_world_position_stub(initial_position):
+    return SimpleNamespace(
+        use_configured_world_origin=True,
+        initial_world_position=list(initial_position),
+        px4_position_origin_enu=None,
+    )
+
+
+def test_independent_px4_origins_map_to_two_configured_drone_positions():
+    drone_1 = make_world_position_stub([0.0, 0.0, 0.0])
+    drone_2 = make_world_position_stub([0.0, 5.0, 0.0])
+
+    assert SingleControlNode.world_position_from_px4_enu(
+        drone_1, [120.0, -30.0, 4.0]
+    ) == [0.0, 0.0, 0.0]
+    assert SingleControlNode.world_position_from_px4_enu(
+        drone_2, [-50.0, 400.0, -2.0]
+    ) == [0.0, 5.0, 0.0]
+
+    assert SingleControlNode.world_position_from_px4_enu(
+        drone_1, [121.0, -32.0, 7.0]
+    ) == [1.0, -2.0, 3.0]
+    assert SingleControlNode.world_position_from_px4_enu(
+        drone_2, [-49.0, 398.0, 1.0]
+    ) == [1.0, 3.0, 3.0]
+
+
+def test_arm_world_origin_calibration_is_not_repeated():
+    controller = make_world_position_stub([0.0, 5.0, 0.0])
+    controller.latest_px4_position_enu = [10.0, 20.0, 2.0]
+    controller.world_origin_calibrated = False
+    controller.navigation = SimpleNamespace(
+        current_pos=[99.0, 99.0, 99.0, 0.0, 0.0, 0.0, 1.0]
+    )
+    controller.get_logger = lambda: DummyLogger()
+    controller.drone_id = '2'
+
+    assert SingleControlNode.calibrate_world_origin(controller)
+    assert controller.navigation.current_pos[:3] == [0.0, 5.0, 0.0]
+    assert controller.px4_position_origin_enu == [10.0, 20.0, 2.0]
+
+    controller.latest_px4_position_enu = [50.0, 60.0, 7.0]
+    assert SingleControlNode.calibrate_world_origin(controller)
+    assert controller.px4_position_origin_enu == [10.0, 20.0, 2.0]
+
+
 def make_mission_stub():
     clock = DummyClock()
     controller = SimpleNamespace(

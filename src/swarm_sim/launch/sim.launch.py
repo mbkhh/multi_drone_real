@@ -98,6 +98,7 @@ def generate_launch_description():
 			name=f'control_node_d{str(instance_id)}',
 			parameters=[{
 				'frame_id': instance_id,
+				'use_configured_world_origin': False,
 			}]
 		)
 
