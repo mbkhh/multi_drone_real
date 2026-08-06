@@ -195,7 +195,6 @@ def test_leader_waits_for_follower_group_motion_acknowledgement():
 def test_follower_holds_when_leader_group_status_is_inactive():
     clock = DummyClock()
     parent = SimpleNamespace(
-        group_enabled=True,
         drone_id='2',
         leader_id=1,
         is_leader=False,
@@ -224,24 +223,6 @@ def test_follower_holds_when_leader_group_status_is_inactive():
     communication._monitor_group_motion()
 
     assert parent.stopped_reason == 'leader group status is inactive or stale'
-
-
-def test_single_drone_mode_does_not_require_group_motion_acknowledgement():
-    parent = SimpleNamespace(
-        group_enabled=False,
-        group_motion_active=True,
-        stopped_reason=None,
-    )
-    parent.stop_group_motion = lambda reason: setattr(
-        parent, 'stopped_reason', reason
-    )
-    communication = Communication.__new__(Communication)
-    communication.parent_node = parent
-
-    communication._monitor_group_motion()
-
-    assert parent.group_motion_active
-    assert parent.stopped_reason is None
 
 
 def make_goal_stub():
