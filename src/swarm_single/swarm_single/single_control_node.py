@@ -854,8 +854,8 @@ class SingleControlNode(Node):
         msg.param5 = float(params.get("param5", 0.0))
         msg.param6 = float(params.get("param6", 0.0))
         msg.param7 = float(params.get("param7", 0.0))
-        msg.target_system = 1
-        msg.target_component = 1
+        msg.target_system = int(self.vehicle_status.system_id)
+        msg.target_component = int(self.vehicle_status.component_id)
         msg.source_system = 1 # Changed to 1 to match the working code
         msg.source_component = 1
         msg.from_external = True
