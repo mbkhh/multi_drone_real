@@ -618,15 +618,6 @@ class SingleControlNode(Node):
                     f'{self.max_goal_distance:.2f} m goal limit.'
                 )
                 return False
-            if not self.min_goal_altitude <= target[2] <= self.max_goal_altitude:
-                self.get_logger().error(
-                    f'Mission rejected: waypoint {index + 1} altitude '
-                    f'{target[2]:.2f} m is outside '
-                    f'[{self.min_goal_altitude:.2f}, '
-                    f'{self.max_goal_altitude:.2f}] m.'
-                )
-                return False
-
             resolved_points.append(target)
             previous = target
 
@@ -887,14 +878,6 @@ class SingleControlNode(Node):
                 f'exceeds {self.max_goal_distance:.2f} m safety limit.'
             )
             return False
-        if not self.min_goal_altitude <= goal[2] <= self.max_goal_altitude:
-            self.get_logger().error(
-                f'Goal rejected: altitude {goal[2]:.2f} m is outside '
-                f'[{self.min_goal_altitude:.2f}, '
-                f'{self.max_goal_altitude:.2f}] m.'
-            )
-            return False
-
         self.set_goal_transform(goal)
         return True
 
