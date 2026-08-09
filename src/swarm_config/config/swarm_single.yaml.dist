@@ -39,12 +39,12 @@ mission:
   max_waypoints: 100
 navigation:
   time_step: 0.016
-  neighbor_dist: 0.1
+  neighbor_dist: 0.5
   max_neighbors: 20
   time_horizon: 3.0
   radius: 0.5
   max_speed: 1.0
-  good_dist_to_goal: 0.01
+  good_dist_to_goal: 0.3
 lidar:
   lidar_min_cutoff: 0.2
   lidar_max_cutoff: 8
