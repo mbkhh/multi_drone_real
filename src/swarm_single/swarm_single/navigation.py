@@ -76,33 +76,11 @@ class navigation():
 				
 				if dist_to_goal > good_dist_to_goal:
 					
-					MIN_LEADER_SPEED = 0.1  # m/s
-					MAX_LEADER_SPEED = 2.0  # m/s
-					MAX_COEF = 0.8          # Coef when leader is slow
-					MIN_COEF = 0.2 
-
-					leader_speed = np.linalg.norm(self.vel)
-            
-					# 2. Calculate the ratio of how fast the leader is going within your defined range
-					# Clamp the speed to ensure the ratio stays between 0.0 and 1.0
-					clamped_speed = np.clip(leader_speed, MIN_LEADER_SPEED, MAX_LEADER_SPEED)
-					speed_ratio = (clamped_speed - MIN_LEADER_SPEED) / (MAX_LEADER_SPEED - MIN_LEADER_SPEED)
-					
-					# 3. Map this ratio to your coefficient range
-					# When speed_ratio is 0 (slow), coef is MAX_COEF.
-					# When speed_ratio is 1 (fast), coef is MIN_COEF.
-					mixture_coef = MAX_COEF - speed_ratio * (MAX_COEF - MIN_COEF)
-
 					gain = 1.0
 					desired_speed = min(maxSpeed, dist_to_goal * gain) 
 					
 					direction = goal_vector / dist_to_goal
 					pref_velocity = desired_speed * direction 
-
-					if not self.parent_node.is_leader or (self.parent_node.is_leader and i != 0):
-						pref_velocity[0] = pref_velocity[0] * mixture_coef + self.vel[1] * (1-mixture_coef)
-						pref_velocity[1] = pref_velocity[1] * mixture_coef +	 self.vel[0] * (1-mixture_coef)	
-						pref_velocity[2] = pref_velocity[2] * mixture_coef - self.vel[2] * (1-mixture_coef)	
 
 					sim.setAgentPrefVelocity(agents[i], tuple(pref_velocity))
 				else:
