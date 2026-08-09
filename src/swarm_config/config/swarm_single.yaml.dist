@@ -10,7 +10,7 @@ broadcast_interval: 1.5
 status_interval: 1
 goal_tolerance: 0.5
 real_world:
-  # ENU position assigned when each drone receives its first ARM command.
+  # ENU position assigned on each ARM request while the drone is disarmed.
   initial_positions:
     '1': [0.0, 0.0, 0.0]
     '2': [0.0, 5.0, 0.0]

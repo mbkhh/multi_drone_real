@@ -202,7 +202,7 @@ class SingleControlNode(Node):
         if self.use_configured_world_origin:
             self.get_logger().info(
                 f'Drone {self.drone_id} configured ARM position (ENU): '
-                f'{self.initial_world_position}. Waiting for first ARM calibration.'
+                f'{self.initial_world_position}. Waiting for ARM calibration.'
             )
         self.get_logger().info(f"SingleControlNode successfully initialized for Drone {self.drone_id}.")
 
@@ -361,20 +361,22 @@ class SingleControlNode(Node):
             )
             return
 
-        if (
-            self.use_configured_world_origin
-            and not self.world_origin_calibrated
-        ):
+        if self.use_configured_world_origin:
             if (
                 self.vehicle_status.arming_state
                 == VehicleStatus.ARMING_STATE_ARMED
             ):
-                self.get_logger().error(
-                    'Offboard rejected: the shared world origin cannot be '
-                    'initialized for the first time while the vehicle is armed.'
+                if not self.world_origin_calibrated:
+                    self.get_logger().error(
+                        'Offboard rejected: the shared world origin cannot be '
+                        'initialized for the first time while the vehicle is armed.'
+                    )
+                    return
+                self.get_logger().warning(
+                    'ARM received while already armed; preserving the existing '
+                    'world origin to prevent an in-flight TF jump.'
                 )
-                return
-            if not self.calibrate_world_origin():
+            elif not self.calibrate_world_origin():
                 return
 
         # Reset the relative-goal origin to the measured current pose. This
@@ -510,8 +512,6 @@ class SingleControlNode(Node):
 
     def calibrate_world_origin(self):
         if not self.use_configured_world_origin:
-            return True
-        if self.world_origin_calibrated:
             return True
         if self.latest_px4_position_enu is None or not all(
             math.isfinite(value) for value in self.latest_px4_position_enu

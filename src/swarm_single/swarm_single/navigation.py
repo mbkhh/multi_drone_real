@@ -133,7 +133,7 @@ class navigation():
 			trans = drone_tf.transform
 			return trans
 		except Exception as e:
-			# self.parent_node.get_logger().info(f"Could not get transform for drone_{drone_id}_base: {e}")
+			self.parent_node.get_logger().info(f"Could not get transform for drone_{drone_id}_base: {e}")
 			return None
 		
 	def get_drone_to_goal(self, drone_id):
@@ -147,7 +147,7 @@ class navigation():
 			trans = drone_tf.transform
 			return trans
 		except Exception as e:
-			# self.parent_node.get_logger().info(f"Could not get goal transform for drone_{drone_id}_base: {e}")
+			self.parent_node.get_logger().info(f"Could not get goal transform for drone_{drone_id}_base: {e}")
 			return None
 		
 	def get_drone_absolute_goal(self, drone_id):
@@ -162,7 +162,7 @@ class navigation():
 			trans = drone_tf.transform
 			return trans
 		except Exception as e:
-			# self.parent_node.get_logger().info(f"Could not get goal transform for drone_{drone_id}_base: {e}")
+			self.parent_node.get_logger().info(f"Could not get goal transform for drone_{drone_id}_base: {e}")
 			return None
 	
 	def get_obstacle_absolute(self):

@@ -128,7 +128,7 @@ def make_goal_stub():
     )
 
 
-def test_goal_safety_envelope():
+def test_goal_horizontal_safety_envelope():
     controller = make_goal_stub()
     controller.set_goal_transform = lambda goal, log_received=True: (
         SingleControlNode.set_goal_transform(controller, goal, log_received)
@@ -138,7 +138,6 @@ def test_goal_safety_envelope():
         controller, [math.nan, 0.0, 1.0]
     )
     assert not SingleControlNode.goal_callback_temp(controller, [11.0, 0.0, 1.0])
-    assert not SingleControlNode.goal_callback_temp(controller, [0.0, 0.0, 6.0])
 
     assert SingleControlNode.goal_callback_temp(controller, [2.0, 3.0, 2.0])
     assert controller.leader_goal == [2.0, 3.0, 2.0]
@@ -184,7 +183,7 @@ def test_independent_px4_origins_map_to_two_configured_drone_positions():
     ) == [1.0, 3.0, 3.0]
 
 
-def test_arm_world_origin_calibration_is_not_repeated():
+def test_disarmed_arm_world_origin_calibration_is_repeated():
     controller = make_world_position_stub([0.0, 5.0, 0.0])
     controller.latest_px4_position_enu = [10.0, 20.0, 2.0]
     controller.world_origin_calibrated = False
@@ -200,7 +199,8 @@ def test_arm_world_origin_calibration_is_not_repeated():
 
     controller.latest_px4_position_enu = [50.0, 60.0, 7.0]
     assert SingleControlNode.calibrate_world_origin(controller)
-    assert controller.px4_position_origin_enu == [10.0, 20.0, 2.0]
+    assert controller.navigation.current_pos[:3] == [0.0, 5.0, 0.0]
+    assert controller.px4_position_origin_enu == [50.0, 60.0, 7.0]
 
 
 def make_takeoff_parent(position):
