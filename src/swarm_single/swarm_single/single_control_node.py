@@ -236,10 +236,14 @@ class SingleControlNode(Node):
         self.velocity_setpoints_since_debug = 0
 
         if sample_count == 0:
-            self.get_logger().warning(
-                f'[VELOCITY DEBUG] drone={self.drone_id} state={self.state} '
-                f'published=0 during {elapsed:.3f} s.'
-            )
+            if self.state not in (DroneState.IDLE, DroneState.PILOT_CONTROL):
+                self.get_logger().warning(
+                    f'[VELOCITY DEBUG] drone={self.drone_id} state={self.state} '
+                    f'published=0 during {elapsed:.3f} s.'
+                )
+            else :
+                self.get_logger().warning("[VELOCITY DEBUG] IN Idle or pilot mode")
+            return
 
         north, east, down = self.last_published_velocity_setpoint
         total_speed = math.sqrt(north ** 2 + east ** 2 + down ** 2)
