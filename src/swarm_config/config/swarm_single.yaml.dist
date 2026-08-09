@@ -19,6 +19,7 @@ control:
   takeoff_height: 3.0
   max_horizontal_speed: 1.0
   max_vertical_speed: 0.7
+  velocity_debug_interval: 0.5
   max_goal_distance: 10.0
   min_goal_altitude: -0.5
   max_goal_altitude: 5.0

@@ -68,6 +68,8 @@ def make_controller_stub():
         max_horizontal_speed=1.0,
         max_vertical_speed=0.5,
         trajectory_setpoint_publisher=DummyPublisher(),
+        last_published_velocity_setpoint=None,
+        velocity_setpoints_since_debug=0,
         get_clock=lambda: DummyClock(),
         released_reason=None,
     )
@@ -96,6 +98,14 @@ def test_setpoint_is_clamped_and_unused_fields_are_nan():
     assert all(math.isnan(value) for value in message.acceleration)
     assert all(math.isnan(value) for value in message.jerk)
     assert math.isnan(message.yawspeed)
+    assert all(
+        math.isclose(actual, expected, rel_tol=1e-6)
+        for actual, expected in zip(
+            controller.last_published_velocity_setpoint,
+            (0.6, 0.8, 0.5),
+        )
+    )
+    assert controller.velocity_setpoints_since_debug == 1
     assert controller.released_reason is None
 
 

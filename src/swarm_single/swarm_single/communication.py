@@ -101,7 +101,7 @@ class Communication():
         self.liveness_publisher.publish(msg)
 
     def _broadcast_status(self):
-        self.parent_node.get_logger().info("publishing status")
+        # self.parent_node.get_logger().info("publishing status")
 
         msg = Status()
         msg.timestamp = int(self.parent_node.get_clock().now().nanoseconds / 1000)

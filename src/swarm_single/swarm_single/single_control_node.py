@@ -117,6 +117,9 @@ class SingleControlNode(Node):
         self.max_vertical_speed = self.config_float(
             'swarm_single.control.max_vertical_speed', 0.5
         )
+        self.velocity_debug_interval = self.config_float(
+            'swarm_single.control.velocity_debug_interval', 0.5
+        )
         self.max_goal_distance = self.config_float(
             'swarm_single.control.max_goal_distance', 10.0
         )
@@ -193,9 +196,16 @@ class SingleControlNode(Node):
 
         self.offboard_setpoint_counter = 0
         self.vehicle_status = VehicleStatus()
+        self.last_published_velocity_setpoint = None
+        self.velocity_setpoints_since_debug = 0
+        self.velocity_debug_last_time = self.get_clock().now()
 
         # Timer runs at 20Hz
         self.timer = self.create_timer(0.05, self.control_loop_callback)
+        self.velocity_debug_timer = self.create_timer(
+            self.velocity_debug_interval,
+            self.velocity_setpoint_debug_callback,
+        )
 
         self.sended_goal_ack = True
 
@@ -215,6 +225,34 @@ class SingleControlNode(Node):
                 f'Controller exception: {type(error).__name__}: {error}'
             )
             self.release_to_pilot('Controller exception')
+
+    def velocity_setpoint_debug_callback(self):
+        now = self.get_clock().now()
+        elapsed = (
+            now - self.velocity_debug_last_time
+        ).nanoseconds / 1e9
+        self.velocity_debug_last_time = now
+        sample_count = self.velocity_setpoints_since_debug
+        self.velocity_setpoints_since_debug = 0
+
+        if sample_count == 0:
+            if self.state not in (DroneState.IDLE, DroneState.PILOT_CONTROL):
+                self.get_logger().warning(
+                    f'[VELOCITY DEBUG] drone={self.drone_id} state={self.state} '
+                    f'published=0 during {elapsed:.3f} s.'
+                )
+            return
+
+        north, east, down = self.last_published_velocity_setpoint
+        total_speed = math.sqrt(north ** 2 + east ** 2 + down ** 2)
+        publish_rate = sample_count / elapsed if elapsed > 0.0 else math.inf
+        self.get_logger().info(
+            f'[VELOCITY DEBUG] drone={self.drone_id} state={self.state} '
+            f'published={sample_count} rate={publish_rate:.1f} Hz | '
+            f'NED velocity: north={north:+.3f}, east={east:+.3f}, '
+            f'down={down:+.3f} m/s | ENU up={-down:+.3f} m/s | '
+            f'speed={total_speed:.3f} m/s'
+        )
 
     def run_control_loop(self):
         """Run the explicit, RC-preemptible Offboard state machine at 20 Hz."""
@@ -843,6 +881,8 @@ class SingleControlNode(Node):
 
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.trajectory_setpoint_publisher.publish(msg)
+        self.last_published_velocity_setpoint = (north, east, down)
+        self.velocity_setpoints_since_debug += 1
 
     def publish_vehicle_command(self, command, **params):
         msg = VehicleCommand()
