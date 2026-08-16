@@ -8,7 +8,6 @@ from rclpy.node import Node
 from geometry_msgs.msg import TransformStamped
 from swarm_config.config_utils import get_config
 from tf2_ros import TransformBroadcaster
-from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
 
 from px4_msgs.msg import (
@@ -49,6 +48,20 @@ class SingleControlNode(Node):
             self.get_parameter('use_configured_world_origin')
             .get_parameter_value().bool_value
         )
+        self.declare_parameter('require_manual_control_signal', True)
+        self.require_manual_control_signal = (
+            self.get_parameter('require_manual_control_signal')
+            .get_parameter_value().bool_value
+        )
+        if self.require_manual_control_signal:
+            self.get_logger().info(
+                'Real-flight RC/manual-control safety gate is ENABLED.'
+            )
+        else:
+            self.get_logger().warning(
+                'RC/manual-control safety gate is DISABLED by launch parameter. '
+                'Use this override only in SITL.'
+            )
         configured_start = [0.0, 0.0, 0.0]
         if self.use_configured_world_origin:
             configured_start = self.config_vector3(
@@ -82,7 +95,8 @@ class SingleControlNode(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
         self.local_position_tf_broadcaster = TransformBroadcaster(self)
-        self.goal_tf_broadcaster = StaticTransformBroadcaster(self)
+        self.goal_tf_broadcaster = TransformBroadcaster(self)
+        self.active_goal_transform = None
 
         self.velocity_goal = [0.0, 0.0, 0.0]
         self.manual_velocity = [0.0, 0.0, 0.0]
@@ -116,6 +130,18 @@ class SingleControlNode(Node):
         )
         self.max_vertical_speed = self.config_float(
             'swarm_single.control.max_vertical_speed', 0.5
+        )
+        self.max_horizontal_acceleration = self.config_float(
+            'swarm_single.control.max_horizontal_acceleration', 1.0
+        )
+        self.max_vertical_acceleration = self.config_float(
+            'swarm_single.control.max_vertical_acceleration', 0.7
+        )
+        self.max_control_interval = self.config_float(
+            'swarm_single.control.max_control_interval', 0.25
+        )
+        self.minimum_setpoint_rate = self.config_float(
+            'swarm_single.control.minimum_setpoint_rate', 8.0
         )
         self.velocity_debug_interval = self.config_float(
             'swarm_single.control.velocity_debug_interval', 0.5
@@ -197,8 +223,13 @@ class SingleControlNode(Node):
         self.offboard_setpoint_counter = 0
         self.vehicle_status = VehicleStatus()
         self.last_published_velocity_setpoint = None
+        self.last_commanded_velocity_setpoint = [0.0, 0.0, 0.0]
         self.velocity_setpoints_since_debug = 0
         self.velocity_debug_last_time = self.get_clock().now()
+        self.last_setpoint_time = None
+        self.last_control_loop_time = None
+        self.last_control_interval = None
+        self.last_control_gap_warning_time = None
 
         # Timer runs at 20Hz
         self.timer = self.create_timer(0.05, self.control_loop_callback)
@@ -248,16 +279,67 @@ class SingleControlNode(Node):
         north, east, down = self.last_published_velocity_setpoint
         total_speed = math.sqrt(north ** 2 + east ** 2 + down ** 2)
         publish_rate = sample_count / elapsed if elapsed > 0.0 else math.inf
-        self.get_logger().info(
+        message = (
             f'[VELOCITY DEBUG] drone={self.drone_id} state={self.state} '
             f'published={sample_count} rate={publish_rate:.1f} Hz | '
             f'NED velocity: north={north:+.3f}, east={east:+.3f}, '
             f'down={down:+.3f} m/s | ENU up={-down:+.3f} m/s | '
             f'speed={total_speed:.3f} m/s'
         )
+        if publish_rate < self.minimum_setpoint_rate:
+            self.get_logger().warning(f'[CONTROL RATE LOW] {message}')
+        else:
+            self.get_logger().info(message)
+
+    def update_control_loop_timing(self):
+        """Return False for a scheduling gap unsafe for closed-loop motion."""
+        now = self.get_clock().now()
+        if self.last_control_loop_time is None:
+            self.last_control_loop_time = now
+            return True
+
+        interval = (
+            now - self.last_control_loop_time
+        ).nanoseconds / 1e9
+        self.last_control_loop_time = now
+        self.last_control_interval = interval
+        if 0.0 <= interval <= self.max_control_interval:
+            return True
+
+        should_warn = self.last_control_gap_warning_time is None
+        if self.last_control_gap_warning_time is not None:
+            elapsed = (
+                now - self.last_control_gap_warning_time
+            ).nanoseconds / 1e9
+            should_warn = elapsed >= 1.0
+        if should_warn:
+            self.get_logger().warning(
+                f'[CONTROL GAP] loop interval was {interval:.3f} s; '
+                'commanding zero velocity until fresh feedback is processed.'
+            )
+            self.last_control_gap_warning_time = now
+        return False
 
     def run_control_loop(self):
         """Run the explicit, RC-preemptible Offboard state machine at 20 Hz."""
+
+        control_timing_ok = self.update_control_loop_timing()
+
+        # Goals can change and a formation goal can be relative to a moving
+        # leader, so this must be a live TF rather than an immutable /tf_static
+        # sample. Republishing also lets RViz/listeners started later see it.
+        self.publish_active_goal_transform()
+
+        # PX4 may auto-disarm while waiting on the ground (for example after
+        # COM_DISARM_PRFLT expires). Do not leave the companion controller
+        # latched in TAKEOFF, where a later explicit ARM would be ignored.
+        if (
+            self.state == DroneState.TAKEOFF
+            and self.vehicle_status.arming_state
+            != VehicleStatus.ARMING_STATE_ARMED
+        ):
+            self.release_to_pilot('PX4 disarmed while companion control was active')
+            return
 
         # Once PX4 accepts an RC mode change, stop all Offboard traffic
         # immediately. The controller remains latched out until a new explicit
@@ -273,8 +355,9 @@ class SingleControlNode(Node):
         if self.state in (DroneState.IDLE, DroneState.PILOT_CONTROL):
             return
 
-        if not self.telemetry_is_fresh():
-            self.release_to_pilot('PX4 telemetry timeout')
+        safety_violation = self.safety_violation_reason()
+        if safety_violation is not None:
+            self.release_to_pilot(safety_violation)
             return
 
         if self.state == DroneState.ARMING:
@@ -328,12 +411,18 @@ class SingleControlNode(Node):
 
         elif self.state == DroneState.TAKEOFF:
             self.publish_offboard_control_heartbeat_signal()
-            self.update_mission_progress()
             if self.motion_enabled:
-                self.navigation.navigate_to_goal()
+                if control_timing_ok:
+                    feedback_valid = self.navigation.navigate_to_goal()
+                else:
+                    self.velocity_goal = [0.0, 0.0, 0.0]
+                    feedback_valid = False
             else:
                 self.velocity_goal = [0.0, 0.0, 0.0]
-            self.publish_position_setpoint()
+                feedback_valid = True
+            if feedback_valid:
+                self.update_mission_progress()
+            self.publish_position_setpoint(force_zero=not feedback_valid)
 
         elif self.state == DroneState.LANDING:
             self.offboard_setpoint_counter += 1
@@ -372,34 +461,16 @@ class SingleControlNode(Node):
         """Start Offboard only after an explicit station command."""
         if self.state in (DroneState.ARMING, DroneState.TAKEOFF):
             self.get_logger().info('Offboard control is already active or starting.')
-            return
-        if not self.telemetry_is_fresh():
+            return False
+
+        safety_violation = self.safety_violation_reason(
+            require_preflight=True
+        )
+        if safety_violation is not None:
             self.get_logger().error(
-                'Offboard rejected: vehicle status, local position, or '
-                'failsafe telemetry is missing/stale.'
+                f'Offboard rejected: {safety_violation}.'
             )
-            return
-        # if not self.vehicle_status.pre_flight_checks_pass:
-        #     self.get_logger().error(
-        #         'Offboard rejected: PX4 preflight checks have not passed.'
-        #     )
-        #     return
-        if self.vehicle_status.failsafe:
-            self.get_logger().error('Offboard rejected: PX4 is in failsafe.')
-            return
-        if self.failsafe_flags.manual_control_signal_lost:
-            self.get_logger().error(
-                'Offboard rejected: RC/manual-control signal is unavailable.'
-            )
-            return
-        if (
-            self.failsafe_flags.local_position_invalid
-            or self.failsafe_flags.local_velocity_invalid
-        ):
-            self.get_logger().error(
-                'Offboard rejected: PX4 local position/velocity is invalid.'
-            )
-            return
+            return False
 
         if self.use_configured_world_origin:
             if (
@@ -411,13 +482,13 @@ class SingleControlNode(Node):
                         'Offboard rejected: the shared world origin cannot be '
                         'initialized for the first time while the vehicle is armed.'
                     )
-                    return
+                    return False
                 self.get_logger().warning(
                     'ARM received while already armed; preserving the existing '
                     'world origin to prevent an in-flight TF jump.'
                 )
             elif not self.calibrate_world_origin():
-                return
+                return False
 
         # Reset the relative-goal origin to the measured current pose. This
         # prevents an old goal from causing motion after pilot takeover.
@@ -426,12 +497,14 @@ class SingleControlNode(Node):
             self.get_logger().error(
                 'Offboard rejected: current PX4 local pose is not finite.'
             )
-            return
+            return False
         self.set_goal_transform(current_pose, log_received=False)
         self.reset_mission_state()
         self.motion_enabled = False
         self.manual_control = False
         self.velocity_goal = [0.0, 0.0, 0.0]
+        self.last_commanded_velocity_setpoint = [0.0, 0.0, 0.0]
+        self.last_setpoint_time = None
         self.offboard_setpoint_counter = 0
         self.offboard_was_confirmed = False
         self.state = DroneState.ARMING
@@ -439,6 +512,7 @@ class SingleControlNode(Node):
             'Explicit ARM received: preparing Offboard with zero velocity, '
             'then switching mode and arming PX4.'
         )
+        return True
 
     def release_to_pilot(self, reason):
         """Latch this node out and cease heartbeat/setpoint publication."""
@@ -449,6 +523,8 @@ class SingleControlNode(Node):
         self.manual_control = False
         self.manual_velocity = [0.0, 0.0, 0.0]
         self.velocity_goal = [0.0, 0.0, 0.0]
+        self.last_commanded_velocity_setpoint = [0.0, 0.0, 0.0]
+        self.last_setpoint_time = None
         self.offboard_setpoint_counter = 0
         self.offboard_was_confirmed = False
         self.get_logger().warning(
@@ -460,7 +536,7 @@ class SingleControlNode(Node):
         """Ask PX4 to enter its native AUTO_LAND mode once."""
         if self.vehicle_status.arming_state != VehicleStatus.ARMING_STATE_ARMED:
             self.get_logger().warning('LAND ignored: vehicle is not armed.')
-            return
+            return False
         if self.mission_active:
             self.abort_mission('LAND requested')
         self.motion_enabled = False
@@ -472,6 +548,7 @@ class SingleControlNode(Node):
         self.get_logger().warning(
             'LAND requested; waiting briefly for PX4 AUTO_LAND confirmation.'
         )
+        return True
 
     def request_safe_disarm(self):
         """Disarm only when PX4's landing detector confirms the vehicle is down."""
@@ -505,9 +582,32 @@ class SingleControlNode(Node):
         if any(timestamp is None for timestamp in timestamps):
             return False
         return all(
-            (now - timestamp).nanoseconds / 1e9 <= self.telemetry_timeout
+            0.0 <= (now - timestamp).nanoseconds / 1e9 <= self.telemetry_timeout
             for timestamp in timestamps
         )
+
+    def safety_violation_reason(self, require_preflight=False):
+        """Return the first PX4/RC condition that makes Offboard unsafe."""
+        if not self.telemetry_is_fresh():
+            return (
+                'PX4 vehicle status, local position, or failsafe telemetry '
+                'is missing/stale'
+            )
+        if require_preflight and not self.vehicle_status.pre_flight_checks_pass:
+            return 'PX4 preflight checks have not passed'
+        if self.vehicle_status.failsafe:
+            return 'PX4 reports an active failsafe'
+        if (
+            self.require_manual_control_signal
+            and self.failsafe_flags.manual_control_signal_lost
+        ):
+            return 'RC/manual-control signal is unavailable'
+        if (
+            self.failsafe_flags.local_position_invalid
+            or self.failsafe_flags.local_velocity_invalid
+        ):
+            return 'PX4 local position/velocity is invalid'
+        return None
 
     @staticmethod
     def config_float(key, default):
@@ -773,6 +873,15 @@ class SingleControlNode(Node):
     def vehicle_status_callback(self, vehicle_status):
         self.vehicle_status = vehicle_status
         self.last_vehicle_status_time = self.get_clock().now()
+        if (
+            self.state == DroneState.TAKEOFF
+            and vehicle_status.arming_state
+            != VehicleStatus.ARMING_STATE_ARMED
+        ):
+            self.release_to_pilot(
+                'PX4 disarmed while companion control was active'
+            )
+            return
         # PX4 owns RC mode selection. Release the companion controller as soon
         # as PX4 confirms a switch away from Offboard; the control-loop check
         # remains as a redundant guard. No station/network connection is
@@ -824,7 +933,7 @@ class SingleControlNode(Node):
         transform.transform.rotation.w = math.cos(yaw_enu / 2.0)
         self.local_position_tf_broadcaster.sendTransform(transform)
 
-        self.navigation.vel = [
+        self.navigation.local_velocity = [
             float(local_position.vx),
             float(local_position.vy),
             float(local_position.vz),
@@ -854,7 +963,7 @@ class SingleControlNode(Node):
         self.get_logger().info('Sending DISARM command.')
         self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=0.0)
 
-    def publish_position_setpoint(self):
+    def publish_position_setpoint(self, force_zero=False):
         if not self.yaw_initialized:
             self.release_to_pilot('No valid PX4 heading for Offboard setpoint')
             return
@@ -873,6 +982,16 @@ class SingleControlNode(Node):
             east *= scale
         down = max(-self.max_vertical_speed, min(self.max_vertical_speed, down))
 
+        now = self.get_clock().now()
+        if force_zero:
+            north, east, down = 0.0, 0.0, 0.0
+            self.last_commanded_velocity_setpoint = [0.0, 0.0, 0.0]
+        else:
+            north, east, down = self.limit_velocity_change(
+                [north, east, down], now
+            )
+        self.last_setpoint_time = now
+
         msg = TrajectorySetpoint()
         msg.position = [math.nan, math.nan, math.nan]
         msg.velocity = [north, east, down]
@@ -886,6 +1005,48 @@ class SingleControlNode(Node):
         self.last_published_velocity_setpoint = (north, east, down)
         self.velocity_setpoints_since_debug += 1
 
+    def limit_velocity_change(self, desired, now):
+        """Slew-limit NED velocity so delayed feedback cannot reverse instantly."""
+        previous = list(getattr(
+            self, 'last_commanded_velocity_setpoint', [0.0, 0.0, 0.0]
+        ))
+        previous_time = getattr(self, 'last_setpoint_time', None)
+        if previous_time is None:
+            limited = [float(value) for value in desired]
+            self.last_commanded_velocity_setpoint = limited
+            return tuple(limited)
+
+        interval = (now - previous_time).nanoseconds / 1e9
+        interval = max(0.0, min(interval, self.max_control_interval))
+
+        horizontal_delta = [
+            float(desired[0]) - previous[0],
+            float(desired[1]) - previous[1],
+        ]
+        horizontal_delta_norm = math.hypot(*horizontal_delta)
+        max_horizontal_delta = self.max_horizontal_acceleration * interval
+        if (
+            horizontal_delta_norm > max_horizontal_delta
+            and horizontal_delta_norm > 0.0
+        ):
+            scale = max_horizontal_delta / horizontal_delta_norm
+            horizontal_delta = [value * scale for value in horizontal_delta]
+
+        vertical_delta = float(desired[2]) - previous[2]
+        max_vertical_delta = self.max_vertical_acceleration * interval
+        vertical_delta = max(
+            -max_vertical_delta,
+            min(max_vertical_delta, vertical_delta),
+        )
+
+        limited = [
+            previous[0] + horizontal_delta[0],
+            previous[1] + horizontal_delta[1],
+            previous[2] + vertical_delta,
+        ]
+        self.last_commanded_velocity_setpoint = limited
+        return tuple(limited)
+
     def publish_vehicle_command(self, command, **params):
         msg = VehicleCommand()
         msg.command = command
@@ -897,8 +1058,8 @@ class SingleControlNode(Node):
         msg.param6 = float(params.get("param6", 0.0))
         msg.param7 = float(params.get("param7", 0.0))
         msg.target_system = int(self.vehicle_status.system_id)
-        msg.target_component = int(self.vehicle_status.component_id)
-        msg.source_system = 1 # Changed to 1 to match the working code
+        msg.target_component = 1 #int(self.vehicle_status.component_id)
+        msg.source_system = 255#1 # Changed to 1 to match the working code
         msg.source_component = 1
         msg.from_external = True
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
@@ -925,23 +1086,38 @@ class SingleControlNode(Node):
 
     def set_goal_transform(self, goal, log_received=True):
         if log_received:
-            self.get_logger().info(f'Received goal request: [{goal[0]:.2f}, {goal[1]:.2f}, {goal[2]:.2f}]. Broadcasting static transform.')
+            self.get_logger().info(
+                f'Received goal request: [{goal[0]:.2f}, {goal[1]:.2f}, '
+                f'{goal[2]:.2f}]. Broadcasting goal transform.'
+            )
         self.sended_goal_ack = False
-        static_transform_stamped = TransformStamped()
-
-        static_transform_stamped.header.stamp = self.get_clock().now().to_msg()
-        static_transform_stamped.header.frame_id = 'world'
-        static_transform_stamped.child_frame_id = f'{self.px4_model}_{self.frame_id}/{self.goal_frame}'
-
-        static_transform_stamped.transform.translation.x = goal[0]
-        static_transform_stamped.transform.translation.y = goal[1]
-        static_transform_stamped.transform.translation.z = goal[2]
+        self.set_goal_transform_from_parent('world', goal)
         self.leader_goal = [goal[0], goal[1], goal[2]]
-        static_transform_stamped.transform.rotation.x = 0.0
-        static_transform_stamped.transform.rotation.y = 0.0
-        static_transform_stamped.transform.rotation.z = 0.0
-        static_transform_stamped.transform.rotation.w = 1.0
-        self.goal_tf_broadcaster.sendTransform(static_transform_stamped)
+
+    def set_goal_transform_from_parent(self, parent_frame, offset):
+        """Set a changeable goal, optionally relative to a moving TF frame."""
+        goal_transform = TransformStamped()
+
+        goal_transform.header.frame_id = parent_frame
+        goal_transform.child_frame_id = (
+            f'{self.px4_model}_{self.frame_id}/{self.goal_frame}'
+        )
+
+        goal_transform.transform.translation.x = float(offset[0])
+        goal_transform.transform.translation.y = float(offset[1])
+        goal_transform.transform.translation.z = float(offset[2])
+        goal_transform.transform.rotation.x = 0.0
+        goal_transform.transform.rotation.y = 0.0
+        goal_transform.transform.rotation.z = 0.0
+        goal_transform.transform.rotation.w = 1.0
+        self.active_goal_transform = goal_transform
+        self.publish_active_goal_transform()
+
+    def publish_active_goal_transform(self):
+        if self.active_goal_transform is None:
+            return
+        self.active_goal_transform.header.stamp = self.get_clock().now().to_msg()
+        self.goal_tf_broadcaster.sendTransform(self.active_goal_transform)
 
 def main(args=None):
     rclpy.init(args=args)

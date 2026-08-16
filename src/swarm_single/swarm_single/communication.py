@@ -233,11 +233,14 @@ class Communication():
             return
         command_type = cmd.get("command")
         if command_type == "arm":
-            self.parent_node.request_offboard_control()
-            self.parent_node.get_logger().info("Received ARM command.")
+            if self.parent_node.request_offboard_control():
+                self.parent_node.get_logger().info("Received ARM command.")
 
         elif command_type == "takeoff":
             self.execute_takeoff(cmd.get("height", 3.0))
+
+        elif command_type == "land":
+            self.parent_node.request_land()
 
         elif command_type == "start_animation":
             start_time = int(cmd.get("start_time"))
@@ -275,13 +278,13 @@ class Communication():
             return
         command_type = cmd.get("command")
         if command_type == "arm":
-            self.parent_node.request_offboard_control()
-            out_msg = String()
-            out_msg.data = json.dumps({"command": "arm"})
-            self.command_publisher.publish(out_msg)
-            self.parent_node.get_logger().info(
-                "Leader: publishing ARM command."
-            )
+            if self.parent_node.request_offboard_control():
+                out_msg = String()
+                out_msg.data = json.dumps({"command": "arm"})
+                self.command_publisher.publish(out_msg)
+                self.parent_node.get_logger().info(
+                    "Leader: publishing ARM command."
+                )
         elif command_type == "takeoff":
             height = cmd.get("height", 3.0)
             if self.execute_takeoff(height):
@@ -318,7 +321,13 @@ class Communication():
         elif command_type == "disarm_leader":
             self.parent_node.request_safe_disarm()
         elif command_type == "land":
-            self.parent_node.request_land()
+            if self.parent_node.request_land():
+                out_msg = String()
+                out_msg.data = json.dumps({"command": "land"})
+                self.command_publisher.publish(out_msg)
+                self.parent_node.get_logger().info(
+                    "Leader: publishing LAND command."
+                )
         elif command_type == "start_animation":
             start_time = int(self.parent_node.get_clock().now().nanoseconds / 1000000)
 
@@ -418,7 +427,11 @@ class Communication():
         self.command_publisher.publish(msg)
 
     def vehicle_local_position_callback(self, vehicle_local_position):
-        self.parent_node.navigation.vel = [vehicle_local_position.vx, vehicle_local_position.vy, vehicle_local_position.vz ]
+        self.parent_node.navigation.leader_velocity = [
+            vehicle_local_position.vx,
+            vehicle_local_position.vy,
+            vehicle_local_position.vz,
+        ]
 
     def formation_leader_callback(self, msg: FormationCommand):
         self.parent_node.formation.set_pattern(

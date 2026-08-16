@@ -3,9 +3,6 @@ import rclpy
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any
 
-from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
-from geometry_msgs.msg import TransformStamped
-
 from scipy.spatial.transform import Rotation
 
 from swarm_config.config_utils import get_config
@@ -198,17 +195,6 @@ class PatternController:
         self._publish_goal_transform(offset, parent_frame)
 
     def _publish_goal_transform(self, offset: np.ndarray, parent_frame: str):
-        """Publishes the goal as a static TF transform."""
-        goal_broadcaster = StaticTransformBroadcaster(self.parent)
-        t = TransformStamped()
-        t.header.stamp = self.parent.get_clock().now().to_msg()
-        t.header.frame_id = parent_frame
-        t.child_frame_id = f'{self.parent.px4_model}_{self.parent.frame_id}/{self.parent.goal_frame}'
-
-        t.transform.translation.x = offset[0]
-        t.transform.translation.y = offset[1]
-        t.transform.translation.z = offset[2]
-        t.transform.rotation.w = 1.0  # No change in orientation
-
-        goal_broadcaster.sendTransform(t)
+        """Set a live goal relative to the leader's moving odometry frame."""
+        self.parent.set_goal_transform_from_parent(parent_frame, offset)
         self.parent.get_logger().info(f"Published goal transform for drone {self.parent.frame_id} {offset}")

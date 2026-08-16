@@ -99,6 +99,9 @@ def generate_launch_description():
 			parameters=[{
 				'frame_id': instance_id,
 				'use_configured_world_origin': False,
+				# SITL has no physical RC receiver. Real launches do not set
+				# this override and retain the safe default (True).
+				'require_manual_control_signal': False,
 			}]
 		)
 

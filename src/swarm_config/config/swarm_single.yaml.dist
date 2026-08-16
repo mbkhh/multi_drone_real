@@ -19,6 +19,15 @@ control:
   takeoff_height: 3.0
   max_horizontal_speed: 1.0
   max_vertical_speed: 0.7
+  # Limits applied to outgoing PX4 velocity setpoints. They prevent an old
+  # feedback sample from causing an instantaneous full-speed reversal.
+  max_horizontal_acceleration: 1.0
+  max_vertical_acceleration: 0.7
+  # A single control gap longer than this commands an immediate zero setpoint.
+  max_control_interval: 0.25
+  # Diagnostic threshold only; the controller remains usable near 10 Hz so
+  # battery-mode simulation can reproduce constrained companion hardware.
+  minimum_setpoint_rate: 8.0
   velocity_debug_interval: 0.5
   max_goal_distance: 10.0
   min_goal_altitude: -0.5
@@ -45,6 +54,11 @@ navigation:
   radius: 0.5
   max_speed: 1.0
   good_dist_to_goal: 0.3
+  # Freshness uses local callback/observation time, so peer clock offsets do
+  # not make healthy data appear stale.
+  feedback_timeout: 0.3
+  neighbor_transform_timeout: 0.5
+  braking_acceleration: 0.7
 lidar:
   lidar_min_cutoff: 0.2
   lidar_max_cutoff: 8

@@ -1,7 +1,8 @@
 import os
 import math
 from launch import LaunchDescription
-from launch.actions import LogInfo, ExecuteProcess, TimerAction
+from launch.actions import LogInfo, ExecuteProcess, RegisterEventHandler, TimerAction
+from launch.event_handlers import OnProcessIO
 from launch_ros.actions import Node
 from swarm_config.config_utils import get_config
 
@@ -25,6 +26,9 @@ def generate_launch_description():
     # --- Define crucial paths and variables ---
     px4_autopilot_dir = os.path.expanduser(get_config('swarm_sim.path_parameters.px4_path'))
     px4_executable_path = os.path.join(px4_autopilot_dir, "build/px4_sitl_default/bin/px4")
+    px4_param_executable_path = os.path.join(
+        px4_autopilot_dir, "build/px4_sitl_default/bin/px4-param"
+    )
 
     drone_count = get_config('swarm_sim.drone_count')
     px4_model = get_config('swarm_sim.px4_model')
@@ -87,8 +91,7 @@ def generate_launch_description():
         px4_env['PX4_SYS_AUTOSTART'] = frame_id
         px4_env['PX4_GZ_MODEL'] = px4_model
         px4_env['PX4_GZ_MODEL_POSE'] = f"{str(x)},{str(y)},0.1,0,0,0.9"
-        px4_env['PX4_PARAM_COM_AUTHR_SYS_ID'] = "255"
-        px4_env['UXRCE_DDS_NS'] = f"px4_{str(instance_id)}"
+        px4_env['PX4_UXRCE_DDS_NS'] = f"uav_{str(instance_id)}"
 
         if not instance_id == 1:
             px4_env['HEADLESS'] = '1'
@@ -99,16 +102,38 @@ def generate_launch_description():
             output='own_log', # Output is sent to a dedicated log file
             env=px4_env
         )
-        
-        pose_to_tf_node = Node(
-            package='swarm_sim',
-            executable='tf_publisher',
-            parameters=[{
-                'frame_id': str(instance_id),
-                'px4_model': px4_model,
-            }],
-            output='log' # MODIFIED: Suppress output
+
+        # PX4 1.17's x500 airframe sets NAV_DLL_ACT=2 during its startup,
+        # making a MAVLink GCS connection mandatory for arming. This project
+        # uses a ROS station in SITL, so apply the simulation-only override
+        # after the airframe has loaded. The PX4_PARAM_* environment mechanism
+        # runs too early and is overwritten by the airframe default.
+        disable_sitl_gcs_requirement = ExecuteProcess(
+            cmd=[
+                px4_param_executable_path,
+                '--instance', str(instance_id),
+                'set', 'NAV_DLL_ACT', '0',
+            ],
+            output='log',
         )
+
+        startup_watch = {'output': bytearray(), 'override_started': False}
+
+        def apply_sitl_override_after_startup(
+            event,
+            state=startup_watch,
+            override_action=disable_sitl_gcs_requirement,
+        ):
+            state['output'].extend(event.text)
+            if len(state['output']) > 4096:
+                del state['output'][:-4096]
+            if (
+                not state['override_started']
+                and b'Startup script returned successfully' in state['output']
+            ):
+                state['override_started'] = True
+                return override_action
+            return None
         
         single_control_node = Node(
             package='swarm_single',
@@ -116,13 +141,30 @@ def generate_launch_description():
             name=f'control_node_d{str(instance_id)}',
             parameters=[{
                 'frame_id': instance_id,
-                'use_configured_world_origin': False,
+                # Use PX4 local position as the only odom TF source. Each SITL
+                # estimator has its own local origin, so anchor it at the
+                # matching Gazebo spawn point to create one shared ENU world.
+                'use_configured_world_origin': True,
+                'initial_world_position': [float(x), float(y), 0.0],
+                # SITL has no physical RC receiver. Real launches omit this
+                # override and retain the controller's safe default (True).
+                'require_manual_control_signal': False,
             }],
             output='log' # MODIFIED: Suppress output
         )
 
-        staggered_launch = TimerAction(period=float(i * 3.0), actions=[px4_sitl_process, pose_to_tf_node, single_control_node])
+        # Do not launch the legacy Gazebo odom-to-TF node here: the controller
+        # already publishes the same child frame from PX4 local position.
+        # Running both creates competing TF authorities and invalid navigation.
+        staggered_launch = TimerAction(
+            period=float(i * 3.0),
+            actions=[px4_sitl_process, single_control_node],
+        )
         ld.add_action(staggered_launch)
+        ld.add_action(RegisterEventHandler(OnProcessIO(
+            target_action=px4_sitl_process,
+            on_stdout=apply_sitl_override_after_startup,
+        )))
 
     ld.add_action(TimerAction(period=float(drone_count * 3.0 + 0.5), actions=[LogInfo(msg="Simulator is ready...")]))
     return ld

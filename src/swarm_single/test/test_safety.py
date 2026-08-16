@@ -3,7 +3,7 @@ import math
 from types import SimpleNamespace
 
 from builtin_interfaces.msg import Time
-from px4_msgs.msg import VehicleStatus
+from px4_msgs.msg import FailsafeFlags, VehicleCommand, VehicleStatus
 from std_msgs.msg import String
 
 from swarm_single.communication import Communication
@@ -61,6 +61,7 @@ class DummyBroadcaster:
 
 
 def make_controller_stub():
+    clock = DummyClock()
     controller = SimpleNamespace(
         yaw_initialized=True,
         yaw=0.25,
@@ -70,14 +71,23 @@ def make_controller_stub():
         trajectory_setpoint_publisher=DummyPublisher(),
         last_published_velocity_setpoint=None,
         velocity_setpoints_since_debug=0,
-        get_clock=lambda: DummyClock(),
+        get_clock=lambda: clock,
+        max_horizontal_acceleration=1.0,
+        max_vertical_acceleration=0.5,
+        max_control_interval=0.25,
+        last_setpoint_time=None,
+        last_commanded_velocity_setpoint=[0.0, 0.0, 0.0],
         released_reason=None,
+        clock=clock,
     )
 
     def release(reason):
         controller.released_reason = reason
 
     controller.release_to_pilot = release
+    controller.limit_velocity_change = lambda desired, now: (
+        SingleControlNode.limit_velocity_change(controller, desired, now)
+    )
     return controller
 
 
@@ -119,8 +129,208 @@ def test_non_finite_velocity_is_rejected():
     assert controller.released_reason == 'Non-finite velocity setpoint rejected'
 
 
+def test_velocity_reversal_is_slew_limited():
+    controller = make_controller_stub()
+    controller.last_setpoint_time = controller.clock.now()
+    controller.clock.advance(0.1)
+
+    first = SingleControlNode.limit_velocity_change(
+        controller, [1.0, 0.0, 0.5], controller.clock.now()
+    )
+    assert math.isclose(first[0], 0.1, abs_tol=1e-9)
+    assert math.isclose(first[2], 0.05, abs_tol=1e-9)
+
+    controller.last_setpoint_time = controller.clock.now()
+    controller.clock.advance(0.1)
+    reversed_command = SingleControlNode.limit_velocity_change(
+        controller, [-1.0, 0.0, -0.5], controller.clock.now()
+    )
+    assert math.isclose(reversed_command[0], 0.0, abs_tol=1e-9)
+    assert math.isclose(reversed_command[2], 0.0, abs_tol=1e-9)
+
+
+def test_invalid_feedback_forces_immediate_zero_setpoint():
+    controller = make_controller_stub()
+    controller.last_commanded_velocity_setpoint = [0.4, -0.2, -0.5]
+    controller.last_setpoint_time = controller.clock.now()
+
+    SingleControlNode.publish_position_setpoint(controller, force_zero=True)
+
+    message = controller.trajectory_setpoint_publisher.last_message
+    assert list(message.velocity) == [0.0, 0.0, 0.0]
+    assert controller.last_commanded_velocity_setpoint == [0.0, 0.0, 0.0]
+
+
+def test_control_loop_gap_is_detected_without_rejecting_ten_hz_operation():
+    clock = DummyClock()
+    controller = SimpleNamespace(
+        get_clock=lambda: clock,
+        get_logger=lambda: DummyLogger(),
+        last_control_loop_time=clock.now(),
+        last_control_interval=None,
+        last_control_gap_warning_time=None,
+        max_control_interval=0.25,
+    )
+
+    clock.advance(0.1)
+    assert SingleControlNode.update_control_loop_timing(controller)
+
+    clock.advance(0.26)
+    assert not SingleControlNode.update_control_loop_timing(controller)
+    assert math.isclose(controller.last_control_interval, 0.26)
+
+
+def make_offboard_safety_stub():
+    clock = DummyClock()
+    vehicle_status = VehicleStatus()
+    vehicle_status.arming_state = VehicleStatus.ARMING_STATE_DISARMED
+    vehicle_status.pre_flight_checks_pass = True
+    vehicle_status.failsafe = False
+    failsafe_flags = FailsafeFlags()
+    failsafe_flags.manual_control_signal_lost = False
+    failsafe_flags.local_position_invalid = False
+    failsafe_flags.local_velocity_invalid = False
+    controller = SimpleNamespace(
+        state='IDLE',
+        vehicle_status=vehicle_status,
+        failsafe_flags=failsafe_flags,
+        require_manual_control_signal=True,
+        last_vehicle_status_time=clock.now(),
+        last_local_position_time=clock.now(),
+        last_failsafe_flags_time=clock.now(),
+        telemetry_timeout=2.5,
+        use_configured_world_origin=False,
+        navigation=SimpleNamespace(
+            current_pos=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        ),
+        motion_enabled=True,
+        manual_control=True,
+        velocity_goal=[0.2, 0.1, -0.1],
+        last_commanded_velocity_setpoint=[0.2, 0.1, -0.1],
+        last_setpoint_time=clock.now(),
+        offboard_setpoint_counter=12,
+        offboard_was_confirmed=True,
+        get_clock=lambda: clock,
+        get_logger=lambda: DummyLogger(),
+        set_goal_transform=lambda _goal, log_received=False: None,
+        reset_mission_state=lambda: None,
+    )
+    controller.telemetry_is_fresh = lambda: (
+        SingleControlNode.telemetry_is_fresh(controller)
+    )
+    controller.safety_violation_reason = lambda require_preflight=False: (
+        SingleControlNode.safety_violation_reason(
+            controller,
+            require_preflight=require_preflight,
+        )
+    )
+    return controller
+
+
+def test_real_flight_safety_gates_reject_offboard_arm():
+    cases = (
+        (
+            lambda controller: setattr(
+                controller, 'last_failsafe_flags_time', None
+            ),
+            'missing/stale',
+        ),
+        (
+            lambda controller: setattr(
+                controller.vehicle_status, 'pre_flight_checks_pass', False
+            ),
+            'preflight checks',
+        ),
+        (
+            lambda controller: setattr(
+                controller.vehicle_status, 'failsafe', True
+            ),
+            'active failsafe',
+        ),
+        (
+            lambda controller: setattr(
+                controller.failsafe_flags,
+                'manual_control_signal_lost',
+                True,
+            ),
+            'RC/manual-control',
+        ),
+        (
+            lambda controller: setattr(
+                controller.failsafe_flags, 'local_position_invalid', True
+            ),
+            'local position/velocity',
+        ),
+    )
+
+    for make_unsafe, expected_reason in cases:
+        controller = make_offboard_safety_stub()
+        make_unsafe(controller)
+
+        reason = SingleControlNode.safety_violation_reason(
+            controller,
+            require_preflight=True,
+        )
+        assert expected_reason in reason
+        assert not SingleControlNode.request_offboard_control(controller)
+        assert controller.state == 'IDLE'
+
+
+def test_safe_real_flight_telemetry_allows_offboard_arming_sequence():
+    controller = make_offboard_safety_stub()
+
+    assert SingleControlNode.request_offboard_control(controller)
+    assert controller.state == 'ARMING'
+    assert not controller.motion_enabled
+    assert not controller.manual_control
+    assert controller.velocity_goal == [0.0, 0.0, 0.0]
+
+
+def make_arm_command_parent(accepted=True):
+    parent = SimpleNamespace(
+        arm_requests=0,
+        get_logger=lambda: DummyLogger(),
+    )
+
+    def request_offboard_control():
+        parent.arm_requests += 1
+        return accepted
+
+    parent.request_offboard_control = request_offboard_control
+    return parent
+
+
+def test_leader_relays_arm_only_after_its_own_safety_checks_accept():
+    leader = make_arm_command_parent(accepted=True)
+    follower = make_arm_command_parent(accepted=True)
+    leader_communication = object.__new__(Communication)
+    leader_communication.parent_node = leader
+    leader_communication.command_publisher = DummyPublisher()
+    follower_communication = object.__new__(Communication)
+    follower_communication.parent_node = follower
+
+    station_command = String()
+    station_command.data = json.dumps({"command": "arm"})
+    leader_communication.command_leader_callback(station_command)
+    follower_communication.command_callback(
+        leader_communication.command_publisher.last_message
+    )
+
+    assert leader.arm_requests == 1
+    assert follower.arm_requests == 1
+
+    rejected_leader = make_arm_command_parent(accepted=False)
+    rejected_communication = object.__new__(Communication)
+    rejected_communication.parent_node = rejected_leader
+    rejected_communication.command_publisher = DummyPublisher()
+    rejected_communication.command_leader_callback(station_command)
+
+    assert rejected_leader.arm_requests == 1
+    assert rejected_communication.command_publisher.last_message is None
+
+
 def make_goal_stub():
-    return SimpleNamespace(
+    controller = SimpleNamespace(
         navigation=SimpleNamespace(
             current_pos=[0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
         ),
@@ -133,9 +343,19 @@ def make_goal_stub():
         frame_id='1',
         goal_frame='goal',
         goal_tf_broadcaster=DummyBroadcaster(),
+        active_goal_transform=None,
         leader_goal=[0.0, 0.0, 0.0],
         sended_goal_ack=True,
     )
+    controller.set_goal_transform_from_parent = lambda parent_frame, offset: (
+        SingleControlNode.set_goal_transform_from_parent(
+            controller, parent_frame, offset
+        )
+    )
+    controller.publish_active_goal_transform = lambda: (
+        SingleControlNode.publish_active_goal_transform(controller)
+    )
+    return controller
 
 
 def test_goal_horizontal_safety_envelope():
@@ -152,6 +372,18 @@ def test_goal_horizontal_safety_envelope():
     assert SingleControlNode.goal_callback_temp(controller, [2.0, 3.0, 2.0])
     assert controller.leader_goal == [2.0, 3.0, 2.0]
     assert controller.goal_tf_broadcaster.last_transform is not None
+
+
+def test_goal_transform_is_changeable_and_republished_with_new_value():
+    controller = make_goal_stub()
+
+    SingleControlNode.set_goal_transform(controller, [0.0, 0.0, 0.0])
+    SingleControlNode.set_goal_transform(controller, [0.0, 0.0, 3.0])
+    SingleControlNode.publish_active_goal_transform(controller)
+
+    transform = controller.goal_tf_broadcaster.last_transform
+    assert transform.header.frame_id == 'world'
+    assert transform.transform.translation.z == 3.0
 
 
 def test_current_hold_pose_can_be_outside_commanded_goal_envelope():
@@ -270,6 +502,86 @@ def test_takeoff_is_rejected_before_offboard_arming_completes():
     assert not communication.execute_takeoff(3.0)
     assert parent.accepted_goal is None
     assert not parent.motion_enabled
+
+
+def make_land_command_parent(accepted=True):
+    parent = SimpleNamespace(
+        land_requests=0,
+        get_logger=lambda: DummyLogger(),
+    )
+
+    def request_land():
+        parent.land_requests += 1
+        return accepted
+
+    parent.request_land = request_land
+    return parent
+
+
+def test_leader_land_is_relayed_and_each_drone_requests_its_own_landing():
+    leader = make_land_command_parent()
+    follower = make_land_command_parent()
+    leader_communication = object.__new__(Communication)
+    leader_communication.parent_node = leader
+    leader_communication.command_publisher = DummyPublisher()
+    follower_communication = object.__new__(Communication)
+    follower_communication.parent_node = follower
+
+    station_command = String()
+    station_command.data = json.dumps({"command": "land"})
+    leader_communication.command_leader_callback(station_command)
+    follower_communication.command_callback(
+        leader_communication.command_publisher.last_message
+    )
+
+    assert leader.land_requests == 1
+    assert follower.land_requests == 1
+    assert json.loads(
+        leader_communication.command_publisher.last_message.data
+    ) == {"command": "land"}
+
+
+def test_rejected_leader_land_is_not_relayed_to_followers():
+    leader = make_land_command_parent(accepted=False)
+    communication = object.__new__(Communication)
+    communication.parent_node = leader
+    communication.command_publisher = DummyPublisher()
+
+    station_command = String()
+    station_command.data = json.dumps({"command": "land"})
+    communication.command_leader_callback(station_command)
+
+    assert leader.land_requests == 1
+    assert communication.command_publisher.last_message is None
+
+
+def test_request_land_starts_native_px4_land_and_reports_acceptance():
+    vehicle_status = VehicleStatus()
+    vehicle_status.arming_state = VehicleStatus.ARMING_STATE_ARMED
+    controller = SimpleNamespace(
+        vehicle_status=vehicle_status,
+        mission_active=False,
+        motion_enabled=True,
+        manual_control=True,
+        velocity_goal=[0.2, -0.1, 0.3],
+        offboard_setpoint_counter=15,
+        state='TAKEOFF',
+        published_commands=[],
+        get_logger=lambda: DummyLogger(),
+        publish_vehicle_command=lambda command: (
+            controller.published_commands.append(command)
+        ),
+    )
+
+    assert SingleControlNode.request_land(controller)
+    assert controller.published_commands == [
+        VehicleCommand.VEHICLE_CMD_NAV_LAND
+    ]
+    assert controller.state == 'LANDING'
+    assert not controller.motion_enabled
+    assert not controller.manual_control
+    assert controller.velocity_goal == [0.0, 0.0, 0.0]
+    assert controller.offboard_setpoint_counter == 0
 
 
 def make_mission_stub():
@@ -393,3 +705,22 @@ def test_rc_mode_change_aborts_mission_and_latches_pilot_control():
     assert controller.manual_velocity == [0.0, 0.0, 0.0]
     assert controller.velocity_goal == [0.0, 0.0, 0.0]
     assert controller.offboard_setpoint_counter == 0
+
+
+def test_px4_ground_auto_disarm_allows_a_later_explicit_arm():
+    controller, _clock = make_mission_stub()
+    controller.manual_velocity = [0.0, 0.0, 0.0]
+    controller.offboard_setpoint_counter = 0
+    controller.offboard_was_confirmed = True
+    controller.release_to_pilot = lambda reason: (
+        SingleControlNode.release_to_pilot(controller, reason)
+    )
+
+    vehicle_status = VehicleStatus()
+    vehicle_status.nav_state = VehicleStatus.NAVIGATION_STATE_OFFBOARD
+    vehicle_status.arming_state = VehicleStatus.ARMING_STATE_DISARMED
+    SingleControlNode.vehicle_status_callback(controller, vehicle_status)
+
+    assert controller.state == 'PILOT_CONTROL'
+    assert not controller.motion_enabled
+    assert not controller.offboard_was_confirmed
