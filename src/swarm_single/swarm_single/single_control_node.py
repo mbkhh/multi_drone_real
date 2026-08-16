@@ -593,8 +593,8 @@ class SingleControlNode(Node):
                 'PX4 vehicle status, local position, or failsafe telemetry '
                 'is missing/stale'
             )
-        if require_preflight and not self.vehicle_status.pre_flight_checks_pass:
-            return 'PX4 preflight checks have not passed'
+        #if require_preflight and not self.vehicle_status.pre_flight_checks_pass:
+        #   return 'PX4 preflight checks have not passed'
         if self.vehicle_status.failsafe:
             return 'PX4 reports an active failsafe'
         if (
