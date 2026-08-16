@@ -1,0 +1,10 @@
+ros2 run swarm_single control_node --ros-args \
+  -p frame_id:=1 \
+  -r __node:=control_node_d1
+
+
+
+
+ros2 run swarm_single control_node --ros-args \
+  -p frame_id:=2 \
+  -r __node:=control_node_d2
