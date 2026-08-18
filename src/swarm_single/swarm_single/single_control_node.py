@@ -120,6 +120,7 @@ class SingleControlNode(Node):
         self.last_local_position_time = None
         self.last_failsafe_flags_time = None
         self.last_land_detected_time = None
+        self.distance_to_ground = None
         self.failsafe_flags = FailsafeFlags()
         self.vehicle_land_detected = VehicleLandDetected()
         self.telemetry_timeout = self.config_float(
@@ -131,6 +132,38 @@ class SingleControlNode(Node):
         self.max_vertical_speed = self.config_float(
             'swarm_single.control.max_vertical_speed', 0.5
         )
+        self.landing_fast_height = self.config_float(
+            'swarm_single.control.landing_fast_height', 2.0
+        )
+        self.landing_fast_speed = self.config_float(
+            'swarm_single.control.landing_fast_speed', self.max_vertical_speed
+        )
+        self.landing_slow_speed = self.config_float(
+            'swarm_single.control.landing_slow_speed', 0.3
+        )
+        self.landing_timeout = self.config_float(
+            'swarm_single.control.landing_timeout', 45.0
+        )
+        landing_values = (
+            self.landing_fast_height,
+            self.landing_fast_speed,
+            self.landing_slow_speed,
+            self.landing_timeout,
+        )
+        if not all(
+            math.isfinite(value) and value > 0.0 for value in landing_values
+        ):
+            raise ValueError(
+                'Landing height, speeds, and timeout must be finite and positive.'
+            )
+        if self.landing_slow_speed > self.landing_fast_speed:
+            raise ValueError(
+                'landing_slow_speed cannot exceed landing_fast_speed.'
+            )
+        if self.landing_fast_speed > self.max_vertical_speed:
+            raise ValueError(
+                'landing_fast_speed cannot exceed max_vertical_speed.'
+            )
         self.max_horizontal_acceleration = self.config_float(
             'swarm_single.control.max_horizontal_acceleration', 1.0
         )
@@ -230,6 +263,9 @@ class SingleControlNode(Node):
         self.last_control_loop_time = None
         self.last_control_interval = None
         self.last_control_gap_warning_time = None
+        self.landing_started_time = None
+        self.landing_speed_stage = None
+        self.landing_disarm_last_sent_time = None
 
         # Timer runs at 20Hz
         self.timer = self.create_timer(0.05, self.control_loop_callback)
@@ -425,37 +461,7 @@ class SingleControlNode(Node):
             self.publish_position_setpoint(force_zero=not feedback_valid)
 
         elif self.state == DroneState.LANDING:
-            self.offboard_setpoint_counter += 1
-            if self.vehicle_status.arming_state != VehicleStatus.ARMING_STATE_ARMED:
-                self.get_logger().info("Landed and disarmed. Returning to IDLE.")
-                self.state = DroneState.IDLE
-                self.offboard_setpoint_counter = 0
-            elif (
-                self.vehicle_status.nav_state
-                == VehicleStatus.NAVIGATION_STATE_AUTO_LAND
-            ):
-                return
-            elif (
-                self.vehicle_status.nav_state
-                != VehicleStatus.NAVIGATION_STATE_OFFBOARD
-            ):
-                self.release_to_pilot(
-                    'PX4 entered another mode during LAND request'
-                )
-            elif self.offboard_setpoint_counter <= 20:
-                # Keep Offboard alive only while waiting briefly for PX4 to
-                # accept LAND. Repeat a best-effort command three times.
-                self.velocity_goal = [0.0, 0.0, 0.0]
-                self.publish_offboard_control_heartbeat_signal()
-                self.publish_position_setpoint()
-                if self.offboard_setpoint_counter in (5, 10):
-                    self.publish_vehicle_command(
-                        VehicleCommand.VEHICLE_CMD_NAV_LAND
-                    )
-            else:
-                self.release_to_pilot(
-                    'PX4 did not accept AUTO_LAND; LAND will not be forced repeatedly'
-                )
+            self.run_landing_control(control_timing_ok)
 
     def request_offboard_control(self):
         """Start Offboard only after an explicit station command."""
@@ -507,6 +513,9 @@ class SingleControlNode(Node):
         self.last_setpoint_time = None
         self.offboard_setpoint_counter = 0
         self.offboard_was_confirmed = False
+        self.landing_started_time = None
+        self.landing_speed_stage = None
+        self.landing_disarm_last_sent_time = None
         self.state = DroneState.ARMING
         self.get_logger().warning(
             'Explicit ARM received: preparing Offboard with zero velocity, '
@@ -527,15 +536,39 @@ class SingleControlNode(Node):
         self.last_setpoint_time = None
         self.offboard_setpoint_counter = 0
         self.offboard_was_confirmed = False
+        self.landing_started_time = None
+        self.landing_speed_stage = None
+        self.landing_disarm_last_sent_time = None
         self.get_logger().warning(
             f'{reason}. ROS control released; PX4/RC/failsafe owns control. '
             'A new station ARM command is required to re-enter Offboard.'
         )
 
     def request_land(self):
-        """Ask PX4 to enter its native AUTO_LAND mode once."""
+        """Start a locally controlled Offboard descent on this vehicle."""
         if self.vehicle_status.arming_state != VehicleStatus.ARMING_STATE_ARMED:
             self.get_logger().warning('LAND ignored: vehicle is not armed.')
+            return False
+        if self.state == DroneState.LANDING:
+            self.get_logger().info('LAND is already active on this vehicle.')
+            return True
+        if (
+            self.state != DroneState.TAKEOFF
+            or self.vehicle_status.nav_state
+            != VehicleStatus.NAVIGATION_STATE_OFFBOARD
+        ):
+            self.get_logger().error(
+                'LAND rejected: companion Offboard control is not active.'
+            )
+            return False
+        safety_violation = self.safety_violation_reason()
+        if safety_violation is not None:
+            self.get_logger().error(f'LAND rejected: {safety_violation}.')
+            return False
+        if not self.land_detection_is_fresh():
+            self.get_logger().error(
+                'LAND rejected: PX4 landing-detector telemetry is missing/stale.'
+            )
             return False
         if self.mission_active:
             self.abort_mission('LAND requested')
@@ -543,12 +576,133 @@ class SingleControlNode(Node):
         self.manual_control = False
         self.velocity_goal = [0.0, 0.0, 0.0]
         self.offboard_setpoint_counter = 0
-        self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
+        self.landing_started_time = self.get_clock().now()
+        self.landing_speed_stage = None
+        self.landing_disarm_last_sent_time = None
         self.state = DroneState.LANDING
         self.get_logger().warning(
-            'LAND requested; waiting briefly for PX4 AUTO_LAND confirmation.'
+            'LAND requested: starting controlled Offboard descent. PX4 NED '
+            f'down speed is {self.landing_fast_speed:.2f} m/s above '
+            f'{self.landing_fast_height:.2f} m and '
+            f'{self.landing_slow_speed:.2f} m/s below it.'
         )
         return True
+
+    def land_detection_is_fresh(self):
+        """Return whether PX4's received landing state is recent enough to trust."""
+        if self.last_land_detected_time is None:
+            return False
+        age = (
+            self.get_clock().now() - self.last_land_detected_time
+        ).nanoseconds / 1e9
+        return 0.0 <= age <= self.telemetry_timeout
+
+    def landing_height_above_ground(self):
+        """Prefer PX4 terrain distance, then fall back to calibrated launch Z."""
+        distance = self.distance_to_ground
+        if distance is not None and math.isfinite(distance) and distance >= 0.0:
+            return distance
+
+        current_height = float(self.navigation.current_pos[2])
+        launch_height = float(self.initial_world_position[2])
+        if not all(
+            math.isfinite(value) for value in (current_height, launch_height)
+        ):
+            return None
+        return max(0.0, current_height - launch_height)
+
+    def run_landing_control(self, control_timing_ok=True):
+        """Descend in Offboard and disarm only after PX4 reports landed."""
+        if self.vehicle_status.arming_state != VehicleStatus.ARMING_STATE_ARMED:
+            self.get_logger().info('Landed and disarmed. Returning to IDLE.')
+            self.state = DroneState.IDLE
+            self.offboard_setpoint_counter = 0
+            self.landing_started_time = None
+            self.landing_speed_stage = None
+            self.landing_disarm_last_sent_time = None
+            return
+
+        # If PX4 itself enters AUTO_LAND (for example due to a failsafe), stop
+        # sending Offboard traffic and let the autopilot own the descent.
+        if (
+            self.vehicle_status.nav_state
+            == VehicleStatus.NAVIGATION_STATE_AUTO_LAND
+        ):
+            return
+        if (
+            self.vehicle_status.nav_state
+            != VehicleStatus.NAVIGATION_STATE_OFFBOARD
+        ):
+            self.release_to_pilot('PX4 entered another mode during LAND')
+            return
+        if not self.land_detection_is_fresh():
+            self.release_to_pilot(
+                'PX4 landing-detector telemetry became missing/stale during LAND'
+            )
+            return
+
+        now = self.get_clock().now()
+        if self.landing_started_time is None:
+            self.landing_started_time = now
+        elapsed = (now - self.landing_started_time).nanoseconds / 1e9
+        if elapsed > self.landing_timeout:
+            self.release_to_pilot('Controlled LAND timed out')
+            return
+
+        if self.vehicle_land_detected.landed:
+            self.velocity_goal = [0.0, 0.0, 0.0]
+            self.publish_offboard_control_heartbeat_signal()
+            self.publish_position_setpoint(force_zero=True)
+
+            should_send_disarm = self.landing_disarm_last_sent_time is None
+            if self.landing_disarm_last_sent_time is not None:
+                since_disarm = (
+                    now - self.landing_disarm_last_sent_time
+                ).nanoseconds / 1e9
+                should_send_disarm = since_disarm >= 1.0
+            if should_send_disarm:
+                self.disarm()
+                self.landing_disarm_last_sent_time = now
+                self.get_logger().warning(
+                    'PX4 landing detector confirms touchdown; safe disarm sent.'
+                )
+            return
+
+        if not control_timing_ok:
+            self.velocity_goal = [0.0, 0.0, 0.0]
+            self.publish_offboard_control_heartbeat_signal()
+            self.publish_position_setpoint(force_zero=True)
+            return
+
+        height = self.landing_height_above_ground()
+        if height is None:
+            self.release_to_pilot(
+                'Controlled LAND has no finite height-above-ground estimate'
+            )
+            return
+
+        # Latch the slow phase so noisy terrain estimates cannot accelerate the
+        # vehicle again near the ground.
+        if (
+            self.landing_speed_stage == 'slow'
+            or height <= self.landing_fast_height
+        ):
+            stage = 'slow'
+            down_speed = self.landing_slow_speed
+        else:
+            stage = 'fast'
+            down_speed = self.landing_fast_speed
+        if stage != self.landing_speed_stage:
+            self.landing_speed_stage = stage
+            self.get_logger().warning(
+                f'Controlled LAND {stage} phase: height={height:.2f} m, '
+                f'PX4 NED down={down_speed:.2f} m/s.'
+            )
+
+        # PX4 velocity setpoints are NED: positive Z velocity means down.
+        self.velocity_goal = [0.0, 0.0, down_speed]
+        self.publish_offboard_control_heartbeat_signal()
+        self.publish_position_setpoint()
 
     def request_safe_disarm(self):
         """Disarm only when PX4's landing detector confirms the vehicle is down."""
@@ -917,6 +1071,13 @@ class SingleControlNode(Node):
         self.latest_px4_position_enu = px4_position_enu
         world_position = self.world_position_from_px4_enu(px4_position_enu)
         self.last_local_position_time = self.get_clock().now()
+        if getattr(local_position, 'dist_bottom_valid', False):
+            distance = float(local_position.dist_bottom)
+            self.distance_to_ground = (
+                distance if math.isfinite(distance) and distance >= 0.0 else None
+            )
+        else:
+            self.distance_to_ground = None
 
         transform = TransformStamped()
         transform.header.stamp = self.get_clock().now().to_msg()

@@ -8,17 +8,24 @@ command_topic_name: 'command'
 leader_command_topic_name: '/swarm/command'
 broadcast_interval: 1.5
 status_interval: 1
-goal_tolerance: 0.5
+goal_tolerance: 0.1
 real_world:
   # ENU position assigned on each ARM request while the drone is disarmed.
   initial_positions:
     '1': [0.0, 0.0, 0.0]
     '2': [0.0, 5.0, 0.0]
+    '3': [5.0, 0.0, 0.0]
 control:
   telemetry_timeout: 2.5
   takeoff_height: 3.0
   max_horizontal_speed: 1.0
   max_vertical_speed: 0.7
+  # Controlled Offboard landing profile. PX4 velocity is NED, so both speeds
+  # are positive downward magnitudes. The slow phase latches once entered.
+  landing_fast_height: 2.0
+  landing_fast_speed: 0.7
+  landing_slow_speed: 0.3
+  landing_timeout: 45.0
   # Limits applied to outgoing PX4 velocity setpoints. They prevent an old
   # feedback sample from causing an instantaneous full-speed reversal.
   max_horizontal_acceleration: 1.0
@@ -42,7 +49,7 @@ mission:
     - [2.0, 2.0, 4.0]
     - [0.0, 2.0, 4.0]
     - [0.0, 0.0, 4.0]
-  goal_tolerance: 0.4
+  goal_tolerance: 0.1
   waypoint_dwell: 1.0
   timeout: 180.0
   max_waypoints: 100
@@ -53,7 +60,7 @@ navigation:
   time_horizon: 3.0
   radius: 0.5
   max_speed: 1.0
-  good_dist_to_goal: 0.3
+  good_dist_to_goal: 0.1
   # Freshness uses local callback/observation time, so peer clock offsets do
   # not make healthy data appear stale.
   feedback_timeout: 0.3

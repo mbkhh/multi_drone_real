@@ -3,7 +3,12 @@ import math
 from types import SimpleNamespace
 
 from builtin_interfaces.msg import Time
-from px4_msgs.msg import FailsafeFlags, VehicleCommand, VehicleStatus
+from px4_msgs.msg import (
+    FailsafeFlags,
+    VehicleCommand,
+    VehicleLandDetected,
+    VehicleStatus,
+)
 from std_msgs.msg import String
 
 from swarm_single.communication import Communication
@@ -555,33 +560,139 @@ def test_rejected_leader_land_is_not_relayed_to_followers():
     assert communication.command_publisher.last_message is None
 
 
-def test_request_land_starts_native_px4_land_and_reports_acceptance():
+def make_controlled_landing_stub(height=3.0, landed=False):
+    clock = DummyClock()
     vehicle_status = VehicleStatus()
     vehicle_status.arming_state = VehicleStatus.ARMING_STATE_ARMED
+    vehicle_status.nav_state = VehicleStatus.NAVIGATION_STATE_OFFBOARD
+    land_detected = VehicleLandDetected()
+    land_detected.landed = landed
     controller = SimpleNamespace(
         vehicle_status=vehicle_status,
+        vehicle_land_detected=land_detected,
+        last_land_detected_time=clock.now(),
+        telemetry_timeout=2.5,
         mission_active=False,
         motion_enabled=True,
         manual_control=True,
         velocity_goal=[0.2, -0.1, 0.3],
         offboard_setpoint_counter=15,
         state='TAKEOFF',
+        landing_fast_height=2.0,
+        landing_fast_speed=0.7,
+        landing_slow_speed=0.3,
+        landing_timeout=45.0,
+        landing_started_time=None,
+        landing_speed_stage=None,
+        landing_disarm_last_sent_time=None,
+        distance_to_ground=height,
+        initial_world_position=[0.0, 0.0, 0.0],
+        navigation=SimpleNamespace(current_pos=[0.0, 0.0, height]),
         published_commands=[],
+        heartbeat_count=0,
+        setpoint_force_zero_values=[],
+        disarm_count=0,
+        released_reason=None,
+        get_clock=lambda: clock,
         get_logger=lambda: DummyLogger(),
         publish_vehicle_command=lambda command: (
             controller.published_commands.append(command)
         ),
+        safety_violation_reason=lambda: None,
     )
+    controller.land_detection_is_fresh = lambda: (
+        SingleControlNode.land_detection_is_fresh(controller)
+    )
+    controller.landing_height_above_ground = lambda: (
+        SingleControlNode.landing_height_above_ground(controller)
+    )
+    controller.publish_offboard_control_heartbeat_signal = lambda: setattr(
+        controller, 'heartbeat_count', controller.heartbeat_count + 1
+    )
+    controller.publish_position_setpoint = lambda force_zero=False: (
+        controller.setpoint_force_zero_values.append(force_zero)
+    )
+    controller.disarm = lambda: setattr(
+        controller, 'disarm_count', controller.disarm_count + 1
+    )
+    controller.release_to_pilot = lambda reason: setattr(
+        controller, 'released_reason', reason
+    )
+    return controller, clock
+
+
+def test_request_land_starts_controlled_offboard_descent():
+    controller, _clock = make_controlled_landing_stub()
 
     assert SingleControlNode.request_land(controller)
-    assert controller.published_commands == [
-        VehicleCommand.VEHICLE_CMD_NAV_LAND
-    ]
+    assert controller.published_commands == []
     assert controller.state == 'LANDING'
     assert not controller.motion_enabled
     assert not controller.manual_control
     assert controller.velocity_goal == [0.0, 0.0, 0.0]
     assert controller.offboard_setpoint_counter == 0
+    assert controller.landing_started_time is not None
+
+
+def test_land_rejects_missing_landing_detector_telemetry():
+    controller, _clock = make_controlled_landing_stub()
+    controller.last_land_detected_time = None
+
+    assert not SingleControlNode.request_land(controller)
+    assert controller.state == 'TAKEOFF'
+
+
+def test_controlled_land_uses_positive_ned_down_and_latches_slow_phase():
+    controller, _clock = make_controlled_landing_stub(height=3.0)
+    assert SingleControlNode.request_land(controller)
+
+    SingleControlNode.run_landing_control(controller)
+    assert controller.velocity_goal == [0.0, 0.0, 0.7]
+    assert controller.landing_speed_stage == 'fast'
+
+    controller.distance_to_ground = 1.9
+    SingleControlNode.run_landing_control(controller)
+    assert controller.velocity_goal == [0.0, 0.0, 0.3]
+    assert controller.landing_speed_stage == 'slow'
+
+    # A noisy height estimate must not accelerate descent again near ground.
+    controller.distance_to_ground = 2.2
+    SingleControlNode.run_landing_control(controller)
+    assert controller.velocity_goal == [0.0, 0.0, 0.3]
+    assert controller.landing_speed_stage == 'slow'
+
+
+def test_controlled_land_disarms_only_after_fresh_px4_touchdown():
+    controller, clock = make_controlled_landing_stub(height=0.1, landed=False)
+    assert SingleControlNode.request_land(controller)
+
+    SingleControlNode.run_landing_control(controller)
+    assert controller.disarm_count == 0
+
+    controller.vehicle_land_detected.landed = True
+    SingleControlNode.run_landing_control(controller)
+    assert controller.velocity_goal == [0.0, 0.0, 0.0]
+    assert controller.setpoint_force_zero_values[-1]
+    assert controller.disarm_count == 1
+
+    # Do not flood PX4, but retry a possibly dropped safe-disarm command.
+    SingleControlNode.run_landing_control(controller)
+    assert controller.disarm_count == 1
+    clock.advance(1.1)
+    controller.last_land_detected_time = clock.now()
+    SingleControlNode.run_landing_control(controller)
+    assert controller.disarm_count == 2
+
+
+def test_controlled_land_stops_on_timeout():
+    controller, clock = make_controlled_landing_stub(height=3.0)
+    assert SingleControlNode.request_land(controller)
+    clock.advance(45.1)
+    controller.last_land_detected_time = clock.now()
+
+    SingleControlNode.run_landing_control(controller)
+
+    assert controller.released_reason == 'Controlled LAND timed out'
 
 
 def make_mission_stub():
