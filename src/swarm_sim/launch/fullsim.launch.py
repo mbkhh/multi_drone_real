@@ -22,6 +22,20 @@ def generate_spiral_position(instance_id: int, spawn_spacing: int):
     elif side_index == 3: x, y= pos_on_side - (k - 1), -k
     return x * spawn_spacing, y * spawn_spacing
 
+def get_configured_start_position(instance_id: int):
+    """Return this drone's configured ENU [x, y, z] start position."""
+    key = f'swarm_single.real_world.initial_positions.{instance_id}'
+    position = get_config(key)
+    if not isinstance(position, (list, tuple)) or len(position) != 3:
+        raise ValueError(f"Configuration '{key}' must contain ENU [x, y, z].")
+    try:
+        position = tuple(float(value) for value in position)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"Configuration '{key}' must be numeric.") from error
+    if not all(math.isfinite(value) for value in position):
+        raise ValueError(f"Configuration '{key}' must contain finite values.")
+    return position
+
 def generate_launch_description():
     # --- Define crucial paths and variables ---
     px4_autopilot_dir = os.path.expanduser(get_config('swarm_sim.path_parameters.px4_path'))
@@ -84,13 +98,13 @@ def generate_launch_description():
     # --- Drone-specific nodes loop ---
     for i in range(drone_count):
         instance_id = i + 1
-        x, y = generate_spiral_position(instance_id, spawn_spacing)
+        x, y, z = get_configured_start_position(instance_id)
 
         px4_env = os.environ.copy()
         px4_env['PX4_SYS_ID'] = str(instance_id)
         px4_env['PX4_SYS_AUTOSTART'] = frame_id
         px4_env['PX4_GZ_MODEL'] = px4_model
-        px4_env['PX4_GZ_MODEL_POSE'] = f"{str(x)},{str(y)},0.1,0,0,0.9"
+        px4_env['PX4_GZ_MODEL_POSE'] = f"{x},{y},{z + 0.1},0,0,0.0"
         px4_env['PX4_UXRCE_DDS_NS'] = f"uav_{str(instance_id)}"
 
         if not instance_id == 1:
@@ -145,10 +159,13 @@ def generate_launch_description():
                 # estimator has its own local origin, so anchor it at the
                 # matching Gazebo spawn point to create one shared ENU world.
                 'use_configured_world_origin': True,
-                'initial_world_position': [float(x), float(y), 0.0],
+                'initial_world_position': [x, y, z],
                 # SITL has no physical RC receiver. Real launches omit this
                 # override and retain the controller's safe default (True).
                 'require_manual_control_signal': False,
+                # Explicit SITL-only bypass. The controller default is False,
+                # so real launches keep their safety checks unchanged.
+                'simulation_disable_safety_checks': True,
             }],
             output='log' # MODIFIED: Suppress output
         )

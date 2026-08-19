@@ -291,6 +291,21 @@ def test_safe_real_flight_telemetry_allows_offboard_arming_sequence():
     assert controller.velocity_goal == [0.0, 0.0, 0.0]
 
 
+def test_explicit_simulation_mode_bypasses_companion_safety_gates():
+    controller = make_offboard_safety_stub()
+    controller.simulation_disable_safety_checks = True
+    controller.last_vehicle_status_time = None
+    controller.vehicle_status.failsafe = True
+    controller.failsafe_flags.manual_control_signal_lost = True
+
+    assert SingleControlNode.safety_violation_reason(
+        controller,
+        require_preflight=True,
+    ) is None
+    assert SingleControlNode.request_offboard_control(controller)
+    assert controller.state == 'ARMING'
+
+
 def make_arm_command_parent(accepted=True):
     parent = SimpleNamespace(
         arm_requests=0,

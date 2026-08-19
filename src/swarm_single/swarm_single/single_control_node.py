@@ -48,6 +48,16 @@ class SingleControlNode(Node):
             self.get_parameter('use_configured_world_origin')
             .get_parameter_value().bool_value
         )
+        self.declare_parameter('simulation_disable_safety_checks', False)
+        self.simulation_disable_safety_checks = (
+            self.get_parameter('simulation_disable_safety_checks')
+            .get_parameter_value().bool_value
+        )
+        if self.simulation_disable_safety_checks:
+            self.get_logger().warning(
+                'ALL companion safety gates are DISABLED by launch parameter. '
+                'This mode is for SITL only.'
+            )
         self.declare_parameter('require_manual_control_signal', True)
         self.require_manual_control_signal = (
             self.get_parameter('require_manual_control_signal')
@@ -742,13 +752,15 @@ class SingleControlNode(Node):
 
     def safety_violation_reason(self, require_preflight=False):
         """Return the first PX4/RC condition that makes Offboard unsafe."""
+        if getattr(self, 'simulation_disable_safety_checks', False):
+            return None
         if not self.telemetry_is_fresh():
             return (
                 'PX4 vehicle status, local position, or failsafe telemetry '
                 'is missing/stale'
             )
         #if require_preflight and not self.vehicle_status.pre_flight_checks_pass:
-        #   return 'PX4 preflight checks have not passed'
+        #    return 'PX4 preflight checks have not passed'
         if self.vehicle_status.failsafe:
             return 'PX4 reports an active failsafe'
         if (
