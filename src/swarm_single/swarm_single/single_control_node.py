@@ -189,6 +189,16 @@ class SingleControlNode(Node):
         self.velocity_debug_interval = self.config_float(
             'swarm_single.control.velocity_debug_interval', 0.5
         )
+        self.goal_tf_publish_interval = self.config_float(
+            'swarm_single.position_goal_timer', 0.1
+        )
+        if (
+            not math.isfinite(self.goal_tf_publish_interval)
+            or self.goal_tf_publish_interval <= 0.0
+        ):
+            raise ValueError(
+                'position_goal_timer must be a finite, positive interval.'
+            )
         self.max_goal_distance = self.config_float(
             'swarm_single.control.max_goal_distance', 10.0
         )
@@ -279,6 +289,10 @@ class SingleControlNode(Node):
 
         # Timer runs at 20Hz
         self.timer = self.create_timer(0.05, self.control_loop_callback)
+        self.goal_tf_timer = self.create_timer(
+            self.goal_tf_publish_interval,
+            self.publish_active_goal_transform,
+        )
         self.velocity_debug_timer = self.create_timer(
             self.velocity_debug_interval,
             self.velocity_setpoint_debug_callback,
@@ -370,11 +384,6 @@ class SingleControlNode(Node):
         """Run the explicit, RC-preemptible Offboard state machine at 20 Hz."""
 
         control_timing_ok = self.update_control_loop_timing()
-
-        # Goals can change and a formation goal can be relative to a moving
-        # leader, so this must be a live TF rather than an immutable /tf_static
-        # sample. Republishing also lets RViz/listeners started later see it.
-        self.publish_active_goal_transform()
 
         # PX4 may auto-disarm while waiting on the ground (for example after
         # COM_DISARM_PRFLT expires). Do not leave the companion controller

@@ -65,6 +65,14 @@ class DummyBroadcaster:
         self.last_transform = transform
 
 
+class DummyFormation:
+    def __init__(self):
+        self.refresh_count = 0
+
+    def refresh_pattern(self):
+        self.refresh_count += 1
+
+
 def make_controller_stub():
     clock = DummyClock()
     controller = SimpleNamespace(
@@ -94,6 +102,29 @@ def make_controller_stub():
         SingleControlNode.limit_velocity_change(controller, desired, now)
     )
     return controller
+
+
+def test_referendum_keeps_role_logic_without_leader_px4_subscription():
+    formation = DummyFormation()
+    parent = SimpleNamespace(
+        frame_id='2',
+        leader_id=2,
+        is_leader=True,
+        last_seen_neighbors={1: DummyNow()},
+        formation=formation,
+        get_logger=lambda: DummyLogger(),
+    )
+    communication = object.__new__(Communication)
+    communication.parent_node = parent
+    role_changes = []
+    communication.become_leader = lambda: role_changes.append('leader')
+    communication.step_down_as_leader = lambda: role_changes.append('follower')
+
+    Communication.referendum_conducting(communication)
+
+    assert parent.leader_id == 1
+    assert role_changes == ['follower']
+    assert formation.refresh_count == 1
 
 
 def test_setpoint_is_clamped_and_unused_fields_are_nan():

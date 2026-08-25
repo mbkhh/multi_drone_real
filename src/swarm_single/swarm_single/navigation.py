@@ -17,7 +17,6 @@ class navigation:
         self.parent_node = parent_node
 
         self.local_velocity = [0.0, 0.0, 0.0]
-        self.leader_velocity = [0.0, 0.0, 0.0]
         self.current_pos = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
 
         # Configuration is immutable while a node is running. Loading and

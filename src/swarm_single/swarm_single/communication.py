@@ -3,10 +3,10 @@ from rclpy.node import Node
 from std_msgs.msg import Header
 from std_msgs.msg import String
 from swarm_msgs.msg import Status, ManualControl, FormationCommand
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from swarm_msgs.action import Fly
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
-from px4_msgs.msg import VehicleLocalPosition, VehicleStatus
+from px4_msgs.msg import VehicleStatus
 from swarm_config.config_utils import get_config
 import math
 import json
@@ -44,14 +44,6 @@ class Communication():
             depth=int(int(get_config('swarm_sim.drone_count'))*2)
         )
 
-        self.qos_profile = QoSProfile(
-            reliability=ReliabilityPolicy.BEST_EFFORT,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
-            history=HistoryPolicy.KEEP_LAST,
-            depth=1
-        )
-
-        self.leader_velocity_subscriber = None
         self.formation_subscriber = self.parent_node.create_subscription(FormationCommand, self.formation_topic_name, self.formation_command_callback, 10)
         self.formation_publisher = None
 
@@ -170,10 +162,6 @@ class Communication():
 
             self.parent_node.get_logger().info(f"Topology update: This is drone {self.parent_node.frame_id} and leader is {leader_id}")
 
-            if self.leader_velocity_subscriber != None:
-                self.parent_node.destroy_subscription(self.leader_velocity_subscriber)
-            self.leader_velocity_subscriber =self.parent_node.create_subscription(
-            VehicleLocalPosition, f"/uav_{leader_id}/fmu/out/vehicle_local_position_v1", self.vehicle_local_position_callback, self.qos_profile)
             if leader_id == int(self.parent_node.frame_id) and not self.parent_node.is_leader:
                 self.become_leader()
             elif leader_id != int(self.parent_node.frame_id) and self.parent_node.is_leader:
@@ -425,13 +413,6 @@ class Communication():
         msg = String()
         msg.data = json.dumps(command)
         self.command_publisher.publish(msg)
-
-    def vehicle_local_position_callback(self, vehicle_local_position):
-        self.parent_node.navigation.leader_velocity = [
-            vehicle_local_position.vx,
-            vehicle_local_position.vy,
-            vehicle_local_position.vz,
-        ]
 
     def formation_leader_callback(self, msg: FormationCommand):
         self.parent_node.formation.set_pattern(

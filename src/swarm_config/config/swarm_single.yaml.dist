@@ -1,4 +1,6 @@
 goal_frame_name: 'goal'
+# Observer/RViz goal-TF keepalive interval. Flight control remains at 20 Hz,
+# and a changed goal is broadcast immediately instead of waiting for this timer.
 position_goal_timer: 0.1
 liveness_topic_name: 'live'
 manual_control_topic_name: 'manual_controller'
