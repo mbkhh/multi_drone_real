@@ -11,13 +11,13 @@ setup(
             'share/ament_index/resource_index/packages',
             ['resource/' + package_name],
         ),
-        ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name, ['package.xml', 'README.md']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='mahdi-roohi',
     maintainer_email='99536958+mrwhy224@users.noreply.github.com',
-    description='Rate-limited console logger for important swarm and PX4 topics.',
+    description='Low-overhead swarm, Raspberry Pi, and Wi-Fi health logger.',
     license='Apache License 2.0',
     entry_points={
         'console_scripts': [
