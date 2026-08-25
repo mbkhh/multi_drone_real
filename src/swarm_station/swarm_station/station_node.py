@@ -191,14 +191,6 @@ class StationNode(Node):
 				"reports armed=True, offboard=True."
 			)
 			return
-		expected_drones = int(get_config('swarm_sim.drone_count'))
-		connected_drones = len(set(self.last_status.swarm_members))
-		if connected_drones < expected_drones:
-			self.get_logger().error(
-				f"TAKEOFF not sent: {connected_drones}/{expected_drones} "
-				"configured drones are connected."
-			)
-			return
 		height = get_config('swarm_single.control.takeoff_height')
 		height = 3.0 if height is None else float(height)
 		msg = String()
