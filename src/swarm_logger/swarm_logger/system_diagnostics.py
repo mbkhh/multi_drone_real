@@ -92,20 +92,428 @@ def parse_iw_link(output: str) -> Dict[str, object]:
     return stats
 
 
-def parse_iw_station_dump(output: str) -> Dict[str, int]:
-    """Parse optional driver retry/failure counters from ``iw station dump``."""
+def parse_iw_station_dump(output: str) -> Dict[str, object]:
+    """Parse counters and link gauges from ``iw station dump``."""
     field_patterns = {
-        'tx_retries': r'^\s*tx retries:\s*(\d+)',
-        'tx_failed': r'^\s*tx failed:\s*(\d+)',
-        'rx_drop_misc': r'^\s*rx drop misc:\s*(\d+)',
-        'beacon_loss': r'^\s*beacon loss:\s*(\d+)',
+        'inactive_time_ms': (r'^\s*inactive time:\s*(\d+)\s*ms', int),
+        'rx_bytes': (r'^\s*rx bytes:\s*(\d+)', int),
+        'rx_packets': (r'^\s*rx packets:\s*(\d+)', int),
+        'tx_bytes': (r'^\s*tx bytes:\s*(\d+)', int),
+        'tx_packets': (r'^\s*tx packets:\s*(\d+)', int),
+        'tx_retries': (r'^\s*tx retries:\s*(\d+)', int),
+        'tx_failed': (r'^\s*tx failed:\s*(\d+)', int),
+        'rx_drop_misc': (r'^\s*rx drop misc:\s*(\d+)', int),
+        'beacon_loss': (r'^\s*beacon loss:\s*(\d+)', int),
+        'beacon_rx': (r'^\s*beacon rx:\s*(\d+)', int),
+        'connected_time_s': (r'^\s*connected time:\s*(\d+)\s*seconds', int),
+        'signal_avg_dbm': (
+            r'^\s*signal avg:\s*(-?\d+(?:\.\d+)?)\s*dBm',
+            float,
+        ),
+        'expected_throughput_mbps': (
+            r'^\s*expected throughput:\s*([0-9.]+)\s*Mbps',
+            float,
+        ),
+        'tx_duration_us': (r'^\s*tx duration:\s*(\d+)\s*us', int),
+        'rx_duration_us': (r'^\s*rx duration:\s*(\d+)\s*us', int),
     }
     parsed = {}
-    for name, pattern in field_patterns.items():
+    for name, (pattern, converter) in field_patterns.items():
         match = re.search(pattern, output or '', re.MULTILINE)
         if match:
-            parsed[name] = int(match.group(1))
+            parsed[name] = converter(match.group(1))
     return parsed
+
+
+def parse_iw_survey_dump(output: str) -> Dict[str, object]:
+    """Parse the active-channel block from ``iw ... survey dump``."""
+    blocks = re.split(r'(?=^\s*frequency:)', output or '', flags=re.MULTILINE)
+    selected = None
+    for block in blocks:
+        if '[in use]' in block:
+            selected = block
+            break
+    if selected is None:
+        return {}
+
+    result: Dict[str, object] = {}
+    patterns = {
+        'frequency_mhz': r'^\s*frequency:\s*(\d+)\s*MHz',
+        'noise_dbm': r'^\s*noise:\s*(-?\d+)\s*dBm',
+        'active_time_ms': r'^\s*channel active time:\s*(\d+)\s*ms',
+        'busy_time_ms': r'^\s*channel busy time:\s*(\d+)\s*ms',
+        'receive_time_ms': r'^\s*channel receive time:\s*(\d+)\s*ms',
+        'transmit_time_ms': r'^\s*channel transmit time:\s*(\d+)\s*ms',
+        'bss_receive_time_ms': (
+            r'^\s*channel BSS receive time:\s*(\d+)\s*ms'
+        ),
+    }
+    for name, pattern in patterns.items():
+        match = re.search(pattern, selected, re.MULTILINE)
+        if match:
+            result[name] = int(match.group(1))
+    return result
+
+
+def wireless_ratios(delta: Dict[str, int]) -> Dict[str, float]:
+    """Calculate accurately named Wi-Fi retry/failure ratios."""
+    packets = int(delta.get('tx_packets', 0))
+    if packets <= 0:
+        return {}
+    return {
+        'retries_per_tx_packet': delta.get('tx_retries', 0) / packets,
+        'failed_per_1000_tx_packets': (
+            1000.0 * delta.get('tx_failed', 0) / packets
+        ),
+    }
+
+
+def survey_percentages(delta: Dict[str, int]) -> Dict[str, float]:
+    """Calculate active-channel airtime percentages from survey deltas."""
+    active = int(delta.get('active_time_ms', 0))
+    if active <= 0:
+        return {}
+    result = {}
+    for source, destination in (
+        ('busy_time_ms', 'busy_percent'),
+        ('receive_time_ms', 'receive_percent'),
+        ('transmit_time_ms', 'transmit_percent'),
+        ('bss_receive_time_ms', 'bss_receive_percent'),
+    ):
+        if source in delta:
+            result[destination] = 100.0 * delta[source] / active
+    return result
+
+
+def parse_proc_net_snmp(output: str) -> Dict[str, int]:
+    """Parse paired protocol header/value lines from ``/proc/net/snmp``."""
+    lines = [line.strip() for line in (output or '').splitlines() if line.strip()]
+    parsed = {}
+    index = 0
+    while index + 1 < len(lines):
+        header = lines[index].split()
+        values = lines[index + 1].split()
+        index += 2
+        if not header or not values or header[0] != values[0]:
+            continue
+        protocol = header[0].rstrip(':')
+        for name, value in zip(header[1:], values[1:]):
+            try:
+                parsed[f'{protocol}.{name}'] = int(value)
+            except ValueError:
+                continue
+    return parsed
+
+
+def read_proc_net_snmp(path: str = '/proc/net/snmp') -> Dict[str, int]:
+    """Read kernel IP/UDP error and datagram counters."""
+    try:
+        return parse_proc_net_snmp(Path(path).read_text(encoding='ascii'))
+    except OSError:
+        return {}
+
+
+def parse_softnet_stat(output: str) -> Dict[str, int]:
+    """Sum Linux per-CPU softnet processed/drop/time-squeeze counters."""
+    result = {'processed': 0, 'dropped': 0, 'time_squeeze': 0}
+    valid = False
+    for line in (output or '').splitlines():
+        fields = line.split()
+        if len(fields) < 3:
+            continue
+        try:
+            result['processed'] += int(fields[0], 16)
+            result['dropped'] += int(fields[1], 16)
+            result['time_squeeze'] += int(fields[2], 16)
+            valid = True
+        except ValueError:
+            continue
+    return result if valid else {}
+
+
+def read_softnet_stat(path: str = '/proc/net/softnet_stat') -> Dict[str, int]:
+    """Read aggregate kernel softnet counters."""
+    try:
+        return parse_softnet_stat(Path(path).read_text(encoding='ascii'))
+    except OSError:
+        return {}
+
+
+def parse_pressure(output: str) -> Dict[str, float]:
+    """Parse Linux PSI ``some`` and ``full`` averages/totals."""
+    result = {}
+    for line in (output or '').splitlines():
+        fields = line.split()
+        if not fields:
+            continue
+        category = fields[0]
+        for token in fields[1:]:
+            name, separator, value = token.partition('=')
+            if not separator:
+                continue
+            try:
+                result[f'{category}_{name}'] = float(value)
+            except ValueError:
+                continue
+    return result
+
+
+def read_pressure(resource: str, root: str = '/proc/pressure') -> Dict[str, float]:
+    """Read a Linux CPU, memory, or IO pressure file."""
+    if resource not in ('cpu', 'memory', 'io'):
+        return {}
+    try:
+        return parse_pressure(
+            Path(root, resource).read_text(encoding='ascii')
+        )
+    except OSError:
+        return {}
+
+
+def read_cpu_times_per_core(path: str = '/proc/stat') -> Dict[str, Tuple[int, int]]:
+    """Return idle/total ticks for the aggregate CPU and each core."""
+    result = {}
+    try:
+        lines = Path(path).read_text(encoding='ascii').splitlines()
+    except OSError:
+        return result
+    for line in lines:
+        fields = line.split()
+        if not fields or not re.fullmatch(r'cpu\d*', fields[0]):
+            continue
+        try:
+            values = [int(value) for value in fields[1:]]
+        except ValueError:
+            continue
+        if len(values) < 4:
+            continue
+        idle = values[3] + (values[4] if len(values) > 4 else 0)
+        result[fields[0]] = (idle, sum(values))
+    return result
+
+
+def cpu_usage_per_core(
+    previous: Dict[str, Tuple[int, int]],
+    current: Dict[str, Tuple[int, int]],
+) -> Dict[str, float]:
+    """Calculate CPU percentages for matching aggregate/core snapshots."""
+    result = {}
+    for name, current_times in current.items():
+        value = cpu_usage_percent(previous.get(name), current_times)
+        if value is not None:
+            result[name] = value
+    return result
+
+
+def parse_process_stat(output: str) -> Dict[str, object]:
+    """Parse selected fields from Linux ``/proc/PID/stat`` safely."""
+    text = (output or '').strip()
+    left = text.find('(')
+    right = text.rfind(')')
+    if left <= 0 or right <= left:
+        return {}
+    try:
+        pid = int(text[:left].strip())
+        tail = text[right + 1:].strip().split()
+        return {
+            'pid': pid,
+            'comm': text[left + 1:right],
+            'state': tail[0],
+            'ppid': int(tail[1]),
+            'cpu_ticks': int(tail[11]) + int(tail[12]),
+            'num_threads': int(tail[17]),
+            'start_ticks': int(tail[19]),
+            'rss_pages': int(tail[21]),
+            'processor': int(tail[36]) if len(tail) > 36 else None,
+        }
+    except (IndexError, ValueError):
+        return {}
+
+
+def read_process_metrics(pid: int, proc_root: str = '/proc') -> Dict[str, object]:
+    """Read bounded process CPU/state/RSS/scheduler diagnostics."""
+    root = Path(proc_root, str(int(pid)))
+    try:
+        result = parse_process_stat(
+            (root / 'stat').read_text(encoding='ascii')
+        )
+    except (OSError, ValueError):
+        return {}
+    if not result:
+        return {}
+
+    try:
+        result['cmdline'] = (
+            (root / 'cmdline')
+            .read_bytes()
+            .replace(b'\x00', b' ')
+            .decode('utf-8', errors='replace')
+            .strip()
+        )
+    except OSError:
+        result['cmdline'] = ''
+    try:
+        result['wchan'] = (root / 'wchan').read_text(encoding='ascii').strip()
+    except OSError:
+        result['wchan'] = 'unavailable'
+
+    try:
+        schedstat = (root / 'schedstat').read_text(encoding='ascii').split()
+        result['runtime_ns'] = int(schedstat[0])
+        result['runqueue_ns'] = int(schedstat[1])
+        result['timeslices'] = int(schedstat[2])
+    except (OSError, ValueError, IndexError):
+        result['runtime_ns'] = None
+        result['runqueue_ns'] = None
+        result['timeslices'] = None
+
+    try:
+        page_size = os.sysconf('SC_PAGE_SIZE')
+    except (ValueError, OSError):
+        page_size = 4096
+    result['rss_bytes'] = max(0, result['rss_pages']) * page_size
+
+    try:
+        for line in (root / 'status').read_text(encoding='ascii').splitlines():
+            if line.startswith('voluntary_ctxt_switches:'):
+                result['voluntary_context_switches'] = int(line.split()[1])
+            elif line.startswith('nonvoluntary_ctxt_switches:'):
+                result['nonvoluntary_context_switches'] = int(line.split()[1])
+    except (OSError, ValueError, IndexError):
+        pass
+    return result
+
+
+def find_processes(
+    required_tokens: Iterable[str],
+    proc_root: str = '/proc',
+) -> Tuple[Dict[str, object], ...]:
+    """Find processes whose command lines contain every requested token."""
+    tokens = tuple(str(token) for token in required_tokens if str(token))
+    matches = []
+    try:
+        entries = Path(proc_root).iterdir()
+    except OSError:
+        return ()
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        try:
+            cmdline = (
+                (entry / 'cmdline')
+                .read_bytes()
+                .replace(b'\x00', b' ')
+                .decode('utf-8', errors='replace')
+                .strip()
+            )
+        except OSError:
+            continue
+        if tokens and not all(token in cmdline for token in tokens):
+            continue
+        metrics = read_process_metrics(int(entry.name), proc_root)
+        if metrics:
+            matches.append(metrics)
+    return tuple(sorted(matches, key=lambda item: int(item['pid'])))
+
+
+def process_deltas(
+    previous: Optional[Dict[str, object]],
+    current: Dict[str, object],
+    elapsed: float,
+) -> Dict[str, float]:
+    """Calculate process CPU, run-queue, and context-switch deltas."""
+    if not previous or elapsed <= 0.0:
+        return {}
+    if previous.get('start_ticks') != current.get('start_ticks'):
+        return {'restarted': 1.0}
+    result = {}
+    try:
+        ticks_per_second = float(os.sysconf('SC_CLK_TCK'))
+        tick_delta = int(current['cpu_ticks']) - int(previous['cpu_ticks'])
+        if tick_delta >= 0:
+            result['cpu_percent_one_core'] = (
+                100.0 * tick_delta / ticks_per_second / elapsed
+            )
+    except (KeyError, TypeError, ValueError, OSError):
+        pass
+    for source, destination, scale in (
+        ('runqueue_ns', 'runqueue_percent_one_core', 1e9),
+        ('runtime_ns', 'runtime_percent_one_core', 1e9),
+        ('voluntary_context_switches', 'voluntary_context_switches', 1.0),
+        (
+            'nonvoluntary_context_switches',
+            'nonvoluntary_context_switches',
+            1.0,
+        ),
+    ):
+        before = previous.get(source)
+        after = current.get(source)
+        if before is None or after is None:
+            continue
+        delta = int(after) - int(before)
+        if delta < 0:
+            continue
+        if source.endswith('_ns'):
+            result[destination] = 100.0 * delta / scale / elapsed
+        else:
+            result[destination] = float(delta)
+    return result
+
+
+def read_boot_id(path: str = '/proc/sys/kernel/random/boot_id') -> str:
+    """Read the kernel boot identifier."""
+    try:
+        return Path(path).read_text(encoding='ascii').strip()
+    except OSError:
+        return 'unavailable'
+
+
+def read_uptime(path: str = '/proc/uptime') -> Optional[float]:
+    """Read monotonic uptime seconds from procfs."""
+    try:
+        return float(Path(path).read_text(encoding='ascii').split()[0])
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def read_interface_carrier(
+    interface: str,
+    sys_class_net: str = '/sys/class/net',
+) -> Optional[int]:
+    """Return kernel carrier state without invoking a subprocess."""
+    if not _INTERFACE_NAME.fullmatch(interface):
+        return None
+    try:
+        return int(
+            Path(sys_class_net, interface, 'carrier')
+            .read_text(encoding='ascii')
+            .strip()
+        )
+    except (OSError, ValueError):
+        return None
+
+
+def read_interface_metadata(
+    interface: str,
+    sys_class_net: str = '/sys/class/net',
+) -> Dict[str, object]:
+    """Read stable interface identity/driver metadata from sysfs."""
+    if not _INTERFACE_NAME.fullmatch(interface):
+        return {}
+    root = Path(sys_class_net, interface)
+    result = {}
+    for name in ('address', 'mtu', 'tx_queue_len'):
+        try:
+            result[name] = (root / name).read_text(encoding='ascii').strip()
+        except OSError:
+            continue
+    try:
+        result['driver'] = (
+            root / 'device' / 'driver'
+        ).resolve(strict=True).name
+    except OSError:
+        result['driver'] = 'unavailable'
+    return result
 
 
 def signal_label(signal_dbm: Optional[float]) -> str:
@@ -230,6 +638,54 @@ def counter_deltas(
             continue
         result[name] = max(0, current[name] - previous[name])
     return result
+
+
+def counter_delta_details(
+    previous: Optional[Dict[str, int]],
+    current: Optional[Dict[str, int]],
+    names: Optional[Iterable[str]] = None,
+) -> Tuple[Dict[str, int], Tuple[str, ...]]:
+    """Return deltas plus names whose cumulative counter moved backwards."""
+    if previous is None or current is None:
+        return {}, ()
+    deltas = {}
+    resets = []
+    for name in names or current.keys():
+        if name not in previous or name not in current:
+            continue
+        before = int(previous[name])
+        after = int(current[name])
+        if after < before:
+            resets.append(name)
+            continue
+        deltas[name] = after - before
+    return deltas, tuple(sorted(resets))
+
+
+def parse_sockstat(output: str) -> Dict[str, int]:
+    """Parse socket allocation/memory counters from ``/proc/net/sockstat``."""
+    result = {}
+    for line in (output or '').splitlines():
+        protocol, separator, remainder = line.partition(':')
+        if not separator:
+            continue
+        fields = remainder.split()
+        for index in range(0, len(fields) - 1, 2):
+            try:
+                result[f'{protocol.strip()}.{fields[index]}'] = int(
+                    fields[index + 1]
+                )
+            except ValueError:
+                continue
+    return result
+
+
+def read_sockstat(path: str = '/proc/net/sockstat') -> Dict[str, int]:
+    """Read system socket allocation and UDP memory use."""
+    try:
+        return parse_sockstat(Path(path).read_text(encoding='ascii'))
+    except OSError:
+        return {}
 
 
 def read_interface_state(

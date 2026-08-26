@@ -15,28 +15,40 @@ ros2 run swarm_single control_node --ros-args \
 # Diagnostic logger on drone 1
 ros2 run swarm_logger logger --ros-args \
   -p drone_count:=3 \
+  -p local_drone_id:=1 \
   -p drone_ids:="[1]" \
   -p monitor_vehicle_topics:=true \
+  -p monitor_tf:=true \
+  -p monitor_wifi_events:=true \
   -p print_interval:=5.0 \
   -p wifi_interface:=wlan0 \
-  -r __node:=swarm_logger_d1
+  -r __node:=swarm_logger_d1 \
+  > /dev/shm/swarm_logger_d1.log 2>&1
 
 
 # Diagnostic logger on drone 2
 ros2 run swarm_logger logger --ros-args \
   -p drone_count:=3 \
+  -p local_drone_id:=2 \
   -p drone_ids:="[2]" \
   -p monitor_vehicle_topics:=true \
+  -p monitor_tf:=true \
+  -p monitor_wifi_events:=true \
   -p print_interval:=5.0 \
   -p wifi_interface:=wlan0 \
-  -r __node:=swarm_logger_d2
+  -r __node:=swarm_logger_d2 \
+  > /dev/shm/swarm_logger_d2.log 2>&1
 
 
 # Diagnostic logger on drone 3
 ros2 run swarm_logger logger --ros-args \
   -p drone_count:=3 \
+  -p local_drone_id:=3 \
   -p drone_ids:="[3]" \
   -p monitor_vehicle_topics:=true \
+  -p monitor_tf:=true \
+  -p monitor_wifi_events:=true \
   -p print_interval:=5.0 \
   -p wifi_interface:=wlan0 \
-  -r __node:=swarm_logger_d3
+  -r __node:=swarm_logger_d3 \
+  > /dev/shm/swarm_logger_d3.log 2>&1
