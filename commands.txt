@@ -1,14 +1,35 @@
+# Control nodes with TF (swarm_single)
+# Drone 1
 ros2 run swarm_single control_node --ros-args \
   -p frame_id:=1 \
   -r __node:=control_node_d1
 
-
-
-
+# Drone 2
 ros2 run swarm_single control_node --ros-args \
   -p frame_id:=2 \
   -r __node:=control_node_d2
 
+# Drone 3
+ros2 run swarm_single control_node --ros-args \
+  -p frame_id:=3 \
+  -r __node:=control_node_d3
+
+
+# Control nodes without TF (swarm_single_no_tf)
+# Drone 1
+ros2 run swarm_single_no_tf control_node --ros-args \
+  -p frame_id:=1 \
+  -r __node:=control_node_no_tf_d1
+
+# Drone 2
+ros2 run swarm_single_no_tf control_node --ros-args \
+  -p frame_id:=2 \
+  -r __node:=control_node_no_tf_d2
+
+# Drone 3
+ros2 run swarm_single_no_tf control_node --ros-args \
+  -p frame_id:=3 \
+  -r __node:=control_node_no_tf_d3
 
 
 
