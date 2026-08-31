@@ -1,0 +1,1397 @@
+mbkh@drone1:~/multi_drone_real$ cat /dev/shm/swarm_logger_d2.log 
+[INFO] [1787748382.105829375] [swarm_logger_d2]: Diagnostic logger active: local_drone=2, vehicle IDs=[2], TF=True, MessageInfo=True, report=5.0 s, /rosout disabled.
+
+======================================================================================================================
+SWARM FLIGHT DIAGNOSTIC REPORT
+======================================================================================================================
+ identity: schema=2 report=1 drone=2 host=drone1
+ clocks: utc=2026-08-26T12:46:26.748+00:00 epoch_ns=1787748386748962872 monotonic=1715.428520 node_uptime=5.33s window=5.334s
+ runtime: ROS_DISTRO=rolling RMW=rmw_fastrtps_cpp RMW_IMPLEMENTATION=unset DOMAIN=0(default) LOCALHOST_ONLY=unset
+ software: python=3.12.3 executable=/usr/bin/python3 message_info=True pid=2192
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL HOST / POWER / SCHEDULING
+  sample: age=0.59s collection=0.464s source_window=5.01s host=drone1 kernel=6.8.0-1031-raspi machine=aarch64 uptime=1716s boot_id=1762d4b7-e5df-41fc-85de-3c03db921a36
+  resources: CPU=49.77% max_core=cpu2=51.6% load=0.70/0.77/0.80 CPUs=4 memory=13.87% temp=47.23C PSI10(cpu/mem/io)=3.71/0.00/0.00
+  Raspberry Pi throttle: 0x0 (no current/historical flags)
+  interface: name=wlan0 state=up carrier=1 MAC=2c:cf:67:06:fe:a5 MTU=1500 driver=brcmfmac tx_queue_len=1000
+  Wi-Fi link: probe=ok connected=True SSID=DroneNetwork BSSID=88:dc:97:13:8c:da freq=2442MHz signal=-42.00dBm(strong) tx/rx=72.20/72.20Mbit/s power_save=False
+  kernel interface delta: rx/tx=0.806/0.687Mbit/s packets=1446/1228 drops=0/0 errors=0/0 resets=none
+  station: inactive=0ms avg_signal=N/AdBm throughput=N/AMbps delta_tx_packets=1223 retries=N/A failed=0 beacon_loss=N/A rx_drop_misc=N/A retry/packet=0.000 failed/1000=0.00 resets=none
+  channel survey: freq=N/AMHz noise=N/AdBm busy=N/A% rx=N/A% tx=N/A% own-BSS-rx=N/A% resets=none
+  kernel UDP/IP delta: Udp.InDatagrams=2099 Udp.OutDatagrams=1819 Udp.NoPorts=0 Udp.InErrors=0 Udp.RcvbufErrors=0 Udp.SndbufErrors=0 Ip.InDiscards=0 Ip.OutDiscards=0 Ip.InHdrErrors=0 Ip.ReasmFails=0 resets=none
+  softnet delta: processed=2125 dropped=0 time_squeeze=0 resets=none; sockets=UDP.inuse=21 UDP.mem=0 sockets.used=251
+  external probe status: iw_link=ok(0.013s,rc=0), iw_power_save=ok(0.028s,rc=0), iw_station=ok(0.015s,rc=0), iw_survey=empty(0.017s,rc=0), vcgencmd_throttled=ok(0.041s,rc=0)
+  relevant processes:
+   - logger           pid=2192    state=S CPU=92.80% RSS=92.6MiB threads=23 core=0 runqueue=1.76% nvcsw=552 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger --ros-args -p drone_count:=3 -p local_drone_id:=2 -p drone_ids:=[2] -p
+   - controller       pid=2168    state=S CPU=0.00% RSS=45.7MiB threads=3 core=2 runqueue=0.00% nvcsw=0 wchan=do_wait RMW=('librmw_implementation.so',) cmd=/usr/bin/python3 /opt/ros/rolling/bin/ros2 run swarm_single control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - controller       pid=2171    state=S CPU=67.26% RSS=113.3MiB threads=18 core=3 runqueue=0.77% nvcsw=465 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_single/lib/swarm_single/control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - microxrce_agent  pid=1202    state=S CPU=28.14% RSS=28.2MiB threads=54 core=2 runqueue=0.00% nvcsw=0 wchan=futex_wait_queue RMW=not-mapped cmd=MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
+----------------------------------------------------------------------------------------------------------------------
+ DDS PUBLISHER ENDPOINTS / QOS
+  /swarm/live: publishers=3 changed=False
+   - gid=010f29a89e08073f0000000000001703 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010f8f5e7b0889290000000000001703 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010fb5b2cb0837240000000000001703 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+  /swarm/status: publishers=2 changed=False
+   - gid=010f29a89e08073f0000000000001b03 node=control_node_d1 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+   - gid=010fb5b2cb0837240000000000001b03 node=control_node_d3 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+  /tf: publishers=6 changed=False
+   - gid=010f29a89e08073f0000000000001503 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f29a89e08073f0000000000001603 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001503 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001603 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001503 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001603 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+----------------------------------------------------------------------------------------------------------------------
+ SWARM HEARTBEATS / STATUS
+  heartbeat peer=1        rate=  0.56Hz age=0.80s max_gap=1.649s advance_age=0.80s repeated=0 regress=0 zero=0 clock(source-local)=499.729s excess_delay(last/max)=0.149/0.149s
+  heartbeat peer=2        rate=  0.75Hz age=0.38s max_gap=1.501s advance_age=0.38s repeated=0 regress=0 zero=0 clock(source-local)=-0.003s excess_delay(last/max)=0.000/0.000s
+  heartbeat peer=3: never received
+  status: age=0.79s leader=1 members=(1, 2) state=IDLE armed=False offboard=False pattern=None spacing=3.00 leader_pos=(-0.0017875880002975464, -0.2030724287033081, -0.01806640625) goal=(0.0, 0.0, 0.0) leader_counts={1: 5} mission=(False, 0, 0, 'IDLE') message=''
+----------------------------------------------------------------------------------------------------------------------
+ TF TIMING / CONTENT / DDS DELIVERY
+  frame=x500_depth_1/goal                          parent=world                    rate=  8.25Hz arrival_age=0.25s advance_age=0.25s gap(arrival/advance)=0.356/0.356s gap_ago=0.34s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.101s clock(source-local)=499.607s excess_delay(last/max)=0.268/0.283s
+  frame=x500_depth_1/odom                          parent=world                    rate= 40.87Hz arrival_age=0.14s advance_age=0.14s gap(arrival/advance)=0.265/0.265s gap_ago=1.15s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.08 m/s max_source_step=0.045s clock(source-local)=499.561s excess_delay(last/max)=0.314/0.332s
+  frame=x500_depth_2/goal                          parent=world                    rate=  9.19Hz arrival_age=0.08s advance_age=0.08s gap(arrival/advance)=0.110/0.110s gap_ago=3.18s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.104s clock(source-local)=-0.004s excess_delay(last/max)=0.002/0.009s
+  frame=x500_depth_2/odom                          parent=world                    rate= 46.30Hz arrival_age=0.00s advance_age=0.00s gap(arrival/advance)=0.034/0.034s gap_ago=1.88s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.08 m/s max_source_step=0.034s clock(source-local)=-0.009s excess_delay(last/max)=0.008/0.009s
+  frame=x500_depth_3/goal                          parent=world                    rate=  0.19Hz arrival_age=0.25s advance_age=0.25s gap(arrival/advance)=N/A/N/As gap_ago=N/As repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=N/A m/N/A rad max_implied_speed=N/A m/s max_source_step=N/As clock(source-local)=33.053s excess_delay(last/max)=0.000/0.000s
+  frame=x500_depth_3/odom                          parent=world                    rate=  0.56Hz arrival_age=0.13s advance_age=0.13s gap(arrival/advance)=0.007/0.007s gap_ago=0.13s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.001 m/0.000 rad max_implied_speed=0.07 m/s max_source_step=0.019s clock(source-local)=33.070s excess_delay(last/max)=0.000/0.000s
+  TF DDS writers (MessageInfo observer):
+   - gid=unknown node=<unmapped> rate=105.36Hz messages_by_batch={1: 562} missing_seq=0 duplicate_seq=0 regressed_seq=0 middleware_delay_max=N/As callback_queue_max=N/As children=('x500_depth_1/goal', 'x500_depth_1/odom', 'x500_depth_2/goal', 'x500_depth_2/odom', 'x500_depth_3/goal', 'x500_depth_3/odom')
+  TF cycles detected: none
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL PX4 SEMANTICS
+  drone=2:
+   - status: age=0.46s {'arming_state': 1, 'nav_state': 14, 'nav_intention': 14, 'failsafe': False, 'gcs_lost': True, 'high_latency_lost': False, 'preflight_ok': False, 'power_input_valid': True}
+   - failsafe_flags: age=0.32s {'active': ('auto_mission_missing', 'gcs_connection_lost', 'offboard_control_signal_lost'), 'battery_warning': 0}
+   - local_position: age=0.01s {'position': (0.024514980614185333, -3.303403377532959, -3.9322509765625), 'velocity': (-0.007845240645110607, 0.0005513729411177337, 0.009227486327290535), 'finite': True, 'valid': True, 'dead_reckoning': False, 'eph': 0.36700302362442017, 'epv': 0.3163049817085266, 'sample_timestamp_us': 1787748386723026, 'reset_counters': (6, 5, 5, 3, 6)}
+   - trajectory_setpoint: never received
+   - offboard_control_mode: never received
+   - battery: age=0.07s {'connected': True, 'remaining': 0.7694512605667114, 'voltage_v': 15.982681274414062, 'current_a': 0.0, 'temperature': nan, 'warning': 0, 'faults': 0}
+   - land: age=0.01s {'landed': True, 'ground_contact': True, 'maybe_landed': True, 'freefall': False, 'at_rest': True}
+   - timesync: age=0.95s {'source_protocol': 2, 'observed_offset_us': -1787746663076356, 'estimated_offset_us': -1787746663078320, 'round_trip_time_us': 2472, 'remote_timestamp_us': 1787748385784333}
+   - vehicle_command: never received
+   - command_ack: never received
+  PX4 window counters: none
+  PX4 window maxima: {(2, 'timesync_rtt_us'): 5341}
+----------------------------------------------------------------------------------------------------------------------
+ SUBSCRIPTION RECEIVE TIMING
+  /command: never received
+  /formation: never received
+  /manual_controller: never received
+  /swarm/command: never received
+  /swarm/formation_command: never received
+  /swarm/live                                                rate=   1.31Hz age=0.38s max_gap=1.082s gap_ago=0.80s stamp_advance_age=N/As repeat/regress/zero=0/0/0
+  /swarm/status                                              rate=   0.94Hz age=0.79s max_gap=1.123s gap_ago=0.79s stamp_advance_age=0.79s repeat/regress/zero=0/0/0
+  /tf                                                        rate= 105.36Hz age=0.00s max_gap=0.034s gap_ago=1.24s stamp_advance_age=0.00s repeat/regress/zero=0/151/0
+  /uav_2/fmu/in/offboard_control_mode: never received
+  /uav_2/fmu/in/trajectory_setpoint: never received
+  /uav_2/fmu/in/vehicle_command: never received
+  /uav_2/fmu/out/battery_status_v1                           rate=   1.12Hz age=0.07s max_gap=1.003s gap_ago=3.07s stamp_advance_age=0.07s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/failsafe_flags                              rate=   1.87Hz age=0.32s max_gap=0.558s gap_ago=0.32s stamp_advance_age=0.32s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/timesync_status                             rate=   0.94Hz age=0.95s max_gap=1.013s gap_ago=2.96s stamp_advance_age=0.95s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_command_ack: never received
+  /uav_2/fmu/out/vehicle_land_detected                       rate=   1.12Hz age=0.01s max_gap=1.008s gap_ago=0.01s stamp_advance_age=0.01s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_local_position_v1                   rate=  44.24Hz age=0.01s max_gap=0.034s gap_ago=0.96s stamp_advance_age=0.01s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_status_v1                           rate=   1.87Hz age=0.46s max_gap=0.512s gap_ago=2.33s stamp_advance_age=0.46s repeat/regress/zero=0/0/0
+----------------------------------------------------------------------------------------------------------------------
+ TRANSITIONS / ANOMALIES / WIFI EVENTS
+  -   1.976s ago [px4_transition] drone=2 status: gcs_lost=False->True
+  -   1.975s ago [px4_transition] drone=2 failsafe_flags: active=('auto_mission_missing', 'offboard_control_signal_lost')->('auto_mission_missing', 'gcs_connection_lost', 'offboard_control_signal_lost')
+  iw event monitor: status=running counts={}
+----------------------------------------------------------------------------------------------------------------------
+ WARNINGS (9):
+  ! logger pid=2192 CPU=92.8% of one core
+  ! SPLIT-BRAIN evidence: 2 status publishers
+  ! peer 1 clock offset approximately +499.729s
+  ! heartbeat 3 never received
+  ! TF arrival gap x500_depth_1/goal: 0.356s
+  ! TF variable delivery delay x500_depth_1/goal: 0.283s above baseline
+  ! TF arrival gap x500_depth_1/odom: 0.265s
+  ! TF variable delivery delay x500_depth_1/odom: 0.332s above baseline
+  ! PX4 drone 2 failsafe flags: ('auto_mission_missing', 'gcs_connection_lost', 'offboard_control_signal_lost') battery_warning=0
+ logger capture=0.0029s background_health=0.4642s health_to_emit=0.1311s
+======================================================================================================================
+
+======================================================================================================================
+SWARM FLIGHT DIAGNOSTIC REPORT
+======================================================================================================================
+ identity: schema=2 report=2 drone=2 host=drone1
+ clocks: utc=2026-08-26T12:46:31.749+00:00 epoch_ns=1787748391749336388 monotonic=1720.429137 node_uptime=10.33s window=5.001s
+ runtime: ROS_DISTRO=rolling RMW=rmw_fastrtps_cpp RMW_IMPLEMENTATION=unset DOMAIN=0(default) LOCALHOST_ONLY=unset
+ software: python=3.12.3 executable=/usr/bin/python3 message_info=True pid=2192
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL HOST / POWER / SCHEDULING
+  sample: age=0.59s collection=0.434s source_window=5.00s host=drone1 kernel=6.8.0-1031-raspi machine=aarch64 uptime=1721s boot_id=1762d4b7-e5df-41fc-85de-3c03db921a36
+  resources: CPU=46.93% max_core=cpu2=49.1% load=0.80/0.79/0.80 CPUs=4 memory=13.89% temp=47.23C PSI10(cpu/mem/io)=4.77/0.00/0.00
+  Raspberry Pi throttle: 0x0 (no current/historical flags)
+  interface: name=wlan0 state=up carrier=1 MAC=2c:cf:67:06:fe:a5 MTU=1500 driver=brcmfmac tx_queue_len=1000
+  Wi-Fi link: probe=ok connected=True SSID=DroneNetwork BSSID=88:dc:97:13:8c:da freq=2442MHz signal=-42.00dBm(strong) tx/rx=72.20/65.00Mbit/s power_save=False
+  kernel interface delta: rx/tx=0.718/0.944Mbit/s packets=1572/2393 drops=0/0 errors=0/0 resets=none
+  station: inactive=0ms avg_signal=N/AdBm throughput=N/AMbps delta_tx_packets=2419 retries=N/A failed=5 beacon_loss=N/A rx_drop_misc=N/A retry/packet=0.000 failed/1000=2.07 resets=none
+  channel survey: freq=N/AMHz noise=N/AdBm busy=N/A% rx=N/A% tx=N/A% own-BSS-rx=N/A% resets=none
+  kernel UDP/IP delta: Udp.InDatagrams=2192 Udp.OutDatagrams=2979 Udp.NoPorts=0 Udp.InErrors=0 Udp.RcvbufErrors=0 Udp.SndbufErrors=0 Ip.InDiscards=0 Ip.OutDiscards=0 Ip.InHdrErrors=0 Ip.ReasmFails=2 resets=none
+  softnet delta: processed=2224 dropped=0 time_squeeze=0 resets=none; sockets=UDP.inuse=21 UDP.mem=0 sockets.used=251
+  external probe status: iw_link=ok(0.022s,rc=0), iw_power_save=ok(0.022s,rc=0), iw_station=ok(0.028s,rc=0), iw_survey=empty(0.023s,rc=0), vcgencmd_throttled=ok(0.018s,rc=0)
+  relevant processes:
+   - logger           pid=2192    state=R CPU=84.52% RSS=93.1MiB threads=23 core=2 runqueue=1.73% nvcsw=444 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger --ros-args -p drone_count:=3 -p local_drone_id:=2 -p drone_ids:=[2] -p
+   - controller       pid=2168    state=S CPU=0.00% RSS=45.7MiB threads=3 core=2 runqueue=0.00% nvcsw=0 wchan=do_wait RMW=('librmw_implementation.so',) cmd=/usr/bin/python3 /opt/ros/rolling/bin/ros2 run swarm_single control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - controller       pid=2171    state=S CPU=64.94% RSS=113.4MiB threads=18 core=1 runqueue=0.45% nvcsw=417 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_single/lib/swarm_single/control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - microxrce_agent  pid=1202    state=S CPU=27.97% RSS=28.2MiB threads=54 core=2 runqueue=0.00% nvcsw=0 wchan=futex_wait_queue RMW=not-mapped cmd=MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
+----------------------------------------------------------------------------------------------------------------------
+ DDS PUBLISHER ENDPOINTS / QOS
+  /swarm/live: publishers=3 changed=False
+   - gid=010f29a89e08073f0000000000001703 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010f8f5e7b0889290000000000001703 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010fb5b2cb0837240000000000001703 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+  /swarm/status: publishers=1 changed=True
+   - gid=010f29a89e08073f0000000000001b03 node=control_node_d1 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+  /tf: publishers=6 changed=False
+   - gid=010f29a89e08073f0000000000001503 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f29a89e08073f0000000000001603 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001503 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001603 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001503 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001603 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+----------------------------------------------------------------------------------------------------------------------
+ SWARM HEARTBEATS / STATUS
+  heartbeat peer=1        rate=  0.20Hz age=0.27s max_gap=5.535s advance_age=0.27s repeated=0 regress=0 zero=0 clock(source-local)=496.275s excess_delay(last/max)=3.603/3.603s
+  heartbeat peer=2        rate=  0.60Hz age=0.88s max_gap=1.503s advance_age=0.88s repeated=0 regress=0 zero=0 clock(source-local)=-0.002s excess_delay(last/max)=0.000/0.004s
+  heartbeat peer=3        rate=  0.60Hz age=0.75s max_gap=2.769s advance_age=0.75s repeated=0 regress=0 zero=0 clock(source-local)=33.022s excess_delay(last/max)=0.000/1.269s
+  status: age=0.27s leader=1 members=(1, 2) state=IDLE armed=False offboard=False pattern=None spacing=3.00 leader_pos=(0.015132620930671692, -0.182763934135437, -0.005126953125) goal=(0.0, 0.0, 0.0) leader_counts={3: 1, 1: 1} mission=(False, 0, 0, 'IDLE') message=''
+----------------------------------------------------------------------------------------------------------------------
+ TF TIMING / CONTENT / DDS DELIVERY
+  frame=x500_depth_1/goal                          parent=world                    rate=  0.80Hz arrival_age=0.22s advance_age=0.22s gap(arrival/advance)=4.436/4.436s gap_ago=0.82s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.956s clock(source-local)=496.230s excess_delay(last/max)=3.646/4.305s
+  frame=x500_depth_1/odom                          parent=world                    rate=  5.40Hz arrival_age=0.02s advance_age=0.02s gap(arrival/advance)=2.842/2.842s gap_ago=0.81s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.019 m/0.000 rad max_implied_speed=0.04 m/s max_source_step=0.939s clock(source-local)=496.034s excess_delay(last/max)=3.841/4.524s
+  frame=x500_depth_2/goal                          parent=world                    rate= 10.00Hz arrival_age=0.09s advance_age=0.09s gap(arrival/advance)=0.108/0.108s gap_ago=4.78s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.103s clock(source-local)=-0.002s excess_delay(last/max)=0.001/0.008s
+  frame=x500_depth_2/odom                          parent=world                    rate= 49.79Hz arrival_age=0.00s advance_age=0.00s gap(arrival/advance)=0.037/0.037s gap_ago=0.91s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.06 m/s max_source_step=0.039s clock(source-local)=-0.006s excess_delay(last/max)=0.004/0.011s
+  frame=x500_depth_3/goal                          parent=world                    rate=  6.60Hz arrival_age=0.35s advance_age=0.35s gap(arrival/advance)=1.883/1.883s gap_ago=1.09s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=1.001s clock(source-local)=33.050s excess_delay(last/max)=0.031/2.190s
+  frame=x500_depth_3/odom                          parent=world                    rate= 34.60Hz arrival_age=0.00s advance_age=0.00s gap(arrival/advance)=1.870/1.870s gap_ago=1.10s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.018 m/0.000 rad max_implied_speed=0.15 m/s max_source_step=0.821s clock(source-local)=32.763s excess_delay(last/max)=0.321/2.245s
+  TF DDS writers (MessageInfo observer):
+   - gid=unknown node=<unmapped> rate=107.19Hz messages_by_batch={1: 536} missing_seq=0 duplicate_seq=0 regressed_seq=0 middleware_delay_max=N/As callback_queue_max=N/As children=('x500_depth_1/goal', 'x500_depth_1/odom', 'x500_depth_2/goal', 'x500_depth_2/odom', 'x500_depth_3/goal', 'x500_depth_3/odom')
+  TF cycles detected: none
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL PX4 SEMANTICS
+  drone=2:
+   - status: age=0.40s {'arming_state': 1, 'nav_state': 14, 'nav_intention': 14, 'failsafe': False, 'gcs_lost': True, 'high_latency_lost': False, 'preflight_ok': False, 'power_input_valid': True}
+   - failsafe_flags: age=0.38s {'active': ('auto_mission_missing', 'gcs_connection_lost', 'offboard_control_signal_lost'), 'battery_warning': 0}
+   - local_position: age=0.01s {'position': (0.02377987839281559, -3.3220484256744385, -3.8985595703125), 'velocity': (-0.010151008144021034, 0.0005677684675902128, 0.013573463074862957), 'finite': True, 'valid': True, 'dead_reckoning': False, 'eph': 0.3735789656639099, 'epv': 0.3193250596523285, 'sample_timestamp_us': 1787748391732477, 'reset_counters': (6, 5, 5, 3, 6)}
+   - trajectory_setpoint: never received
+   - offboard_control_mode: never received
+   - battery: age=0.07s {'connected': True, 'remaining': 0.7694388628005981, 'voltage_v': 16.052736282348633, 'current_a': 0.0, 'temperature': nan, 'warning': 0, 'faults': 0}
+   - land: age=1.00s {'landed': True, 'ground_contact': True, 'maybe_landed': True, 'freefall': False, 'at_rest': True}
+   - timesync: age=0.91s {'source_protocol': 2, 'observed_offset_us': -1787746663077908, 'estimated_offset_us': -1787746663078550, 'round_trip_time_us': 5667, 'remote_timestamp_us': 1787748390828853}
+   - vehicle_command: never received
+   - command_ack: never received
+  PX4 window counters: none
+  PX4 window maxima: {(2, 'timesync_rtt_us'): 7330}
+----------------------------------------------------------------------------------------------------------------------
+ SUBSCRIPTION RECEIVE TIMING
+  /command: never received
+  /formation: never received
+  /manual_controller: never received
+  /swarm/command: never received
+  /swarm/formation_command: never received
+  /swarm/live                                                rate=   1.40Hz age=0.27s max_gap=1.503s gap_ago=3.88s stamp_advance_age=N/As repeat/regress/zero=0/0/0
+  /swarm/status                                              rate=   0.40Hz age=0.27s max_gap=3.942s gap_ago=0.27s stamp_advance_age=0.27s repeat/regress/zero=0/1/0
+  /tf                                                        rate= 107.19Hz age=0.00s max_gap=0.034s gap_ago=2.44s stamp_advance_age=0.00s repeat/regress/zero=0/76/0
+  /uav_2/fmu/in/offboard_control_mode: never received
+  /uav_2/fmu/in/trajectory_setpoint: never received
+  /uav_2/fmu/in/vehicle_command: never received
+  /uav_2/fmu/out/battery_status_v1                           rate=   1.00Hz age=0.07s max_gap=1.002s gap_ago=1.07s stamp_advance_age=0.07s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/failsafe_flags                              rate=   1.80Hz age=0.38s max_gap=0.554s gap_ago=0.93s stamp_advance_age=0.38s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/timesync_status                             rate=   1.00Hz age=0.91s max_gap=1.018s gap_ago=4.94s stamp_advance_age=0.91s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_command_ack: never received
+  /uav_2/fmu/out/vehicle_land_detected                       rate=   0.80Hz age=1.00s max_gap=1.005s gap_ago=3.01s stamp_advance_age=1.00s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_local_position_v1                   rate=  49.99Hz age=0.01s max_gap=0.037s gap_ago=3.28s stamp_advance_age=0.01s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_status_v1                           rate=   2.00Hz age=0.40s max_gap=0.512s gap_ago=2.93s stamp_advance_age=0.40s repeat/regress/zero=0/0/0
+----------------------------------------------------------------------------------------------------------------------
+ TRANSITIONS / ANOMALIES / WIFI EVENTS
+  -   4.212s ago [swarm_status] leader_id=1->3, members=(1, 2)->(3,), offboard=False->True
+  -   0.270s ago [swarm_status] leader_id=3->1, members=(3,)->(1, 2), offboard=True->False
+  iw event monitor: status=running counts={}
+----------------------------------------------------------------------------------------------------------------------
+ WARNINGS (21):
+  ! Wi-Fi tx_failed +5
+  ! high Wi-Fi failure ratio: 2.07/1000 packets
+  ! kernel UDP/IP errors/discards +2
+  ! DDS publisher endpoint set changed for /swarm/status
+  ! heartbeat 1 max gap 5.535s (neighbor timeout=6.0s)
+  ! peer 1 clock offset approximately +496.275s
+  ! peer 3 clock offset approximately +33.022s
+  ! SPLIT-BRAIN/status leader changes: {3: 1, 1: 1}
+  ! TF arrival gap x500_depth_1/goal: 4.436s
+  ! TF publisher source-time step x500_depth_1/goal: 0.956s
+  ! TF variable delivery delay x500_depth_1/goal: 4.305s above baseline
+  ! TF arrival gap x500_depth_1/odom: 2.842s
+  ! TF publisher source-time step x500_depth_1/odom: 0.939s
+  ! TF variable delivery delay x500_depth_1/odom: 4.524s above baseline
+  ! TF arrival gap x500_depth_3/goal: 1.883s
+  ! TF publisher source-time step x500_depth_3/goal: 1.001s
+  ! TF variable delivery delay x500_depth_3/goal: 2.190s above baseline
+  ! TF arrival gap x500_depth_3/odom: 1.870s
+  ! TF publisher source-time step x500_depth_3/odom: 0.821s
+  ! TF variable delivery delay x500_depth_3/odom: 2.245s above baseline
+  ! PX4 drone 2 failsafe flags: ('auto_mission_missing', 'gcs_connection_lost', 'offboard_control_signal_lost') battery_warning=0
+ logger capture=0.0027s background_health=0.4343s health_to_emit=0.1549s
+======================================================================================================================
+
+======================================================================================================================
+SWARM FLIGHT DIAGNOSTIC REPORT
+======================================================================================================================
+ identity: schema=2 report=3 drone=2 host=drone1
+ clocks: utc=2026-08-26T12:46:36.751+00:00 epoch_ns=1787748396751680385 monotonic=1725.431554 node_uptime=15.34s window=5.002s
+ runtime: ROS_DISTRO=rolling RMW=rmw_fastrtps_cpp RMW_IMPLEMENTATION=unset DOMAIN=0(default) LOCALHOST_ONLY=unset
+ software: python=3.12.3 executable=/usr/bin/python3 message_info=True pid=2192
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL HOST / POWER / SCHEDULING
+  sample: age=0.59s collection=0.391s source_window=5.00s host=drone1 kernel=6.8.0-1031-raspi machine=aarch64 uptime=1726s boot_id=1762d4b7-e5df-41fc-85de-3c03db921a36
+  resources: CPU=48.33% max_core=cpu3=50.1% load=1.06/0.85/0.82 CPUs=4 memory=13.90% temp=47.71C PSI10(cpu/mem/io)=5.17/0.00/0.00
+  Raspberry Pi throttle: 0x0 (no current/historical flags)
+  interface: name=wlan0 state=up carrier=1 MAC=2c:cf:67:06:fe:a5 MTU=1500 driver=brcmfmac tx_queue_len=1000
+  Wi-Fi link: probe=ok connected=True SSID=DroneNetwork BSSID=88:dc:97:13:8c:da freq=2442MHz signal=-42.00dBm(strong) tx/rx=72.20/65.00Mbit/s power_save=False
+  kernel interface delta: rx/tx=0.416/0.874Mbit/s packets=1147/2502 drops=0/0 errors=0/0 resets=none
+  station: inactive=0ms avg_signal=N/AdBm throughput=N/AMbps delta_tx_packets=2498 retries=N/A failed=0 beacon_loss=N/A rx_drop_misc=N/A retry/packet=0.000 failed/1000=0.00 resets=none
+  channel survey: freq=N/AMHz noise=N/AdBm busy=N/A% rx=N/A% tx=N/A% own-BSS-rx=N/A% resets=none
+  kernel UDP/IP delta: Udp.InDatagrams=1782 Udp.OutDatagrams=3082 Udp.NoPorts=0 Udp.InErrors=0 Udp.RcvbufErrors=0 Udp.SndbufErrors=0 Ip.InDiscards=0 Ip.OutDiscards=0 Ip.InHdrErrors=0 Ip.ReasmFails=4 resets=none
+  softnet delta: processed=1747 dropped=0 time_squeeze=0 resets=none; sockets=UDP.inuse=21 UDP.mem=0 sockets.used=251
+  external probe status: iw_link=ok(0.022s,rc=0), iw_power_save=ok(0.008s,rc=0), iw_station=ok(0.031s,rc=0), iw_survey=empty(0.027s,rc=0), vcgencmd_throttled=ok(0.012s,rc=0)
+  relevant processes:
+   - logger           pid=2192    state=R CPU=85.81% RSS=93.3MiB threads=23 core=0 runqueue=1.44% nvcsw=480 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger --ros-args -p drone_count:=3 -p local_drone_id:=2 -p drone_ids:=[2] -p
+   - controller       pid=2168    state=S CPU=0.00% RSS=45.7MiB threads=3 core=2 runqueue=0.00% nvcsw=0 wchan=do_wait RMW=('librmw_implementation.so',) cmd=/usr/bin/python3 /opt/ros/rolling/bin/ros2 run swarm_single control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - controller       pid=2171    state=S CPU=67.41% RSS=113.4MiB threads=18 core=0 runqueue=0.46% nvcsw=450 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_single/lib/swarm_single/control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - microxrce_agent  pid=1202    state=S CPU=27.00% RSS=28.2MiB threads=54 core=2 runqueue=0.00% nvcsw=0 wchan=futex_wait_queue RMW=not-mapped cmd=MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
+----------------------------------------------------------------------------------------------------------------------
+ DDS PUBLISHER ENDPOINTS / QOS
+  /swarm/live: publishers=3 changed=False
+   - gid=010f29a89e08073f0000000000001703 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010f8f5e7b0889290000000000001703 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010fb5b2cb0837240000000000001703 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+  /swarm/status: publishers=1 changed=False
+   - gid=010f29a89e08073f0000000000001b03 node=control_node_d1 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+  /tf: publishers=6 changed=False
+   - gid=010f29a89e08073f0000000000001503 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f29a89e08073f0000000000001603 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001503 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001603 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001503 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001603 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+----------------------------------------------------------------------------------------------------------------------
+ SWARM HEARTBEATS / STATUS
+  heartbeat peer=1        rate=  0.20Hz age=2.13s max_gap=3.141s advance_age=2.13s repeated=0 regress=0 zero=0 clock(source-local)=496.272s excess_delay(last/max)=3.606/3.606s
+  heartbeat peer=2        rate=  0.60Hz age=1.39s max_gap=1.503s advance_age=1.39s repeated=0 regress=0 zero=0 clock(source-local)=-0.007s excess_delay(last/max)=0.004/0.004s
+  heartbeat peer=3        rate=  0.60Hz age=1.23s max_gap=1.910s advance_age=1.23s repeated=0 regress=0 zero=0 clock(source-local)=33.008s excess_delay(last/max)=0.054/0.411s
+  status: age=2.13s leader=1 members=(1, 2) state=IDLE armed=False offboard=False pattern=None spacing=3.00 leader_pos=(0.0035700276494026184, -0.17376923561096191, 0.012451171875) goal=(0.0, 0.0, 0.0) leader_counts={1: 1} mission=(False, 0, 0, 'IDLE') message=''
+----------------------------------------------------------------------------------------------------------------------
+ TF TIMING / CONTENT / DDS DELIVERY
+  frame=x500_depth_1/goal                          parent=world                    rate=  0.60Hz arrival_age=1.68s advance_age=1.68s gap(arrival/advance)=3.157/3.157s gap_ago=1.83s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=3.108s clock(source-local)=495.936s excess_delay(last/max)=3.940/3.940s
+  frame=x500_depth_1/odom                          parent=world                    rate=  3.80Hz arrival_age=1.63s advance_age=1.63s gap(arrival/advance)=1.334/1.334s gap_ago=2.35s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.054 m/0.001 rad max_implied_speed=0.06 m/s max_source_step=2.948s clock(source-local)=495.948s excess_delay(last/max)=3.927/6.311s
+  frame=x500_depth_2/goal                          parent=world                    rate= 10.00Hz arrival_age=0.09s advance_age=0.09s gap(arrival/advance)=0.108/0.108s gap_ago=3.88s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.104s clock(source-local)=-0.003s excess_delay(last/max)=0.002/0.007s
+  frame=x500_depth_2/odom                          parent=world                    rate= 49.98Hz arrival_age=0.01s advance_age=0.01s gap(arrival/advance)=0.035/0.035s gap_ago=0.77s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.07 m/s max_source_step=0.034s clock(source-local)=-0.004s excess_delay(last/max)=0.003/0.009s
+  frame=x500_depth_3/goal                          parent=world                    rate= 10.00Hz arrival_age=0.01s advance_age=0.01s gap(arrival/advance)=0.930/0.930s gap_ago=3.92s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.201s clock(source-local)=32.904s excess_delay(last/max)=0.176/0.961s
+  frame=x500_depth_3/odom                          parent=world                    rate= 49.58Hz arrival_age=0.01s advance_age=0.01s gap(arrival/advance)=0.917/0.917s gap_ago=3.94s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.06 m/s max_source_step=0.148s clock(source-local)=32.885s excess_delay(last/max)=0.200/1.030s
+  TF DDS writers (MessageInfo observer):
+   - gid=unknown node=<unmapped> rate=123.94Hz messages_by_batch={1: 620} missing_seq=0 duplicate_seq=0 regressed_seq=0 middleware_delay_max=N/As callback_queue_max=N/As children=('x500_depth_1/goal', 'x500_depth_1/odom', 'x500_depth_2/goal', 'x500_depth_2/odom', 'x500_depth_3/goal', 'x500_depth_3/odom')
+  TF cycles detected: none
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL PX4 SEMANTICS
+  drone=2:
+   - status: age=0.34s {'arming_state': 1, 'nav_state': 14, 'nav_intention': 14, 'failsafe': False, 'gcs_lost': True, 'high_latency_lost': False, 'preflight_ok': False, 'power_input_valid': True}
+   - failsafe_flags: age=0.43s {'active': ('auto_mission_missing', 'gcs_connection_lost', 'offboard_control_signal_lost'), 'battery_warning': 0}
+   - local_position: age=0.01s {'position': (0.029695676639676094, -3.29575514793396, -3.916259765625), 'velocity': (0.006256793159991503, 0.009499356150627136, 0.00944356806576252), 'finite': True, 'valid': True, 'dead_reckoning': False, 'eph': 0.37770581245422363, 'epv': 0.32221364974975586, 'sample_timestamp_us': 1787748396723917, 'reset_counters': (6, 5, 5, 3, 6)}
+   - trajectory_setpoint: never received
+   - offboard_control_mode: never received
+   - battery: age=0.08s {'connected': True, 'remaining': 0.7679406404495239, 'voltage_v': 16.009769439697266, 'current_a': 0.0, 'temperature': nan, 'warning': 0, 'faults': 0}
+   - land: age=1.00s {'landed': True, 'ground_contact': True, 'maybe_landed': True, 'freefall': False, 'at_rest': True}
+   - timesync: age=0.88s {'source_protocol': 2, 'observed_offset_us': -1787746663078012, 'estimated_offset_us': -1787746663078774, 'round_trip_time_us': 4689, 'remote_timestamp_us': 1787748395869487}
+   - vehicle_command: never received
+   - command_ack: never received
+  PX4 window counters: none
+  PX4 window maxima: {(2, 'timesync_rtt_us'): 6544}
+----------------------------------------------------------------------------------------------------------------------
+ SUBSCRIPTION RECEIVE TIMING
+  /command: never received
+  /formation: never received
+  /manual_controller: never received
+  /swarm/command: never received
+  /swarm/formation_command: never received
+  /swarm/live                                                rate=   1.40Hz age=1.23s max_gap=0.949s gap_ago=2.89s stamp_advance_age=N/As repeat/regress/zero=0/0/0
+  /swarm/status                                              rate=   0.20Hz age=2.13s max_gap=3.143s gap_ago=2.13s stamp_advance_age=2.13s repeat/regress/zero=0/0/0
+  /tf                                                        rate= 123.94Hz age=0.01s max_gap=0.034s gap_ago=2.54s stamp_advance_age=0.01s repeat/regress/zero=0/126/0
+  /uav_2/fmu/in/offboard_control_mode: never received
+  /uav_2/fmu/in/trajectory_setpoint: never received
+  /uav_2/fmu/in/vehicle_command: never received
+  /uav_2/fmu/out/battery_status_v1                           rate=   1.00Hz age=0.08s max_gap=1.002s gap_ago=1.07s stamp_advance_age=0.08s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/failsafe_flags                              rate=   1.80Hz age=0.43s max_gap=0.554s gap_ago=0.43s stamp_advance_age=0.43s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/timesync_status                             rate=   1.00Hz age=0.88s max_gap=1.020s gap_ago=1.88s stamp_advance_age=0.88s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_command_ack: never received
+  /uav_2/fmu/out/vehicle_land_detected                       rate=   1.00Hz age=1.00s max_gap=1.012s gap_ago=4.99s stamp_advance_age=1.00s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_local_position_v1                   rate=  49.98Hz age=0.01s max_gap=0.036s gap_ago=1.88s stamp_advance_age=0.01s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_status_v1                           rate=   2.00Hz age=0.34s max_gap=0.515s gap_ago=1.35s stamp_advance_age=0.34s repeat/regress/zero=0/0/0
+----------------------------------------------------------------------------------------------------------------------
+ TRANSITIONS / ANOMALIES / WIFI EVENTS
+  ROS/PX4 events: none in this window
+  iw event monitor: status=running counts={}
+----------------------------------------------------------------------------------------------------------------------
+ WARNINGS (16):
+  ! kernel UDP/IP errors/discards +4
+  ! peer 1 clock offset approximately +496.272s
+  ! peer 3 clock offset approximately +33.008s
+  ! TF arrival gap x500_depth_1/goal: 3.157s
+  ! TF publisher source-time step x500_depth_1/goal: 3.108s
+  ! TF variable delivery delay x500_depth_1/goal: 3.940s above baseline
+  ! TF transport/publisher arrival stale x500_depth_1/odom: 1.63s
+  ! TF source timestamp stale x500_depth_1/odom: 1.63s
+  ! TF arrival gap x500_depth_1/odom: 1.334s
+  ! TF publisher source-time step x500_depth_1/odom: 2.948s
+  ! TF variable delivery delay x500_depth_1/odom: 6.311s above baseline
+  ! TF arrival gap x500_depth_3/goal: 0.930s
+  ! TF variable delivery delay x500_depth_3/goal: 0.961s above baseline
+  ! TF arrival gap x500_depth_3/odom: 0.917s
+  ! TF variable delivery delay x500_depth_3/odom: 1.030s above baseline
+  ! PX4 drone 2 failsafe flags: ('auto_mission_missing', 'gcs_connection_lost', 'offboard_control_signal_lost') battery_warning=0
+ logger capture=0.0026s background_health=0.3908s health_to_emit=0.2000s
+======================================================================================================================
+
+======================================================================================================================
+SWARM FLIGHT DIAGNOSTIC REPORT
+======================================================================================================================
+ identity: schema=2 report=4 drone=2 host=drone1
+ clocks: utc=2026-08-26T12:46:41.745+00:00 epoch_ns=1787748401745332215 monotonic=1730.425882 node_uptime=20.33s window=4.994s
+ runtime: ROS_DISTRO=rolling RMW=rmw_fastrtps_cpp RMW_IMPLEMENTATION=unset DOMAIN=0(default) LOCALHOST_ONLY=unset
+ software: python=3.12.3 executable=/usr/bin/python3 message_info=True pid=2192
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL HOST / POWER / SCHEDULING
+  sample: age=0.60s collection=0.402s source_window=4.99s host=drone1 kernel=6.8.0-1031-raspi machine=aarch64 uptime=1731s boot_id=1762d4b7-e5df-41fc-85de-3c03db921a36
+  resources: CPU=47.12% max_core=cpu0=51.0% load=1.14/0.87/0.83 CPUs=4 memory=13.89% temp=46.74C PSI10(cpu/mem/io)=5.15/0.00/0.00
+  Raspberry Pi throttle: 0x0 (no current/historical flags)
+  interface: name=wlan0 state=up carrier=1 MAC=2c:cf:67:06:fe:a5 MTU=1500 driver=brcmfmac tx_queue_len=1000
+  Wi-Fi link: probe=ok connected=True SSID=DroneNetwork BSSID=88:dc:97:13:8c:da freq=2442MHz signal=-41.00dBm(strong) tx/rx=72.20/57.70Mbit/s power_save=False
+  kernel interface delta: rx/tx=0.332/0.916Mbit/s packets=924/2712 drops=0/0 errors=0/0 resets=none
+  station: inactive=0ms avg_signal=N/AdBm throughput=N/AMbps delta_tx_packets=2697 retries=N/A failed=0 beacon_loss=N/A rx_drop_misc=N/A retry/packet=0.000 failed/1000=0.00 resets=none
+  channel survey: freq=N/AMHz noise=N/AdBm busy=N/A% rx=N/A% tx=N/A% own-BSS-rx=N/A% resets=none
+  kernel UDP/IP delta: Udp.InDatagrams=1512 Udp.OutDatagrams=3260 Udp.NoPorts=0 Udp.InErrors=0 Udp.RcvbufErrors=0 Udp.SndbufErrors=0 Ip.InDiscards=0 Ip.OutDiscards=0 Ip.InHdrErrors=0 Ip.ReasmFails=2 resets=none
+  softnet delta: processed=1498 dropped=0 time_squeeze=0 resets=none; sockets=UDP.inuse=21 UDP.mem=0 sockets.used=251
+  external probe status: iw_link=ok(0.014s,rc=0), iw_power_save=ok(0.015s,rc=0), iw_station=ok(0.018s,rc=0), iw_survey=empty(0.008s,rc=0), vcgencmd_throttled=ok(0.016s,rc=0)
+  relevant processes:
+   - logger           pid=2192    state=S CPU=82.55% RSS=93.4MiB threads=23 core=1 runqueue=1.31% nvcsw=390 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger --ros-args -p drone_count:=3 -p local_drone_id:=2 -p drone_ids:=[2] -p
+   - controller       pid=2168    state=S CPU=0.00% RSS=45.7MiB threads=3 core=2 runqueue=0.00% nvcsw=0 wchan=do_wait RMW=('librmw_implementation.so',) cmd=/usr/bin/python3 /opt/ros/rolling/bin/ros2 run swarm_single control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - controller       pid=2171    state=S CPU=64.52% RSS=113.4MiB threads=18 core=0 runqueue=0.45% nvcsw=535 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_single/lib/swarm_single/control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - microxrce_agent  pid=1202    state=S CPU=26.85% RSS=28.2MiB threads=54 core=2 runqueue=0.00% nvcsw=0 wchan=futex_wait_queue RMW=not-mapped cmd=MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
+----------------------------------------------------------------------------------------------------------------------
+ DDS PUBLISHER ENDPOINTS / QOS
+  /swarm/live: publishers=3 changed=False
+   - gid=010f29a89e08073f0000000000001703 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010f8f5e7b0889290000000000001703 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010fb5b2cb0837240000000000001703 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+  /swarm/status: publishers=1 changed=False
+   - gid=010f29a89e08073f0000000000001b03 node=control_node_d1 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+  /tf: publishers=6 changed=False
+   - gid=010f29a89e08073f0000000000001503 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f29a89e08073f0000000000001603 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001503 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001603 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001503 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001603 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+----------------------------------------------------------------------------------------------------------------------
+ SWARM HEARTBEATS / STATUS
+  heartbeat peer=1        rate=  0.20Hz age=2.04s max_gap=5.084s advance_age=2.04s repeated=0 regress=0 zero=0 clock(source-local)=494.007s excess_delay(last/max)=5.870/5.870s
+  heartbeat peer=2        rate=  0.80Hz age=0.38s max_gap=1.505s advance_age=0.38s repeated=0 regress=0 zero=0 clock(source-local)=-0.008s excess_delay(last/max)=0.006/0.006s
+  heartbeat peer=3        rate=  0.40Hz age=1.50s max_gap=2.876s advance_age=1.50s repeated=0 regress=0 zero=0 clock(source-local)=32.782s excess_delay(last/max)=0.280/1.430s
+  status: age=1.74s leader=1 members=(1, 2) state=IDLE armed=False offboard=False pattern=None spacing=3.00 leader_pos=(0.024181902408599854, -0.15986192226409912, 0.061767578125) goal=(0.0, 0.0, 0.0) leader_counts={1: 1} mission=(False, 0, 0, 'IDLE') message=''
+----------------------------------------------------------------------------------------------------------------------
+ TF TIMING / CONTENT / DDS DELIVERY
+  frame=x500_depth_1/goal                          parent=world                    rate=  0.40Hz arrival_age=1.05s advance_age=1.05s gap(arrival/advance)=4.947/4.947s gap_ago=1.73s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=2.716s clock(source-local)=493.110s excess_delay(last/max)=6.766/6.766s
+  frame=x500_depth_1/odom                          parent=world                    rate=  1.00Hz arrival_age=1.05s advance_age=1.05s gap(arrival/advance)=5.215/5.215s gap_ago=1.41s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.028 m/0.000 rad max_implied_speed=0.90 m/s max_source_step=2.661s clock(source-local)=493.095s excess_delay(last/max)=6.780/6.780s
+  frame=x500_depth_2/goal                          parent=world                    rate=  9.81Hz arrival_age=0.08s advance_age=0.08s gap(arrival/advance)=0.196/0.196s gap_ago=3.08s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.196s clock(source-local)=-0.002s excess_delay(last/max)=0.001/0.009s
+  frame=x500_depth_2/odom                          parent=world                    rate= 50.06Hz arrival_age=0.01s advance_age=0.01s gap(arrival/advance)=0.039/0.039s gap_ago=0.77s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.001 m/0.000 rad max_implied_speed=0.11 m/s max_source_step=0.039s clock(source-local)=-0.005s excess_delay(last/max)=0.004/0.010s
+  frame=x500_depth_3/goal                          parent=world                    rate=  8.61Hz arrival_age=0.32s advance_age=0.32s gap(arrival/advance)=1.602/1.602s gap_ago=3.36s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.399s clock(source-local)=33.027s excess_delay(last/max)=0.054/1.615s
+  frame=x500_depth_3/odom                          parent=world                    rate= 42.85Hz arrival_age=0.29s advance_age=0.29s gap(arrival/advance)=1.579/1.579s gap_ago=3.35s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.015 m/0.000 rad max_implied_speed=0.08 m/s max_source_step=0.283s clock(source-local)=33.032s excess_delay(last/max)=0.053/1.612s
+  TF DDS writers (MessageInfo observer):
+   - gid=unknown node=<unmapped> rate=112.73Hz messages_by_batch={1: 563} missing_seq=0 duplicate_seq=0 regressed_seq=0 middleware_delay_max=N/As callback_queue_max=N/As children=('x500_depth_1/goal', 'x500_depth_1/odom', 'x500_depth_2/goal', 'x500_depth_2/odom', 'x500_depth_3/goal', 'x500_depth_3/odom')
+  TF cycles detected: none
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL PX4 SEMANTICS
+  drone=2:
+   - status: age=0.22s {'arming_state': 1, 'nav_state': 14, 'nav_intention': 14, 'failsafe': False, 'gcs_lost': False, 'high_latency_lost': False, 'preflight_ok': False, 'power_input_valid': True}
+   - failsafe_flags: age=0.21s {'active': ('auto_mission_missing', 'offboard_control_signal_lost'), 'battery_warning': 0}
+   - local_position: age=0.01s {'position': (0.035394180566072464, -3.240140676498413, -3.8994140625), 'velocity': (-0.014726600609719753, 0.006565473973751068, 0.0068485611118376255), 'finite': True, 'valid': True, 'dead_reckoning': False, 'eph': 0.3824650049209595, 'epv': 0.3237032890319824, 'sample_timestamp_us': 1787748401724290, 'reset_counters': (6, 5, 5, 3, 6)}
+   - trajectory_setpoint: never received
+   - offboard_control_mode: never received
+   - battery: age=0.07s {'connected': True, 'remaining': 0.7689915895462036, 'voltage_v': 16.016305923461914, 'current_a': 0.0, 'temperature': nan, 'warning': 0, 'faults': 0}
+   - land: age=0.98s {'landed': True, 'ground_contact': True, 'maybe_landed': True, 'freefall': False, 'at_rest': True}
+   - timesync: age=0.82s {'source_protocol': 2, 'observed_offset_us': -1787746663077555, 'estimated_offset_us': -1787746663079001, 'round_trip_time_us': 3635, 'remote_timestamp_us': 1787748400912999}
+   - vehicle_command: never received
+   - command_ack: never received
+  PX4 window counters: none
+  PX4 window maxima: {(2, 'timesync_rtt_us'): 7434}
+----------------------------------------------------------------------------------------------------------------------
+ SUBSCRIPTION RECEIVE TIMING
+  /command: never received
+  /formation: never received
+  /manual_controller: never received
+  /swarm/command: never received
+  /swarm/formation_command: never received
+  /swarm/live                                                rate=   1.40Hz age=0.38s max_gap=1.497s gap_ago=3.38s stamp_advance_age=N/As repeat/regress/zero=0/0/0
+  /swarm/status                                              rate=   0.20Hz age=1.74s max_gap=5.388s gap_ago=1.74s stamp_advance_age=1.74s repeat/regress/zero=0/0/0
+  /tf                                                        rate= 112.73Hz age=0.01s max_gap=0.034s gap_ago=1.13s stamp_advance_age=0.01s repeat/regress/zero=0/67/0
+  /uav_2/fmu/in/offboard_control_mode: never received
+  /uav_2/fmu/in/trajectory_setpoint: never received
+  /uav_2/fmu/in/vehicle_command: never received
+  /uav_2/fmu/out/battery_status_v1                           rate=   1.00Hz age=0.07s max_gap=1.006s gap_ago=1.06s stamp_advance_age=0.07s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/failsafe_flags                              rate=   2.00Hz age=0.21s max_gap=0.551s gap_ago=1.59s stamp_advance_age=0.21s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/timesync_status                             rate=   1.00Hz age=0.82s max_gap=1.018s gap_ago=3.84s stamp_advance_age=0.82s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_command_ack: never received
+  /uav_2/fmu/out/vehicle_land_detected                       rate=   1.00Hz age=0.98s max_gap=1.010s gap_ago=4.98s stamp_advance_age=0.98s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_local_position_v1                   rate=  50.06Hz age=0.01s max_gap=0.040s gap_ago=0.67s stamp_advance_age=0.01s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_status_v1                           rate=   2.20Hz age=0.22s max_gap=0.513s gap_ago=2.30s stamp_advance_age=0.22s repeat/regress/zero=0/0/0
+----------------------------------------------------------------------------------------------------------------------
+ TRANSITIONS / ANOMALIES / WIFI EVENTS
+  -   0.216s ago [px4_transition] drone=2 status: gcs_lost=True->False
+  -   0.212s ago [px4_transition] drone=2 failsafe_flags: active=('auto_mission_missing', 'gcs_connection_lost', 'offboard_control_signal_lost')->('auto_mission_missing', 'offboard_control_signal_lost')
+  iw event monitor: status=running counts={}
+----------------------------------------------------------------------------------------------------------------------
+ WARNINGS (19):
+  ! kernel UDP/IP errors/discards +2
+  ! heartbeat 1 max gap 5.084s (neighbor timeout=6.0s)
+  ! peer 1 clock offset approximately +494.007s
+  ! peer 3 clock offset approximately +32.782s
+  ! TF arrival gap x500_depth_1/goal: 4.947s
+  ! TF publisher source-time step x500_depth_1/goal: 2.716s
+  ! TF variable delivery delay x500_depth_1/goal: 6.766s above baseline
+  ! TF transport/publisher arrival stale x500_depth_1/odom: 1.05s
+  ! TF source timestamp stale x500_depth_1/odom: 1.05s
+  ! TF arrival gap x500_depth_1/odom: 5.215s
+  ! TF publisher source-time step x500_depth_1/odom: 2.661s
+  ! TF variable delivery delay x500_depth_1/odom: 6.780s above baseline
+  ! TF arrival gap x500_depth_3/goal: 1.602s
+  ! TF publisher source-time step x500_depth_3/goal: 0.399s
+  ! TF variable delivery delay x500_depth_3/goal: 1.615s above baseline
+  ! TF arrival gap x500_depth_3/odom: 1.579s
+  ! TF publisher source-time step x500_depth_3/odom: 0.283s
+  ! TF variable delivery delay x500_depth_3/odom: 1.612s above baseline
+  ! PX4 drone 2 failsafe flags: ('auto_mission_missing', 'offboard_control_signal_lost') battery_warning=0
+ logger capture=0.0019s background_health=0.4020s health_to_emit=0.1977s
+======================================================================================================================
+
+======================================================================================================================
+SWARM FLIGHT DIAGNOSTIC REPORT
+======================================================================================================================
+ identity: schema=2 report=5 drone=2 host=drone1
+ clocks: utc=2026-08-26T12:46:46.748+00:00 epoch_ns=1787748406748156175 monotonic=1735.428306 node_uptime=25.33s window=5.002s
+ runtime: ROS_DISTRO=rolling RMW=rmw_fastrtps_cpp RMW_IMPLEMENTATION=unset DOMAIN=0(default) LOCALHOST_ONLY=unset
+ software: python=3.12.3 executable=/usr/bin/python3 message_info=True pid=2192
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL HOST / POWER / SCHEDULING
+  sample: age=0.59s collection=0.399s source_window=5.00s host=drone1 kernel=6.8.0-1031-raspi machine=aarch64 uptime=1736s boot_id=1762d4b7-e5df-41fc-85de-3c03db921a36
+  resources: CPU=46.35% max_core=cpu0=50.9% load=1.21/0.89/0.83 CPUs=4 memory=13.89% temp=47.71C PSI10(cpu/mem/io)=5.08/0.00/0.00
+  Raspberry Pi throttle: 0x0 (no current/historical flags)
+  interface: name=wlan0 state=up carrier=1 MAC=2c:cf:67:06:fe:a5 MTU=1500 driver=brcmfmac tx_queue_len=1000
+  Wi-Fi link: probe=ok connected=True SSID=DroneNetwork BSSID=88:dc:97:13:8c:da freq=2442MHz signal=-41.00dBm(strong) tx/rx=72.20/21.60Mbit/s power_save=False
+  kernel interface delta: rx/tx=0.348/1.019Mbit/s packets=952/2587 drops=0/0 errors=0/0 resets=none
+  station: inactive=0ms avg_signal=N/AdBm throughput=N/AMbps delta_tx_packets=2603 retries=N/A failed=36 beacon_loss=N/A rx_drop_misc=N/A retry/packet=0.000 failed/1000=13.83 resets=none
+  channel survey: freq=N/AMHz noise=N/AdBm busy=N/A% rx=N/A% tx=N/A% own-BSS-rx=N/A% resets=none
+  kernel UDP/IP delta: Udp.InDatagrams=1744 Udp.OutDatagrams=3332 Udp.NoPorts=0 Udp.InErrors=0 Udp.RcvbufErrors=0 Udp.SndbufErrors=86 Ip.InDiscards=0 Ip.OutDiscards=0 Ip.InHdrErrors=0 Ip.ReasmFails=0 resets=none
+  softnet delta: processed=1718 dropped=0 time_squeeze=0 resets=none; sockets=UDP.inuse=21 UDP.mem=0 sockets.used=251
+  external probe status: iw_link=ok(0.016s,rc=0), iw_power_save=ok(0.014s,rc=0), iw_station=ok(0.017s,rc=0), iw_survey=empty(0.011s,rc=0), vcgencmd_throttled=ok(0.014s,rc=0)
+  relevant processes:
+   - logger           pid=2192    state=S CPU=83.33% RSS=93.6MiB threads=23 core=3 runqueue=1.55% nvcsw=432 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger --ros-args -p drone_count:=3 -p local_drone_id:=2 -p drone_ids:=[2] -p
+   - controller       pid=2168    state=S CPU=0.00% RSS=45.7MiB threads=3 core=2 runqueue=0.00% nvcsw=0 wchan=do_wait RMW=('librmw_implementation.so',) cmd=/usr/bin/python3 /opt/ros/rolling/bin/ros2 run swarm_single control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - controller       pid=2171    state=S CPU=63.35% RSS=113.5MiB threads=18 core=0 runqueue=0.48% nvcsw=565 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_single/lib/swarm_single/control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - microxrce_agent  pid=1202    state=S CPU=26.78% RSS=28.2MiB threads=54 core=2 runqueue=0.00% nvcsw=0 wchan=futex_wait_queue RMW=not-mapped cmd=MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
+----------------------------------------------------------------------------------------------------------------------
+ DDS PUBLISHER ENDPOINTS / QOS
+  /swarm/live: publishers=3 changed=False
+   - gid=010f29a89e08073f0000000000001703 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010f8f5e7b0889290000000000001703 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010fb5b2cb0837240000000000001703 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+  /swarm/status: publishers=2 changed=True
+   - gid=010f29a89e08073f0000000000001b03 node=control_node_d1 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+   - gid=010f8f5e7b0889290000000000003203 node=control_node_d2 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+  /tf: publishers=6 changed=False
+   - gid=010f29a89e08073f0000000000001503 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f29a89e08073f0000000000001603 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001503 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001603 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001503 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001603 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+----------------------------------------------------------------------------------------------------------------------
+ SWARM HEARTBEATS / STATUS
+  heartbeat peer=1        rate=  0.20Hz age=0.31s max_gap=6.736s advance_age=0.31s repeated=0 regress=0 zero=0 clock(source-local)=489.799s excess_delay(last/max)=10.079/10.079s
+  heartbeat peer=2        rate=  0.60Hz age=0.88s max_gap=1.501s advance_age=0.88s repeated=0 regress=0 zero=0 clock(source-local)=-0.006s excess_delay(last/max)=0.004/0.004s
+  heartbeat peer=3        rate=  0.80Hz age=0.41s max_gap=1.924s advance_age=0.41s repeated=0 regress=0 zero=0 clock(source-local)=32.686s excess_delay(last/max)=0.376/0.703s
+  status: age=6.74s leader=1 members=(1, 2) state=IDLE armed=False offboard=False pattern=None spacing=3.00 leader_pos=(0.024181902408599854, -0.15986192226409912, 0.061767578125) goal=(0.0, 0.0, 0.0) leader_counts={} mission=(False, 0, 0, 'IDLE') message=''
+----------------------------------------------------------------------------------------------------------------------
+ TF TIMING / CONTENT / DDS DELIVERY
+  frame=x500_depth_1/goal                          parent=world                    rate=  0.00Hz arrival_age=6.05s advance_age=6.05s gap(arrival/advance)=N/A/N/As gap_ago=N/As repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=N/A m/N/A rad max_implied_speed=N/A m/s max_source_step=N/As clock(source-local)=493.110s excess_delay(last/max)=6.766/N/As
+  frame=x500_depth_1/odom                          parent=world                    rate=  0.00Hz arrival_age=6.06s advance_age=6.06s gap(arrival/advance)=N/A/N/As gap_ago=N/As repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=N/A m/N/A rad max_implied_speed=N/A m/s max_source_step=N/As clock(source-local)=493.095s excess_delay(last/max)=6.780/N/As
+  frame=x500_depth_2/goal                          parent=world                    rate=  9.40Hz arrival_age=0.08s advance_age=0.08s gap(arrival/advance)=0.546/0.546s gap_ago=0.14s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=4.986 m/0.000 rad max_implied_speed=45.34 m/s max_source_step=0.545s clock(source-local)=-0.002s excess_delay(last/max)=0.001/0.010s
+  frame=x500_depth_2/odom                          parent=world                    rate= 44.18Hz arrival_age=0.01s advance_age=0.01s gap(arrival/advance)=0.536/0.536s gap_ago=0.13s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.013 m/0.000 rad max_implied_speed=0.12 m/s max_source_step=0.537s clock(source-local)=-0.003s excess_delay(last/max)=0.002/0.013s
+  frame=x500_depth_3/goal                          parent=world                    rate=  9.80Hz arrival_age=0.27s advance_age=0.27s gap(arrival/advance)=0.819/0.819s gap_ago=0.42s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.202s clock(source-local)=32.971s excess_delay(last/max)=0.109/0.763s
+  frame=x500_depth_3/odom                          parent=world                    rate= 49.58Hz arrival_age=0.26s advance_age=0.26s gap(arrival/advance)=0.778/0.778s gap_ago=0.42s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.12 m/s max_source_step=0.038s clock(source-local)=33.002s excess_delay(last/max)=0.083/0.784s
+  TF DDS writers (MessageInfo observer):
+   - gid=unknown node=<unmapped> rate=112.95Hz messages_by_batch={1: 565} missing_seq=0 duplicate_seq=0 regressed_seq=0 middleware_delay_max=N/As callback_queue_max=N/As children=('x500_depth_1/goal', 'x500_depth_1/odom', 'x500_depth_2/goal', 'x500_depth_2/odom', 'x500_depth_3/goal', 'x500_depth_3/odom')
+  TF cycles detected: none
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL PX4 SEMANTICS
+  drone=2:
+   - status: age=0.16s {'arming_state': 1, 'nav_state': 14, 'nav_intention': 14, 'failsafe': False, 'gcs_lost': False, 'high_latency_lost': False, 'preflight_ok': False, 'power_input_valid': True}
+   - failsafe_flags: age=0.27s {'active': ('auto_mission_missing', 'offboard_control_signal_lost'), 'battery_warning': 0}
+   - local_position: age=0.01s {'position': (0.02558234892785549, -3.152311325073242, -3.9677734375), 'velocity': (6.281849346123636e-05, 0.01482025533914566, -0.0026868998538702726), 'finite': True, 'valid': True, 'dead_reckoning': False, 'eph': 0.387237012386322, 'epv': 0.3248336911201477, 'sample_timestamp_us': 1787748406724705, 'reset_counters': (6, 5, 5, 3, 6)}
+   - trajectory_setpoint: never received
+   - offboard_control_mode: never received
+   - battery: age=0.07s {'connected': True, 'remaining': 0.7668701410293579, 'voltage_v': 16.12372398376465, 'current_a': 0.0, 'temperature': nan, 'warning': 0, 'faults': 0}
+   - land: age=0.98s {'landed': True, 'ground_contact': True, 'maybe_landed': True, 'freefall': False, 'at_rest': True}
+   - timesync: age=0.78s {'source_protocol': 2, 'observed_offset_us': -1787746663078077, 'estimated_offset_us': -1787746663079224, 'round_trip_time_us': 4171, 'remote_timestamp_us': 1787748405959725}
+   - vehicle_command: never received
+   - command_ack: never received
+  PX4 window counters: none
+  PX4 window maxima: {(2, 'timesync_rtt_us'): 6508}
+----------------------------------------------------------------------------------------------------------------------
+ SUBSCRIPTION RECEIVE TIMING
+  /command: never received
+  /formation: never received
+  /manual_controller: never received
+  /swarm/command: never received
+  /swarm/formation_command: never received
+  /swarm/live                                                rate=   1.60Hz age=0.31s max_gap=1.351s gap_ago=2.38s stamp_advance_age=N/As repeat/regress/zero=0/0/0
+  /swarm/status                                              rate=   0.00Hz age=6.74s max_gap=N/As gap_ago=N/As stamp_advance_age=6.74s repeat/regress/zero=0/0/0
+  /tf                                                        rate= 112.95Hz age=0.01s max_gap=0.248s gap_ago=0.42s stamp_advance_age=0.01s repeat/regress/zero=0/76/0
+  /uav_2/fmu/in/offboard_control_mode: never received
+  /uav_2/fmu/in/trajectory_setpoint: never received
+  /uav_2/fmu/in/vehicle_command: never received
+  /uav_2/fmu/out/battery_status_v1                           rate=   1.00Hz age=0.07s max_gap=1.009s gap_ago=1.06s stamp_advance_age=0.07s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/failsafe_flags                              rate=   1.80Hz age=0.27s max_gap=0.554s gap_ago=4.12s stamp_advance_age=0.27s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/timesync_status                             rate=   1.00Hz age=0.78s max_gap=1.016s gap_ago=2.80s stamp_advance_age=0.78s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_command_ack: never received
+  /uav_2/fmu/out/vehicle_land_detected                       rate=   1.00Hz age=0.98s max_gap=1.003s gap_ago=2.98s stamp_advance_age=0.98s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_local_position_v1                   rate=  49.98Hz age=0.01s max_gap=0.039s gap_ago=4.65s stamp_advance_age=0.01s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_status_v1                           rate=   2.00Hz age=0.16s max_gap=0.511s gap_ago=1.68s stamp_advance_age=0.16s repeat/regress/zero=0/0/0
+----------------------------------------------------------------------------------------------------------------------
+ TRANSITIONS / ANOMALIES / WIFI EVENTS
+  ROS/PX4 events: none in this window
+  iw event monitor: status=running counts={}
+----------------------------------------------------------------------------------------------------------------------
+ WARNINGS (19):
+  ! Wi-Fi tx_failed +36
+  ! high Wi-Fi failure ratio: 13.83/1000 packets
+  ! kernel UDP/IP errors/discards +86
+  ! DDS publisher endpoint set changed for /swarm/status
+  ! SPLIT-BRAIN evidence: 2 status publishers
+  ! heartbeat 1 max gap 6.736s (neighbor timeout=6.0s)
+  ! peer 1 clock offset approximately +489.799s
+  ! peer 3 clock offset approximately +32.686s
+  ! TF transport/publisher arrival stale x500_depth_1/odom: 6.06s
+  ! TF source timestamp stale x500_depth_1/odom: 6.06s
+  ! TF arrival gap x500_depth_2/goal: 0.546s
+  ! TF publisher source-time step x500_depth_2/goal: 0.545s
+  ! TF arrival gap x500_depth_2/odom: 0.536s
+  ! TF publisher source-time step x500_depth_2/odom: 0.537s
+  ! TF arrival gap x500_depth_3/goal: 0.819s
+  ! TF variable delivery delay x500_depth_3/goal: 0.763s above baseline
+  ! TF arrival gap x500_depth_3/odom: 0.778s
+  ! TF variable delivery delay x500_depth_3/odom: 0.784s above baseline
+  ! PX4 drone 2 failsafe flags: ('auto_mission_missing', 'offboard_control_signal_lost') battery_warning=0
+ logger capture=0.0023s background_health=0.3989s health_to_emit=0.1970s
+======================================================================================================================
+
+======================================================================================================================
+SWARM FLIGHT DIAGNOSTIC REPORT
+======================================================================================================================
+ identity: schema=2 report=6 drone=2 host=drone1
+ clocks: utc=2026-08-26T12:46:51.747+00:00 epoch_ns=1787748411747903061 monotonic=1740.427942 node_uptime=30.33s window=5.000s
+ runtime: ROS_DISTRO=rolling RMW=rmw_fastrtps_cpp RMW_IMPLEMENTATION=unset DOMAIN=0(default) LOCALHOST_ONLY=unset
+ software: python=3.12.3 executable=/usr/bin/python3 message_info=True pid=2192
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL HOST / POWER / SCHEDULING
+  sample: age=0.60s collection=0.502s source_window=5.00s host=drone1 kernel=6.8.0-1031-raspi machine=aarch64 uptime=1741s boot_id=1762d4b7-e5df-41fc-85de-3c03db921a36
+  resources: CPU=50.13% max_core=cpu0=55.2% load=1.43/0.94/0.85 CPUs=4 memory=13.89% temp=47.23C PSI10(cpu/mem/io)=5.49/0.00/0.00
+  Raspberry Pi throttle: 0x0 (no current/historical flags)
+  interface: name=wlan0 state=up carrier=1 MAC=2c:cf:67:06:fe:a5 MTU=1500 driver=brcmfmac tx_queue_len=1000
+  Wi-Fi link: probe=ok connected=True SSID=DroneNetwork BSSID=88:dc:97:13:8c:da freq=2442MHz signal=-41.00dBm(strong) tx/rx=72.20/28.80Mbit/s power_save=False
+  kernel interface delta: rx/tx=0.373/0.952Mbit/s packets=1057/2793 drops=0/0 errors=0/0 resets=none
+  station: inactive=0ms avg_signal=N/AdBm throughput=N/AMbps delta_tx_packets=2760 retries=N/A failed=0 beacon_loss=N/A rx_drop_misc=N/A retry/packet=0.000 failed/1000=0.00 resets=none
+  channel survey: freq=N/AMHz noise=N/AdBm busy=N/A% rx=N/A% tx=N/A% own-BSS-rx=N/A% resets=none
+  kernel UDP/IP delta: Udp.InDatagrams=1708 Udp.OutDatagrams=3403 Udp.NoPorts=0 Udp.InErrors=0 Udp.RcvbufErrors=0 Udp.SndbufErrors=80 Ip.InDiscards=0 Ip.OutDiscards=0 Ip.InHdrErrors=0 Ip.ReasmFails=0 resets=none
+  softnet delta: processed=1683 dropped=0 time_squeeze=0 resets=none; sockets=UDP.inuse=21 UDP.mem=0 sockets.used=251
+  external probe status: iw_link=ok(0.021s,rc=0), iw_power_save=ok(0.035s,rc=0), iw_station=ok(0.027s,rc=0), iw_survey=empty(0.038s,rc=0), vcgencmd_throttled=ok(0.018s,rc=0)
+  relevant processes:
+   - logger           pid=2192    state=R CPU=87.99% RSS=93.7MiB threads=23 core=2 runqueue=1.90% nvcsw=609 wchan=0 RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger --ros-args -p drone_count:=3 -p local_drone_id:=2 -p drone_ids:=[2] -p
+   - controller       pid=2168    state=S CPU=0.00% RSS=45.7MiB threads=3 core=2 runqueue=0.00% nvcsw=0 wchan=do_wait RMW=('librmw_implementation.so',) cmd=/usr/bin/python3 /opt/ros/rolling/bin/ros2 run swarm_single control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - controller       pid=2171    state=S CPU=77.59% RSS=113.6MiB threads=18 core=1 runqueue=0.67% nvcsw=1008 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_single/lib/swarm_single/control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - microxrce_agent  pid=1202    state=S CPU=27.60% RSS=28.2MiB threads=54 core=2 runqueue=0.00% nvcsw=0 wchan=futex_wait_queue RMW=not-mapped cmd=MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
+----------------------------------------------------------------------------------------------------------------------
+ DDS PUBLISHER ENDPOINTS / QOS
+  /swarm/live: publishers=3 changed=False
+   - gid=010f29a89e08073f0000000000001703 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010f8f5e7b0889290000000000001703 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010fb5b2cb0837240000000000001703 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+  /swarm/status: publishers=2 changed=False
+   - gid=010f29a89e08073f0000000000001b03 node=control_node_d1 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+   - gid=010f8f5e7b0889290000000000003203 node=control_node_d2 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+  /tf: publishers=6 changed=False
+   - gid=010f29a89e08073f0000000000001503 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f29a89e08073f0000000000001603 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001503 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001603 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001503 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001603 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+----------------------------------------------------------------------------------------------------------------------
+ SWARM HEARTBEATS / STATUS
+  heartbeat peer=1        rate=  0.00Hz age=5.31s max_gap=N/As advance_age=5.31s repeated=0 regress=0 zero=0 clock(source-local)=489.799s excess_delay(last/max)=10.079/N/As
+  heartbeat peer=2        rate=  0.60Hz age=1.38s max_gap=1.504s advance_age=1.38s repeated=0 regress=0 zero=0 clock(source-local)=-0.009s excess_delay(last/max)=0.007/0.007s
+  heartbeat peer=3        rate=  0.60Hz age=1.26s max_gap=1.492s advance_age=1.26s repeated=0 regress=0 zero=0 clock(source-local)=33.038s excess_delay(last/max)=0.023/0.244s
+  status: age=0.86s leader=2 members=(2, 3) state=IDLE armed=False offboard=True pattern=None spacing=3.00 leader_pos=(0.154693603515625, 4.952580451965332, 0.0233154296875) goal=(0.14957427978515625, 4.983297348022461, -0.034423828125) leader_counts={2: 5, 1: 1} mission=(False, 0, 0, 'IDLE') message=''
+----------------------------------------------------------------------------------------------------------------------
+ TF TIMING / CONTENT / DDS DELIVERY
+  frame=x500_depth_1/goal                          parent=world                    rate=  0.20Hz arrival_age=4.45s advance_age=4.45s gap(arrival/advance)=6.599/6.599s gap_ago=4.45s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=2.442s clock(source-local)=488.953s excess_delay(last/max)=10.923/10.923s
+  frame=x500_depth_1/odom                          parent=world                    rate=  0.20Hz arrival_age=4.39s advance_age=4.39s gap(arrival/advance)=6.664/6.664s gap_ago=4.39s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.032 m/0.000 rad max_implied_speed=0.01 m/s max_source_step=2.464s clock(source-local)=488.895s excess_delay(last/max)=10.980/10.980s
+  frame=x500_depth_2/goal                          parent=world                    rate= 10.00Hz arrival_age=0.08s advance_age=0.08s gap(arrival/advance)=0.110/0.110s gap_ago=3.48s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.104s clock(source-local)=-0.002s excess_delay(last/max)=0.001/0.008s
+  frame=x500_depth_2/odom                          parent=world                    rate= 50.00Hz arrival_age=0.01s advance_age=0.01s gap(arrival/advance)=0.034/0.034s gap_ago=1.87s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.09 m/s max_source_step=0.035s clock(source-local)=-0.002s excess_delay(last/max)=0.000/0.015s
+  frame=x500_depth_3/goal                          parent=world                    rate=  9.40Hz arrival_age=0.02s advance_age=0.02s gap(arrival/advance)=0.817/0.817s gap_ago=0.47s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.103s clock(source-local)=32.422s excess_delay(last/max)=0.659/0.805s
+  frame=x500_depth_3/odom                          parent=world                    rate= 47.40Hz arrival_age=0.00s advance_age=0.00s gap(arrival/advance)=0.788/0.788s gap_ago=0.47s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.001 m/0.000 rad max_implied_speed=0.07 m/s max_source_step=0.031s clock(source-local)=32.485s excess_delay(last/max)=0.599/0.821s
+  TF DDS writers (MessageInfo observer):
+   - gid=unknown node=<unmapped> rate=117.21Hz messages_by_batch={1: 586} missing_seq=0 duplicate_seq=0 regressed_seq=0 middleware_delay_max=N/As callback_queue_max=N/As children=('x500_depth_1/goal', 'x500_depth_1/odom', 'x500_depth_2/goal', 'x500_depth_2/odom', 'x500_depth_3/goal', 'x500_depth_3/odom')
+  TF cycles detected: none
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL PX4 SEMANTICS
+  drone=2:
+   - status: age=0.10s {'arming_state': 1, 'nav_state': 14, 'nav_intention': 14, 'failsafe': False, 'gcs_lost': False, 'high_latency_lost': False, 'preflight_ok': False, 'power_input_valid': True}
+   - failsafe_flags: age=0.32s {'active': ('auto_mission_missing', 'offboard_control_signal_lost'), 'battery_warning': 0}
+   - local_position: age=0.01s {'position': (-0.015722671523690224, -3.1649041175842285, -4.0291748046875), 'velocity': (-0.005561403464525938, -0.014522808603942394, -0.0065945289097726345), 'finite': True, 'valid': True, 'dead_reckoning': False, 'eph': 0.3918639123439789, 'epv': 0.325633704662323, 'sample_timestamp_us': 1787748411725120, 'reset_counters': (6, 5, 5, 3, 6)}
+   - trajectory_setpoint: never received
+   - offboard_control_mode: never received
+   - battery: age=0.07s {'connected': True, 'remaining': 0.7635852098464966, 'voltage_v': 16.139602661132812, 'current_a': 0.0, 'temperature': nan, 'warning': 0, 'faults': 0}
+   - land: age=0.96s {'landed': True, 'ground_contact': True, 'maybe_landed': True, 'freefall': False, 'at_rest': True}
+   - timesync: age=0.74s {'source_protocol': 2, 'observed_offset_us': -1787746663077539, 'estimated_offset_us': -1787746663079448, 'round_trip_time_us': 2492, 'remote_timestamp_us': 1787748410998248}
+   - vehicle_command: never received
+   - command_ack: never received
+  PX4 window counters: none
+  PX4 window maxima: {(2, 'timesync_rtt_us'): 7396}
+----------------------------------------------------------------------------------------------------------------------
+ SUBSCRIPTION RECEIVE TIMING
+  /command: never received
+  /formation: never received
+  /manual_controller: never received
+  /swarm/command: never received
+  /swarm/formation_command: never received
+  /swarm/live                                                rate=   1.20Hz age=1.26s max_gap=1.169s gap_ago=1.38s stamp_advance_age=N/As repeat/regress/zero=0/0/0
+  /swarm/status                                              rate=   1.20Hz age=0.86s max_gap=6.883s gap_ago=4.86s stamp_advance_age=0.86s repeat/regress/zero=0/2/0
+  /tf                                                        rate= 117.21Hz age=0.00s max_gap=0.033s gap_ago=2.34s stamp_advance_age=0.00s repeat/regress/zero=0/97/0
+  /uav_2/fmu/in/offboard_control_mode: never received
+  /uav_2/fmu/in/trajectory_setpoint: never received
+  /uav_2/fmu/in/vehicle_command: never received
+  /uav_2/fmu/out/battery_status_v1                           rate=   1.00Hz age=0.07s max_gap=1.005s gap_ago=1.06s stamp_advance_age=0.07s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/failsafe_flags                              rate=   1.80Hz age=0.32s max_gap=0.556s gap_ago=1.42s stamp_advance_age=0.32s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/timesync_status                             rate=   1.00Hz age=0.74s max_gap=1.015s gap_ago=4.76s stamp_advance_age=0.74s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_command_ack: never received
+  /uav_2/fmu/out/vehicle_land_detected                       rate=   1.00Hz age=0.96s max_gap=1.005s gap_ago=0.96s stamp_advance_age=0.96s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_local_position_v1                   rate=  50.00Hz age=0.01s max_gap=0.034s gap_ago=1.88s stamp_advance_age=0.01s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_status_v1                           rate=   2.00Hz age=0.10s max_gap=0.514s gap_ago=3.64s stamp_advance_age=0.10s repeat/regress/zero=0/0/0
+----------------------------------------------------------------------------------------------------------------------
+ TRANSITIONS / ANOMALIES / WIFI EVENTS
+  -   4.856s ago [swarm_status] leader_id=1->2, members=(1, 2)->(2, 3), offboard=False->True
+  -   4.722s ago [swarm_status] leader_id=2->1, members=(2, 3)->(1, 2), offboard=True->False
+  -   3.862s ago [swarm_status] leader_id=1->2, members=(1, 2)->(2, 3), offboard=False->True
+  iw event monitor: status=running counts={}
+----------------------------------------------------------------------------------------------------------------------
+ WARNINGS (21):
+  ! kernel UDP/IP errors/discards +80
+  ! SPLIT-BRAIN evidence: 2 status publishers
+  ! heartbeat 1 missing/stale age=5.31s
+  ! peer 1 clock offset approximately +489.799s
+  ! peer 3 clock offset approximately +33.038s
+  ! SPLIT-BRAIN/status leader changes: {2: 5, 1: 1}
+  ! TF transport/publisher arrival stale x500_depth_1/goal: 4.45s
+  ! TF source timestamp stale x500_depth_1/goal: 4.45s
+  ! TF arrival gap x500_depth_1/goal: 6.599s
+  ! TF publisher source-time step x500_depth_1/goal: 2.442s
+  ! TF variable delivery delay x500_depth_1/goal: 10.923s above baseline
+  ! TF transport/publisher arrival stale x500_depth_1/odom: 4.39s
+  ! TF source timestamp stale x500_depth_1/odom: 4.39s
+  ! TF arrival gap x500_depth_1/odom: 6.664s
+  ! TF publisher source-time step x500_depth_1/odom: 2.464s
+  ! TF variable delivery delay x500_depth_1/odom: 10.980s above baseline
+  ! TF arrival gap x500_depth_3/goal: 0.817s
+  ! TF variable delivery delay x500_depth_3/goal: 0.805s above baseline
+  ! TF arrival gap x500_depth_3/odom: 0.788s
+  ! TF variable delivery delay x500_depth_3/odom: 0.821s above baseline
+  ! PX4 drone 2 failsafe flags: ('auto_mission_missing', 'offboard_control_signal_lost') battery_warning=0
+ logger capture=0.0025s background_health=0.5023s health_to_emit=0.0950s
+======================================================================================================================
+
+======================================================================================================================
+SWARM FLIGHT DIAGNOSTIC REPORT
+======================================================================================================================
+ identity: schema=2 report=7 drone=2 host=drone1
+ clocks: utc=2026-08-26T12:46:56.749+00:00 epoch_ns=1787748416749307650 monotonic=1745.429250 node_uptime=35.33s window=5.001s
+ runtime: ROS_DISTRO=rolling RMW=rmw_fastrtps_cpp RMW_IMPLEMENTATION=unset DOMAIN=0(default) LOCALHOST_ONLY=unset
+ software: python=3.12.3 executable=/usr/bin/python3 message_info=True pid=2192
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL HOST / POWER / SCHEDULING
+  sample: age=0.80s collection=0.621s source_window=5.00s host=drone1 kernel=6.8.0-1031-raspi machine=aarch64 uptime=1746s boot_id=1762d4b7-e5df-41fc-85de-3c03db921a36
+  resources: CPU=49.22% max_core=cpu0=52.3% load=1.72/1.01/0.87 CPUs=4 memory=13.89% temp=47.71C PSI10(cpu/mem/io)=5.33/0.00/0.00
+  Raspberry Pi throttle: 0x0 (no current/historical flags)
+  interface: name=wlan0 state=up carrier=1 MAC=2c:cf:67:06:fe:a5 MTU=1500 driver=brcmfmac tx_queue_len=1000
+  Wi-Fi link: probe=ok connected=True SSID=DroneNetwork BSSID=88:dc:97:13:8c:da freq=2442MHz signal=-41.00dBm(strong) tx/rx=72.20/52.00Mbit/s power_save=False
+  kernel interface delta: rx/tx=0.367/1.101Mbit/s packets=984/3342 drops=0/0 errors=0/0 resets=none
+  station: inactive=0ms avg_signal=N/AdBm throughput=N/AMbps delta_tx_packets=3371 retries=N/A failed=0 beacon_loss=N/A rx_drop_misc=N/A retry/packet=0.000 failed/1000=0.00 resets=none
+  channel survey: freq=N/AMHz noise=N/AdBm busy=N/A% rx=N/A% tx=N/A% own-BSS-rx=N/A% resets=none
+  kernel UDP/IP delta: Udp.InDatagrams=1613 Udp.OutDatagrams=3946 Udp.NoPorts=0 Udp.InErrors=0 Udp.RcvbufErrors=0 Udp.SndbufErrors=36 Ip.InDiscards=0 Ip.OutDiscards=0 Ip.InHdrErrors=0 Ip.ReasmFails=4 resets=none
+  softnet delta: processed=1599 dropped=0 time_squeeze=0 resets=none; sockets=UDP.inuse=21 UDP.mem=0 sockets.used=251
+  external probe status: iw_link=ok(0.013s,rc=0), iw_power_save=ok(0.017s,rc=0), iw_station=ok(0.021s,rc=0), iw_survey=empty(0.017s,rc=0), vcgencmd_throttled=ok(0.015s,rc=0)
+  relevant processes:
+   - logger           pid=2192    state=R CPU=82.80% RSS=93.8MiB threads=23 core=1 runqueue=1.12% nvcsw=493 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger --ros-args -p drone_count:=3 -p local_drone_id:=2 -p drone_ids:=[2] -p
+   - controller       pid=2168    state=S CPU=0.00% RSS=45.7MiB threads=3 core=2 runqueue=0.00% nvcsw=0 wchan=do_wait RMW=('librmw_implementation.so',) cmd=/usr/bin/python3 /opt/ros/rolling/bin/ros2 run swarm_single control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - controller       pid=2171    state=S CPU=72.80% RSS=113.6MiB threads=18 core=3 runqueue=0.56% nvcsw=557 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_single/lib/swarm_single/control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - microxrce_agent  pid=1202    state=S CPU=27.20% RSS=28.2MiB threads=54 core=2 runqueue=0.00% nvcsw=0 wchan=futex_wait_queue RMW=not-mapped cmd=MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
+----------------------------------------------------------------------------------------------------------------------
+ DDS PUBLISHER ENDPOINTS / QOS
+  /swarm/live: publishers=3 changed=False
+   - gid=010f29a89e08073f0000000000001703 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010f8f5e7b0889290000000000001703 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010fb5b2cb0837240000000000001703 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+  /swarm/status: publishers=2 changed=False
+   - gid=010f29a89e08073f0000000000001b03 node=control_node_d1 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+   - gid=010f8f5e7b0889290000000000003203 node=control_node_d2 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+  /tf: publishers=6 changed=False
+   - gid=010f29a89e08073f0000000000001503 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f29a89e08073f0000000000001603 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001503 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001603 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001503 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001603 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+----------------------------------------------------------------------------------------------------------------------
+ SWARM HEARTBEATS / STATUS
+  heartbeat peer=1        rate=  0.20Hz age=3.43s max_gap=6.875s advance_age=3.43s repeated=0 regress=0 zero=0 clock(source-local)=491.266s excess_delay(last/max)=8.612/8.612s
+  heartbeat peer=2        rate=  0.80Hz age=0.39s max_gap=1.501s advance_age=0.39s repeated=0 regress=0 zero=0 clock(source-local)=-0.003s excess_delay(last/max)=0.001/0.003s
+  heartbeat peer=3        rate=  0.80Hz age=0.06s max_gap=2.347s advance_age=0.06s repeated=0 regress=0 zero=0 clock(source-local)=32.832s excess_delay(last/max)=0.230/0.867s
+  status: age=0.86s leader=2 members=(2, 3) state=IDLE armed=False offboard=True pattern=None spacing=3.00 leader_pos=(0.24524807929992676, 4.964483737945557, -0.0283203125) goal=(0.14957427978515625, 4.983297348022461, -0.034423828125) leader_counts={2: 5, 1: 1} mission=(False, 0, 0, 'IDLE') message=''
+----------------------------------------------------------------------------------------------------------------------
+ TF TIMING / CONTENT / DDS DELIVERY
+  frame=x500_depth_1/goal                          parent=world                    rate=  0.00Hz arrival_age=9.45s advance_age=9.45s gap(arrival/advance)=N/A/N/As gap_ago=N/As repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=N/A m/N/A rad max_implied_speed=N/A m/s max_source_step=N/As clock(source-local)=488.953s excess_delay(last/max)=10.923/N/As
+  frame=x500_depth_1/odom                          parent=world                    rate=  0.20Hz arrival_age=4.77s advance_age=4.77s gap(arrival/advance)=4.626/4.626s gap_ago=4.77s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.02 m/s max_source_step=0.016s clock(source-local)=484.285s excess_delay(last/max)=15.590/15.590s
+  frame=x500_depth_2/goal                          parent=world                    rate= 10.00Hz arrival_age=0.08s advance_age=0.08s gap(arrival/advance)=0.106/0.106s gap_ago=1.98s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.103s clock(source-local)=-0.004s excess_delay(last/max)=0.002/0.009s
+  frame=x500_depth_2/odom                          parent=world                    rate= 49.79Hz arrival_age=0.00s advance_age=0.00s gap(arrival/advance)=0.049/0.049s gap_ago=0.86s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.14 m/s max_source_step=0.048s clock(source-local)=-0.005s excess_delay(last/max)=0.004/0.012s
+  frame=x500_depth_3/goal                          parent=world                    rate=  9.80Hz arrival_age=0.02s advance_age=0.02s gap(arrival/advance)=1.584/1.584s gap_ago=1.06s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.700s clock(source-local)=32.921s excess_delay(last/max)=0.160/1.517s
+  frame=x500_depth_3/odom                          parent=world                    rate= 48.39Hz arrival_age=0.00s advance_age=0.00s gap(arrival/advance)=1.565/1.565s gap_ago=1.08s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.012 m/0.000 rad max_implied_speed=0.11 m/s max_source_step=0.638s clock(source-local)=32.985s excess_delay(last/max)=0.099/1.587s
+  TF DDS writers (MessageInfo observer):
+   - gid=unknown node=<unmapped> rate=118.17Hz messages_by_batch={1: 591} missing_seq=0 duplicate_seq=0 regressed_seq=0 middleware_delay_max=N/As callback_queue_max=N/As children=('x500_depth_1/goal', 'x500_depth_1/odom', 'x500_depth_2/goal', 'x500_depth_2/odom', 'x500_depth_3/goal', 'x500_depth_3/odom')
+  TF cycles detected: none
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL PX4 SEMANTICS
+  drone=2:
+   - status: age=0.15s {'arming_state': 1, 'nav_state': 14, 'nav_intention': 14, 'failsafe': False, 'gcs_lost': False, 'high_latency_lost': False, 'preflight_ok': False, 'power_input_valid': True}
+   - failsafe_flags: age=0.37s {'active': ('auto_mission_missing', 'offboard_control_signal_lost'), 'battery_warning': 0}
+   - local_position: age=0.01s {'position': (-0.013105401769280434, -3.0570123195648193, -3.9561767578125), 'velocity': (-0.003154856851324439, 0.01748158223927021, 0.016074640676379204), 'finite': True, 'valid': True, 'dead_reckoning': False, 'eph': 0.3981172442436218, 'epv': 0.3269299268722534, 'sample_timestamp_us': 1787748416734565, 'reset_counters': (6, 5, 5, 3, 6)}
+   - trajectory_setpoint: never received
+   - offboard_control_mode: never received
+   - battery: age=0.07s {'connected': True, 'remaining': 0.7595120668411255, 'voltage_v': 16.040592193603516, 'current_a': 0.0, 'temperature': nan, 'warning': 0, 'faults': 0}
+   - land: age=0.96s {'landed': True, 'ground_contact': True, 'maybe_landed': True, 'freefall': False, 'at_rest': True}
+   - timesync: age=0.69s {'source_protocol': 2, 'observed_offset_us': -1787746663078909, 'estimated_offset_us': -1787746663079677, 'round_trip_time_us': 4777, 'remote_timestamp_us': 1787748416051162}
+   - vehicle_command: never received
+   - command_ack: age=4.79s {'command': 512, 'result': 2, 'result_param1': 0, 'result_param2': 0}
+  PX4 window counters: none
+  PX4 window maxima: {(2, 'timesync_rtt_us'): 7728}
+----------------------------------------------------------------------------------------------------------------------
+ SUBSCRIPTION RECEIVE TIMING
+  /command: never received
+  /formation: never received
+  /manual_controller: never received
+  /swarm/command: never received
+  /swarm/formation_command: never received
+  /swarm/live                                                rate=   1.80Hz age=0.06s max_gap=1.380s gap_ago=4.88s stamp_advance_age=N/As repeat/regress/zero=0/0/0
+  /swarm/status                                              rate=   1.20Hz age=0.86s max_gap=1.006s gap_ago=4.86s stamp_advance_age=1.08s repeat/regress/zero=0/1/0
+  /tf                                                        rate= 118.17Hz age=0.00s max_gap=0.035s gap_ago=1.87s stamp_advance_age=0.00s repeat/regress/zero=0/88/0
+  /uav_2/fmu/in/offboard_control_mode: never received
+  /uav_2/fmu/in/trajectory_setpoint: never received
+  /uav_2/fmu/in/vehicle_command: never received
+  /uav_2/fmu/out/battery_status_v1                           rate=   1.00Hz age=0.07s max_gap=1.005s gap_ago=3.07s stamp_advance_age=0.07s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/failsafe_flags                              rate=   1.80Hz age=0.37s max_gap=0.557s gap_ago=0.92s stamp_advance_age=0.37s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/timesync_status                             rate=   1.00Hz age=0.69s max_gap=1.017s gap_ago=3.71s stamp_advance_age=0.69s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_command_ack                         rate=   0.20Hz age=4.79s max_gap=N/As gap_ago=N/As stamp_advance_age=4.79s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_land_detected                       rate=   1.00Hz age=0.96s max_gap=1.007s gap_ago=1.96s stamp_advance_age=0.96s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_local_position_v1                   rate=  49.99Hz age=0.01s max_gap=0.034s gap_ago=1.50s stamp_advance_age=0.01s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_status_v1                           rate=   2.00Hz age=0.15s max_gap=0.514s gap_ago=1.67s stamp_advance_age=0.15s repeat/regress/zero=0/0/0
+----------------------------------------------------------------------------------------------------------------------
+ TRANSITIONS / ANOMALIES / WIFI EVENTS
+  -   4.786s ago [px4_ack] drone=2 command=512 result=2 params=0/0
+  -   1.077s ago [swarm_status] leader_id=2->1, members=(2, 3)->(1,), offboard=True->False
+  -   0.860s ago [swarm_status] leader_id=1->2, members=(1,)->(2, 3), offboard=False->True
+  iw event monitor: status=running counts={}
+----------------------------------------------------------------------------------------------------------------------
+ WARNINGS (19):
+  ! kernel UDP/IP errors/discards +40
+  ! SPLIT-BRAIN evidence: 2 status publishers
+  ! heartbeat 1 max gap 6.875s (neighbor timeout=6.0s)
+  ! peer 1 clock offset approximately +491.266s
+  ! peer 3 clock offset approximately +32.832s
+  ! SPLIT-BRAIN/status leader changes: {2: 5, 1: 1}
+  ! TF transport/publisher arrival stale x500_depth_1/goal: 9.45s
+  ! TF source timestamp stale x500_depth_1/goal: 9.45s
+  ! TF transport/publisher arrival stale x500_depth_1/odom: 4.77s
+  ! TF source timestamp stale x500_depth_1/odom: 4.77s
+  ! TF arrival gap x500_depth_1/odom: 4.626s
+  ! TF variable delivery delay x500_depth_1/odom: 15.590s above baseline
+  ! TF arrival gap x500_depth_3/goal: 1.584s
+  ! TF publisher source-time step x500_depth_3/goal: 0.700s
+  ! TF variable delivery delay x500_depth_3/goal: 1.517s above baseline
+  ! TF arrival gap x500_depth_3/odom: 1.565s
+  ! TF publisher source-time step x500_depth_3/odom: 0.638s
+  ! TF variable delivery delay x500_depth_3/odom: 1.587s above baseline
+  ! PX4 drone 2 failsafe flags: ('auto_mission_missing', 'offboard_control_signal_lost') battery_warning=0
+ logger capture=0.0025s background_health=0.6213s health_to_emit=0.1763s
+======================================================================================================================
+
+======================================================================================================================
+SWARM FLIGHT DIAGNOSTIC REPORT
+======================================================================================================================
+ identity: schema=2 report=8 drone=2 host=drone1
+ clocks: utc=2026-08-26T12:47:01.748+00:00 epoch_ns=1787748421748762073 monotonic=1750.427968 node_uptime=40.33s window=4.999s
+ runtime: ROS_DISTRO=rolling RMW=rmw_fastrtps_cpp RMW_IMPLEMENTATION=unset DOMAIN=0(default) LOCALHOST_ONLY=unset
+ software: python=3.12.3 executable=/usr/bin/python3 message_info=True pid=2192
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL HOST / POWER / SCHEDULING
+  sample: age=0.59s collection=0.422s source_window=5.00s host=drone1 kernel=6.8.0-1031-raspi machine=aarch64 uptime=1751s boot_id=1762d4b7-e5df-41fc-85de-3c03db921a36
+  resources: CPU=51.58% max_core=cpu1=53.7% load=1.66/1.00/0.87 CPUs=4 memory=13.90% temp=47.23C PSI10(cpu/mem/io)=5.70/0.00/0.00
+  Raspberry Pi throttle: 0x0 (no current/historical flags)
+  interface: name=wlan0 state=up carrier=1 MAC=2c:cf:67:06:fe:a5 MTU=1500 driver=brcmfmac tx_queue_len=1000
+  Wi-Fi link: probe=ok connected=True SSID=DroneNetwork BSSID=88:dc:97:13:8c:da freq=2442MHz signal=-42.00dBm(strong) tx/rx=72.20/65.00Mbit/s power_save=False
+  kernel interface delta: rx/tx=0.482/1.256Mbit/s packets=1357/3402 drops=0/0 errors=0/0 resets=none
+  station: inactive=0ms avg_signal=N/AdBm throughput=N/AMbps delta_tx_packets=3394 retries=N/A failed=16 beacon_loss=N/A rx_drop_misc=N/A retry/packet=0.000 failed/1000=4.71 resets=none
+  channel survey: freq=N/AMHz noise=N/AdBm busy=N/A% rx=N/A% tx=N/A% own-BSS-rx=N/A% resets=none
+  kernel UDP/IP delta: Udp.InDatagrams=2080 Udp.OutDatagrams=4031 Udp.NoPorts=0 Udp.InErrors=0 Udp.RcvbufErrors=0 Udp.SndbufErrors=130 Ip.InDiscards=0 Ip.OutDiscards=0 Ip.InHdrErrors=0 Ip.ReasmFails=1 resets=none
+  softnet delta: processed=2035 dropped=0 time_squeeze=0 resets=none; sockets=UDP.inuse=21 UDP.mem=0 sockets.used=251
+  external probe status: iw_link=ok(0.016s,rc=0), iw_power_save=ok(0.008s,rc=0), iw_station=ok(0.014s,rc=0), iw_survey=empty(0.022s,rc=0), vcgencmd_throttled=ok(0.022s,rc=0)
+  relevant processes:
+   - logger           pid=2192    state=S CPU=88.79% RSS=93.9MiB threads=23 core=3 runqueue=1.57% nvcsw=610 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger --ros-args -p drone_count:=3 -p local_drone_id:=2 -p drone_ids:=[2] -p
+   - controller       pid=2168    state=S CPU=0.00% RSS=45.7MiB threads=3 core=2 runqueue=0.00% nvcsw=0 wchan=do_wait RMW=('librmw_implementation.so',) cmd=/usr/bin/python3 /opt/ros/rolling/bin/ros2 run swarm_single control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - controller       pid=2171    state=S CPU=73.59% RSS=113.6MiB threads=18 core=1 runqueue=0.60% nvcsw=535 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_single/lib/swarm_single/control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - microxrce_agent  pid=1202    state=S CPU=25.80% RSS=28.2MiB threads=54 core=2 runqueue=0.00% nvcsw=0 wchan=futex_wait_queue RMW=not-mapped cmd=MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
+----------------------------------------------------------------------------------------------------------------------
+ DDS PUBLISHER ENDPOINTS / QOS
+  /swarm/live: publishers=3 changed=False
+   - gid=010f29a89e08073f0000000000001703 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010f8f5e7b0889290000000000001703 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010fb5b2cb0837240000000000001703 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+  /swarm/status: publishers=1 changed=True
+   - gid=010f29a89e08073f0000000000001b03 node=control_node_d1 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+  /tf: publishers=6 changed=False
+   - gid=010f29a89e08073f0000000000001503 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f29a89e08073f0000000000001603 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001503 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001603 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001503 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001603 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+----------------------------------------------------------------------------------------------------------------------
+ SWARM HEARTBEATS / STATUS
+  heartbeat peer=1        rate=  0.60Hz age=0.55s max_gap=4.452s advance_age=0.55s repeated=0 regress=0 zero=0 clock(source-local)=496.166s excess_delay(last/max)=3.712/8.049s
+  heartbeat peer=2        rate=  0.60Hz age=0.88s max_gap=1.503s advance_age=0.88s repeated=0 regress=0 zero=0 clock(source-local)=-0.005s excess_delay(last/max)=0.003/0.004s
+  heartbeat peer=3        rate=  0.60Hz age=0.75s max_gap=1.571s advance_age=0.75s repeated=0 regress=0 zero=0 clock(source-local)=33.030s excess_delay(last/max)=0.031/0.081s
+  status: age=0.55s leader=1 members=(1,) state=IDLE armed=False offboard=False pattern=None spacing=3.00 leader_pos=(0.05259156599640846, -0.17456138134002686, 0.22119140625) goal=(0.0, 0.0, 0.0) leader_counts={2: 5, 1: 3} mission=(False, 0, 0, 'IDLE') message=''
+----------------------------------------------------------------------------------------------------------------------
+ TF TIMING / CONTENT / DDS DELIVERY
+  frame=x500_depth_1/goal                          parent=world                    rate=  2.60Hz arrival_age=0.29s advance_age=0.29s gap(arrival/advance)=10.889/10.889s gap_ago=3.56s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=15.383s clock(source-local)=495.942s excess_delay(last/max)=3.933/6.586s
+  frame=x500_depth_1/odom                          parent=world                    rate=  0.20Hz arrival_age=4.19s advance_age=4.19s gap(arrival/advance)=5.578/5.578s gap_ago=4.19s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.132 m/0.000 rad max_implied_speed=0.02 m/s max_source_step=8.336s clock(source-local)=487.043s excess_delay(last/max)=12.832/12.832s
+  frame=x500_depth_2/goal                          parent=world                    rate= 10.00Hz arrival_age=0.08s advance_age=0.08s gap(arrival/advance)=0.109/0.109s gap_ago=0.27s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.111s clock(source-local)=-0.004s excess_delay(last/max)=0.003/0.008s
+  frame=x500_depth_2/odom                          parent=world                    rate= 49.21Hz arrival_age=0.05s advance_age=0.05s gap(arrival/advance)=0.061/0.061s gap_ago=0.26s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.20 m/s max_source_step=0.059s clock(source-local)=-0.004s excess_delay(last/max)=0.003/0.012s
+  frame=x500_depth_3/goal                          parent=world                    rate= 10.20Hz arrival_age=0.06s advance_age=0.06s gap(arrival/advance)=0.237/0.237s gap_ago=2.21s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.103s clock(source-local)=33.065s excess_delay(last/max)=0.019/0.171s
+  frame=x500_depth_3/odom                          parent=world                    rate= 50.41Hz arrival_age=0.05s advance_age=0.05s gap(arrival/advance)=0.193/0.193s gap_ago=0.54s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.10 m/s max_source_step=0.031s clock(source-local)=33.071s excess_delay(last/max)=0.013/0.201s
+  TF DDS writers (MessageInfo observer):
+   - gid=unknown node=<unmapped> rate=122.63Hz messages_by_batch={1: 613} missing_seq=0 duplicate_seq=0 regressed_seq=0 middleware_delay_max=N/As callback_queue_max=N/As children=('x500_depth_1/goal', 'x500_depth_1/odom', 'x500_depth_2/goal', 'x500_depth_2/odom', 'x500_depth_3/goal', 'x500_depth_3/odom')
+  TF cycles detected: none
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL PX4 SEMANTICS
+  drone=2:
+   - status: age=0.09s {'arming_state': 1, 'nav_state': 14, 'nav_intention': 14, 'failsafe': False, 'gcs_lost': False, 'high_latency_lost': False, 'preflight_ok': False, 'power_input_valid': True}
+   - failsafe_flags: age=0.43s {'active': ('auto_mission_missing', 'offboard_control_signal_lost'), 'battery_warning': 0}
+   - local_position: age=0.01s {'position': (0.01645747758448124, -3.0191237926483154, -3.9443359375), 'velocity': (0.0011098323157057166, -0.007535314187407494, 0.01497584953904152), 'finite': True, 'valid': True, 'dead_reckoning': False, 'eph': 0.4043610990047455, 'epv': 0.32904016971588135, 'sample_timestamp_us': 1787748421734967, 'reset_counters': (6, 5, 5, 3, 6)}
+   - trajectory_setpoint: never received
+   - offboard_control_mode: never received
+   - battery: age=0.07s {'connected': True, 'remaining': 0.7649556398391724, 'voltage_v': 16.087295532226562, 'current_a': 0.0, 'temperature': nan, 'warning': 0, 'faults': 0}
+   - land: age=0.95s {'landed': True, 'ground_contact': True, 'maybe_landed': True, 'freefall': False, 'at_rest': True}
+   - timesync: age=0.65s {'source_protocol': 2, 'observed_offset_us': -1787746663077704, 'estimated_offset_us': -1787746663079890, 'round_trip_time_us': 2012, 'remote_timestamp_us': 1787748421084866}
+   - vehicle_command: never received
+   - command_ack: age=9.79s {'command': 512, 'result': 2, 'result_param1': 0, 'result_param2': 0}
+  PX4 window counters: none
+  PX4 window maxima: {(2, 'timesync_rtt_us'): 4260}
+----------------------------------------------------------------------------------------------------------------------
+ SUBSCRIPTION RECEIVE TIMING
+  /command: never received
+  /formation: never received
+  /manual_controller: never received
+  /swarm/command: never received
+  /swarm/formation_command: never received
+  /swarm/live                                                rate=   1.80Hz age=0.55s max_gap=1.394s gap_ago=2.38s stamp_advance_age=N/As repeat/regress/zero=0/0/0
+  /swarm/status                                              rate=   1.60Hz age=0.55s max_gap=1.002s gap_ago=0.86s stamp_advance_age=0.55s repeat/regress/zero=0/1/0
+  /tf                                                        rate= 122.63Hz age=0.05s max_gap=0.033s gap_ago=3.99s stamp_advance_age=0.05s repeat/regress/zero=0/144/0
+  /uav_2/fmu/in/offboard_control_mode: never received
+  /uav_2/fmu/in/trajectory_setpoint: never received
+  /uav_2/fmu/in/vehicle_command: never received
+  /uav_2/fmu/out/battery_status_v1                           rate=   1.00Hz age=0.07s max_gap=1.005s gap_ago=3.07s stamp_advance_age=0.07s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/failsafe_flags                              rate=   1.80Hz age=0.43s max_gap=0.555s gap_ago=0.98s stamp_advance_age=0.43s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/timesync_status                             rate=   1.00Hz age=0.65s max_gap=1.014s gap_ago=4.68s stamp_advance_age=0.65s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_command_ack                         rate=   0.00Hz age=9.79s max_gap=N/As gap_ago=N/As stamp_advance_age=9.79s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_land_detected                       rate=   1.00Hz age=0.95s max_gap=1.010s gap_ago=2.95s stamp_advance_age=0.95s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_local_position_v1                   rate=  50.01Hz age=0.01s max_gap=0.036s gap_ago=1.13s stamp_advance_age=0.01s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_status_v1                           rate=   2.00Hz age=0.09s max_gap=0.515s gap_ago=4.13s stamp_advance_age=0.09s repeat/regress/zero=0/0/0
+----------------------------------------------------------------------------------------------------------------------
+ TRANSITIONS / ANOMALIES / WIFI EVENTS
+  -   3.578s ago [swarm_status] leader_id=2->1, members=(2, 3)->(1,), offboard=True->False
+  -   2.864s ago [swarm_status] leader_id=1->2, members=(1,)->(2, 3), offboard=False->True
+  -   0.548s ago [swarm_status] leader_id=2->1, members=(2, 3)->(1,), offboard=True->False
+  iw event monitor: status=running counts={}
+----------------------------------------------------------------------------------------------------------------------
+ WARNINGS (19):
+  ! Wi-Fi tx_failed +16
+  ! high Wi-Fi failure ratio: 4.71/1000 packets
+  ! kernel UDP/IP errors/discards +131
+  ! DDS publisher endpoint set changed for /swarm/status
+  ! heartbeat 1 max gap 4.452s (neighbor timeout=6.0s)
+  ! peer 1 clock offset approximately +496.166s
+  ! peer 3 clock offset approximately +33.030s
+  ! SPLIT-BRAIN/status leader changes: {2: 5, 1: 3}
+  ! TF arrival gap x500_depth_1/goal: 10.889s
+  ! TF publisher source-time step x500_depth_1/goal: 15.383s
+  ! TF variable delivery delay x500_depth_1/goal: 6.586s above baseline
+  ! TF transport/publisher arrival stale x500_depth_1/odom: 4.19s
+  ! TF source timestamp stale x500_depth_1/odom: 4.19s
+  ! TF arrival gap x500_depth_1/odom: 5.578s
+  ! TF publisher source-time step x500_depth_1/odom: 8.336s
+  ! TF variable delivery delay x500_depth_1/odom: 12.832s above baseline
+  ! TF variable delivery delay x500_depth_3/goal: 0.171s above baseline
+  ! TF variable delivery delay x500_depth_3/odom: 0.201s above baseline
+  ! PX4 drone 2 failsafe flags: ('auto_mission_missing', 'offboard_control_signal_lost') battery_warning=0
+ logger capture=0.0033s background_health=0.4218s health_to_emit=0.1733s
+======================================================================================================================
+
+======================================================================================================================
+SWARM FLIGHT DIAGNOSTIC REPORT
+======================================================================================================================
+ identity: schema=2 report=9 drone=2 host=drone1
+ clocks: utc=2026-08-26T12:47:06.750+00:00 epoch_ns=1787748426750498848 monotonic=1755.430909 node_uptime=45.34s window=5.003s
+ runtime: ROS_DISTRO=rolling RMW=rmw_fastrtps_cpp RMW_IMPLEMENTATION=unset DOMAIN=0(default) LOCALHOST_ONLY=unset
+ software: python=3.12.3 executable=/usr/bin/python3 message_info=True pid=2192
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL HOST / POWER / SCHEDULING
+  sample: age=0.59s collection=0.497s source_window=5.00s host=drone1 kernel=6.8.0-1031-raspi machine=aarch64 uptime=1756s boot_id=1762d4b7-e5df-41fc-85de-3c03db921a36
+  resources: CPU=47.87% max_core=cpu0=49.8% load=1.69/1.02/0.88 CPUs=4 memory=13.90% temp=47.23C PSI10(cpu/mem/io)=5.68/0.00/0.00
+  Raspberry Pi throttle: 0x0 (no current/historical flags)
+  interface: name=wlan0 state=up carrier=1 MAC=2c:cf:67:06:fe:a5 MTU=1500 driver=brcmfmac tx_queue_len=1000
+  Wi-Fi link: probe=ok connected=True SSID=DroneNetwork BSSID=88:dc:97:13:8c:da freq=2442MHz signal=-41.00dBm(strong) tx/rx=72.20/65.00Mbit/s power_save=False
+  kernel interface delta: rx/tx=0.427/1.150Mbit/s packets=1348/3178 drops=0/0 errors=0/0 resets=none
+  station: inactive=0ms avg_signal=N/AdBm throughput=N/AMbps delta_tx_packets=3179 retries=N/A failed=6 beacon_loss=N/A rx_drop_misc=N/A retry/packet=0.000 failed/1000=1.89 resets=none
+  channel survey: freq=N/AMHz noise=N/AdBm busy=N/A% rx=N/A% tx=N/A% own-BSS-rx=N/A% resets=none
+  kernel UDP/IP delta: Udp.InDatagrams=2083 Udp.OutDatagrams=3831 Udp.NoPorts=0 Udp.InErrors=0 Udp.RcvbufErrors=0 Udp.SndbufErrors=60 Ip.InDiscards=0 Ip.OutDiscards=0 Ip.InHdrErrors=0 Ip.ReasmFails=0 resets=none
+  softnet delta: processed=2060 dropped=0 time_squeeze=0 resets=none; sockets=UDP.inuse=21 UDP.mem=0 sockets.used=251
+  external probe status: iw_link=ok(0.014s,rc=0), iw_power_save=ok(0.017s,rc=0), iw_station=ok(0.020s,rc=0), iw_survey=empty(0.025s,rc=0), vcgencmd_throttled=ok(0.024s,rc=0)
+  relevant processes:
+   - logger           pid=2192    state=R CPU=84.57% RSS=93.9MiB threads=23 core=1 runqueue=1.56% nvcsw=512 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger --ros-args -p drone_count:=3 -p local_drone_id:=2 -p drone_ids:=[2] -p
+   - controller       pid=2168    state=S CPU=0.00% RSS=45.7MiB threads=3 core=2 runqueue=0.00% nvcsw=0 wchan=do_wait RMW=('librmw_implementation.so',) cmd=/usr/bin/python3 /opt/ros/rolling/bin/ros2 run swarm_single control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - controller       pid=2171    state=S CPU=67.17% RSS=113.6MiB threads=18 core=3 runqueue=0.51% nvcsw=456 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_single/lib/swarm_single/control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - microxrce_agent  pid=1202    state=S CPU=28.19% RSS=28.2MiB threads=54 core=2 runqueue=0.00% nvcsw=0 wchan=futex_wait_queue RMW=not-mapped cmd=MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
+----------------------------------------------------------------------------------------------------------------------
+ DDS PUBLISHER ENDPOINTS / QOS
+  /swarm/live: publishers=3 changed=False
+   - gid=010f29a89e08073f0000000000001703 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010f8f5e7b0889290000000000001703 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010fb5b2cb0837240000000000001703 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+  /swarm/status: publishers=1 changed=False
+   - gid=010f29a89e08073f0000000000001b03 node=control_node_d1 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+  /tf: publishers=6 changed=False
+   - gid=010f29a89e08073f0000000000001503 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f29a89e08073f0000000000001603 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001503 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001603 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001503 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001603 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+----------------------------------------------------------------------------------------------------------------------
+ SWARM HEARTBEATS / STATUS
+  heartbeat peer=1        rate=  0.00Hz age=5.55s max_gap=N/As advance_age=5.55s repeated=0 regress=0 zero=0 clock(source-local)=496.166s excess_delay(last/max)=3.712/N/As
+  heartbeat peer=2        rate=  0.60Hz age=1.38s max_gap=1.505s advance_age=1.38s repeated=0 regress=0 zero=0 clock(source-local)=-0.005s excess_delay(last/max)=0.003/0.003s
+  heartbeat peer=3        rate=  0.60Hz age=1.03s max_gap=1.951s advance_age=1.03s repeated=0 regress=0 zero=0 clock(source-local)=32.806s excess_delay(last/max)=0.256/0.482s
+  status: age=5.55s leader=1 members=(1,) state=IDLE armed=False offboard=False pattern=None spacing=3.00 leader_pos=(0.05259156599640846, -0.17456138134002686, 0.22119140625) goal=(0.0, 0.0, 0.0) leader_counts={} mission=(False, 0, 0, 'IDLE') message=''
+----------------------------------------------------------------------------------------------------------------------
+ TF TIMING / CONTENT / DDS DELIVERY
+  frame=x500_depth_1/goal                          parent=world                    rate=  0.20Hz arrival_age=0.68s advance_age=0.68s gap(arrival/advance)=4.611/4.611s gap_ago=0.68s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.100s clock(source-local)=491.431s excess_delay(last/max)=8.445/8.445s
+  frame=x500_depth_1/odom                          parent=world                    rate=  0.00Hz arrival_age=9.19s advance_age=9.19s gap(arrival/advance)=N/A/N/As gap_ago=N/As repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=N/A m/N/A rad max_implied_speed=N/A m/s max_source_step=N/As clock(source-local)=487.043s excess_delay(last/max)=12.832/N/As
+  frame=x500_depth_2/goal                          parent=world                    rate=  9.99Hz arrival_age=0.09s advance_age=0.09s gap(arrival/advance)=0.116/0.116s gap_ago=4.97s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.112s clock(source-local)=-0.003s excess_delay(last/max)=0.001/0.009s
+  frame=x500_depth_2/odom                          parent=world                    rate= 49.97Hz arrival_age=0.00s advance_age=0.00s gap(arrival/advance)=0.074/0.074s gap_ago=4.98s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.09 m/s max_source_step=0.054s clock(source-local)=-0.005s excess_delay(last/max)=0.003/0.051s
+  frame=x500_depth_3/goal                          parent=world                    rate=  9.99Hz arrival_age=0.01s advance_age=0.01s gap(arrival/advance)=0.879/0.879s gap_ago=1.56s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.104s clock(source-local)=33.010s excess_delay(last/max)=0.074/0.921s
+  frame=x500_depth_3/odom                          parent=world                    rate= 49.77Hz arrival_age=0.00s advance_age=0.00s gap(arrival/advance)=0.844/0.844s gap_ago=1.59s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.001 m/0.000 rad max_implied_speed=0.07 m/s max_source_step=0.029s clock(source-local)=33.007s excess_delay(last/max)=0.078/0.936s
+  TF DDS writers (MessageInfo observer):
+   - gid=unknown node=<unmapped> rate=119.93Hz messages_by_batch={1: 600} missing_seq=0 duplicate_seq=0 regressed_seq=0 middleware_delay_max=N/As callback_queue_max=N/As children=('x500_depth_1/goal', 'x500_depth_1/odom', 'x500_depth_2/goal', 'x500_depth_2/odom', 'x500_depth_3/goal', 'x500_depth_3/odom')
+  TF cycles detected: none
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL PX4 SEMANTICS
+  drone=2:
+   - status: age=0.03s {'arming_state': 1, 'nav_state': 14, 'nav_intention': 14, 'failsafe': False, 'gcs_lost': False, 'high_latency_lost': False, 'preflight_ok': False, 'power_input_valid': True}
+   - failsafe_flags: age=0.50s {'active': ('auto_mission_missing', 'offboard_control_signal_lost'), 'battery_warning': 0}
+   - local_position: age=0.01s {'position': (-0.041066545993089676, -2.9901371002197266, -4.0169677734375), 'velocity': (-0.023424142971634865, 0.0037781354039907455, 0.005397414322942495), 'finite': True, 'valid': True, 'dead_reckoning': False, 'eph': 0.40938758850097656, 'epv': 0.3294156491756439, 'sample_timestamp_us': 1787748426735427, 'reset_counters': (6, 5, 5, 3, 6)}
+   - trajectory_setpoint: never received
+   - offboard_control_mode: never received
+   - battery: age=0.07s {'connected': True, 'remaining': 0.7639647722244263, 'voltage_v': 16.13026237487793, 'current_a': 0.0, 'temperature': nan, 'warning': 0, 'faults': 0}
+   - land: age=0.93s {'landed': True, 'ground_contact': True, 'maybe_landed': True, 'freefall': False, 'at_rest': True}
+   - timesync: age=0.60s {'source_protocol': 2, 'observed_offset_us': -1787746663078826, 'estimated_offset_us': -1787746663080114, 'round_trip_time_us': 4086, 'remote_timestamp_us': 1787748426141151}
+   - vehicle_command: never received
+   - command_ack: age=14.79s {'command': 512, 'result': 2, 'result_param1': 0, 'result_param2': 0}
+  PX4 window counters: none
+  PX4 window maxima: {(2, 'timesync_rtt_us'): 4803}
+----------------------------------------------------------------------------------------------------------------------
+ SUBSCRIPTION RECEIVE TIMING
+  /command: never received
+  /formation: never received
+  /manual_controller: never received
+  /swarm/command: never received
+  /swarm/formation_command: never received
+  /swarm/live                                                rate=   1.20Hz age=1.03s max_gap=1.173s gap_ago=1.38s stamp_advance_age=N/As repeat/regress/zero=0/0/0
+  /swarm/status                                              rate=   0.00Hz age=5.55s max_gap=N/As gap_ago=N/As stamp_advance_age=5.55s repeat/regress/zero=0/0/0
+  /tf                                                        rate= 119.93Hz age=0.00s max_gap=0.054s gap_ago=4.99s stamp_advance_age=0.00s repeat/regress/zero=0/90/0
+  /uav_2/fmu/in/offboard_control_mode: never received
+  /uav_2/fmu/in/trajectory_setpoint: never received
+  /uav_2/fmu/in/vehicle_command: never received
+  /uav_2/fmu/out/battery_status_v1                           rate=   1.00Hz age=0.07s max_gap=1.004s gap_ago=0.07s stamp_advance_age=0.07s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/failsafe_flags                              rate=   1.80Hz age=0.50s max_gap=0.559s gap_ago=1.60s stamp_advance_age=0.50s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/timesync_status                             rate=   1.00Hz age=0.60s max_gap=1.019s gap_ago=4.64s stamp_advance_age=0.60s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_command_ack                         rate=   0.00Hz age=14.79s max_gap=N/As gap_ago=N/As stamp_advance_age=14.79s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_land_detected                       rate=   1.00Hz age=0.93s max_gap=1.009s gap_ago=0.93s stamp_advance_age=0.93s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_local_position_v1                   rate=  49.97Hz age=0.01s max_gap=0.039s gap_ago=4.92s stamp_advance_age=0.01s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_status_v1                           rate=   2.00Hz age=0.03s max_gap=0.510s gap_ago=1.04s stamp_advance_age=0.03s repeat/regress/zero=0/0/0
+----------------------------------------------------------------------------------------------------------------------
+ TRANSITIONS / ANOMALIES / WIFI EVENTS
+  ROS/PX4 events: none in this window
+  iw event monitor: status=running counts={}
+----------------------------------------------------------------------------------------------------------------------
+ WARNINGS (15):
+  ! Wi-Fi tx_failed +6
+  ! high Wi-Fi failure ratio: 1.89/1000 packets
+  ! kernel UDP/IP errors/discards +60
+  ! heartbeat 1 missing/stale age=5.55s
+  ! peer 1 clock offset approximately +496.166s
+  ! peer 3 clock offset approximately +32.806s
+  ! TF arrival gap x500_depth_1/goal: 4.611s
+  ! TF variable delivery delay x500_depth_1/goal: 8.445s above baseline
+  ! TF transport/publisher arrival stale x500_depth_1/odom: 9.19s
+  ! TF source timestamp stale x500_depth_1/odom: 9.19s
+  ! TF arrival gap x500_depth_3/goal: 0.879s
+  ! TF variable delivery delay x500_depth_3/goal: 0.921s above baseline
+  ! TF arrival gap x500_depth_3/odom: 0.844s
+  ! TF variable delivery delay x500_depth_3/odom: 0.936s above baseline
+  ! PX4 drone 2 failsafe flags: ('auto_mission_missing', 'offboard_control_signal_lost') battery_warning=0
+ logger capture=0.0021s background_health=0.4965s health_to_emit=0.0993s
+======================================================================================================================
+
+======================================================================================================================
+SWARM FLIGHT DIAGNOSTIC REPORT
+======================================================================================================================
+ identity: schema=2 report=10 drone=2 host=drone1
+ clocks: utc=2026-08-26T12:47:11.753+00:00 epoch_ns=1787748431753000586 monotonic=1760.432227 node_uptime=50.34s window=5.001s
+ runtime: ROS_DISTRO=rolling RMW=rmw_fastrtps_cpp RMW_IMPLEMENTATION=unset DOMAIN=0(default) LOCALHOST_ONLY=unset
+ software: python=3.12.3 executable=/usr/bin/python3 message_info=True pid=2192
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL HOST / POWER / SCHEDULING
+  sample: age=0.59s collection=0.494s source_window=5.00s host=drone1 kernel=6.8.0-1031-raspi machine=aarch64 uptime=1761s boot_id=1762d4b7-e5df-41fc-85de-3c03db921a36
+  resources: CPU=48.94% max_core=cpu0=53.0% load=1.71/1.04/0.89 CPUs=4 memory=13.90% temp=48.20C PSI10(cpu/mem/io)=5.68/0.00/0.00
+  Raspberry Pi throttle: 0x0 (no current/historical flags)
+  interface: name=wlan0 state=up carrier=1 MAC=2c:cf:67:06:fe:a5 MTU=1500 driver=brcmfmac tx_queue_len=1000
+  Wi-Fi link: probe=ok connected=True SSID=DroneNetwork BSSID=88:dc:97:13:8c:da freq=2442MHz signal=-42.00dBm(strong) tx/rx=72.20/57.70Mbit/s power_save=False
+  kernel interface delta: rx/tx=0.458/1.178Mbit/s packets=1434/3293 drops=0/0 errors=0/0 resets=none
+  station: inactive=0ms avg_signal=N/AdBm throughput=N/AMbps delta_tx_packets=3301 retries=N/A failed=1 beacon_loss=N/A rx_drop_misc=N/A retry/packet=0.000 failed/1000=0.30 resets=none
+  channel survey: freq=N/AMHz noise=N/AdBm busy=N/A% rx=N/A% tx=N/A% own-BSS-rx=N/A% resets=none
+  kernel UDP/IP delta: Udp.InDatagrams=2151 Udp.OutDatagrams=3924 Udp.NoPorts=0 Udp.InErrors=0 Udp.RcvbufErrors=0 Udp.SndbufErrors=54 Ip.InDiscards=0 Ip.OutDiscards=0 Ip.InHdrErrors=0 Ip.ReasmFails=0 resets=none
+  softnet delta: processed=2125 dropped=0 time_squeeze=0 resets=none; sockets=UDP.inuse=21 UDP.mem=0 sockets.used=251
+  external probe status: iw_link=ok(0.017s,rc=0), iw_power_save=ok(0.022s,rc=0), iw_station=ok(0.018s,rc=0), iw_survey=empty(0.008s,rc=0), vcgencmd_throttled=ok(0.017s,rc=0)
+  relevant processes:
+   - logger           pid=2192    state=R CPU=86.16% RSS=93.9MiB threads=23 core=3 runqueue=1.37% nvcsw=516 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger --ros-args -p drone_count:=3 -p local_drone_id:=2 -p drone_ids:=[2] -p
+   - controller       pid=2168    state=S CPU=0.00% RSS=45.7MiB threads=3 core=2 runqueue=0.00% nvcsw=0 wchan=do_wait RMW=('librmw_implementation.so',) cmd=/usr/bin/python3 /opt/ros/rolling/bin/ros2 run swarm_single control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - controller       pid=2171    state=S CPU=69.17% RSS=113.6MiB threads=18 core=3 runqueue=0.62% nvcsw=491 wchan=futex_wait_queue RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_single/lib/swarm_single/control_node --ros-args -p frame_id:=2 -r __node:=control_node_d2
+   - microxrce_agent  pid=1202    state=S CPU=27.19% RSS=28.2MiB threads=54 core=2 runqueue=0.00% nvcsw=0 wchan=futex_wait_queue RMW=not-mapped cmd=MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
+----------------------------------------------------------------------------------------------------------------------
+ DDS PUBLISHER ENDPOINTS / QOS
+  /swarm/live: publishers=3 changed=False
+   - gid=010f29a89e08073f0000000000001703 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010f8f5e7b0889290000000000001703 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010fb5b2cb0837240000000000001703 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+  /swarm/status: publishers=1 changed=False
+   - gid=010f29a89e08073f0000000000001b03 node=control_node_d1 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+  /tf: publishers=6 changed=False
+   - gid=010f29a89e08073f0000000000001503 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f29a89e08073f0000000000001603 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001503 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f8f5e7b0889290000000000001603 node=control_node_d2 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001503 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001603 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+----------------------------------------------------------------------------------------------------------------------
+ SWARM HEARTBEATS / STATUS
+  heartbeat peer=1        rate=  0.40Hz age=1.20s max_gap=5.784s advance_age=1.20s repeated=0 regress=0 zero=0 clock(source-local)=494.144s excess_delay(last/max)=5.733/6.548s
+  heartbeat peer=2        rate=  0.80Hz age=0.39s max_gap=1.507s advance_age=0.39s repeated=0 regress=0 zero=0 clock(source-local)=-0.002s excess_delay(last/max)=0.000/0.009s
+  heartbeat peer=3        rate=  0.80Hz age=0.18s max_gap=1.605s advance_age=0.18s repeated=0 regress=0 zero=0 clock(source-local)=32.956s excess_delay(last/max)=0.106/0.200s
+  status: age=0.35s leader=1 members=(1, 2) state=IDLE armed=False offboard=False pattern=None spacing=3.00 leader_pos=(0.05259156599640846, -0.17456138134002686, 0.22119140625) goal=(0.0, 0.0, 0.0) leader_counts={1: 3} mission=(False, 0, 0, 'IDLE') message=''
+----------------------------------------------------------------------------------------------------------------------
+ TF TIMING / CONTENT / DDS DELIVERY
+  frame=x500_depth_1/goal                          parent=world                    rate=  2.20Hz arrival_age=0.34s advance_age=0.34s gap(arrival/advance)=3.530/3.530s gap_ago=1.13s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=4.389s clock(source-local)=494.297s excess_delay(last/max)=5.579/6.642s
+  frame=x500_depth_1/odom                          parent=world                    rate=  0.00Hz arrival_age=14.19s advance_age=14.19s gap(arrival/advance)=N/A/N/As gap_ago=N/As repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=N/A m/N/A rad max_implied_speed=N/A m/s max_source_step=N/As clock(source-local)=487.043s excess_delay(last/max)=12.832/N/As
+  frame=x500_depth_2/goal                          parent=world                    rate= 10.00Hz arrival_age=0.09s advance_age=0.09s gap(arrival/advance)=0.196/0.196s gap_ago=0.49s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.191s clock(source-local)=-0.003s excess_delay(last/max)=0.002/0.010s
+  frame=x500_depth_2/odom                          parent=world                    rate= 49.19Hz arrival_age=0.01s advance_age=0.01s gap(arrival/advance)=0.129/0.129s gap_ago=0.50s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.09 m/s max_source_step=0.117s clock(source-local)=-0.006s excess_delay(last/max)=0.005/0.110s
+  frame=x500_depth_3/goal                          parent=world                    rate=  9.80Hz arrival_age=0.15s advance_age=0.15s gap(arrival/advance)=0.379/0.379s gap_ago=2.78s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.103s clock(source-local)=33.048s excess_delay(last/max)=0.036/0.309s
+  frame=x500_depth_3/odom                          parent=world                    rate= 49.59Hz arrival_age=0.10s advance_age=0.10s gap(arrival/advance)=0.335/0.335s gap_ago=2.78s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.14 m/s max_source_step=0.031s clock(source-local)=33.061s excess_delay(last/max)=0.024/0.322s
+  TF DDS writers (MessageInfo observer):
+   - gid=unknown node=<unmapped> rate=120.77Hz messages_by_batch={1: 604} missing_seq=0 duplicate_seq=0 regressed_seq=0 middleware_delay_max=N/As callback_queue_max=N/As children=('x500_depth_1/goal', 'x500_depth_1/odom', 'x500_depth_2/goal', 'x500_depth_2/odom', 'x500_depth_3/goal', 'x500_depth_3/odom')
+  TF cycles detected: none
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL PX4 SEMANTICS
+  drone=2:
+   - status: age=0.48s {'arming_state': 1, 'nav_state': 14, 'nav_intention': 14, 'failsafe': False, 'gcs_lost': False, 'high_latency_lost': False, 'preflight_ok': False, 'power_input_valid': True}
+   - failsafe_flags: age=0.55s {'active': ('auto_mission_missing', 'offboard_control_signal_lost'), 'battery_warning': 0}
+   - local_position: age=0.01s {'position': (-0.012253337539732456, -2.960954427719116, -4.0657958984375), 'velocity': (0.01634206436574459, 0.0032772785052657127, 0.008261103183031082), 'finite': True, 'valid': True, 'dead_reckoning': False, 'eph': 0.4137062728404999, 'epv': 0.32970404624938965, 'sample_timestamp_us': 1787748431735780, 'reset_counters': (6, 5, 5, 3, 6)}
+   - trajectory_setpoint: never received
+   - offboard_control_mode: never received
+   - battery: age=0.08s {'connected': True, 'remaining': 0.7650476694107056, 'voltage_v': 16.160152435302734, 'current_a': 0.0, 'temperature': nan, 'warning': 0, 'faults': 0}
+   - land: age=0.93s {'landed': True, 'ground_contact': True, 'maybe_landed': True, 'freefall': False, 'at_rest': True}
+   - timesync: age=0.57s {'source_protocol': 2, 'observed_offset_us': -1787746663079607, 'estimated_offset_us': -1787746663080327, 'round_trip_time_us': 4935, 'remote_timestamp_us': 1787748431170743}
+   - vehicle_command: never received
+   - command_ack: age=2.78s {'command': 512, 'result': 2, 'result_param1': 0, 'result_param2': 0}
+  PX4 window counters: none
+  PX4 window maxima: {(2, 'timesync_rtt_us'): 4935}
+----------------------------------------------------------------------------------------------------------------------
+ SUBSCRIPTION RECEIVE TIMING
+  /command: never received
+  /formation: never received
+  /manual_controller: never received
+  /swarm/command: never received
+  /swarm/formation_command: never received
+  /swarm/live                                                rate=   2.00Hz age=0.18s max_gap=1.382s gap_ago=3.39s stamp_advance_age=N/As repeat/regress/zero=0/0/0
+  /swarm/status                                              rate=   0.60Hz age=0.35s max_gap=5.773s gap_ago=4.78s stamp_advance_age=0.35s repeat/regress/zero=0/0/0
+  /tf                                                        rate= 120.77Hz age=0.01s max_gap=0.055s gap_ago=0.50s stamp_advance_age=0.01s repeat/regress/zero=0/127/0
+  /uav_2/fmu/in/offboard_control_mode: never received
+  /uav_2/fmu/in/trajectory_setpoint: never received
+  /uav_2/fmu/in/vehicle_command: never received
+  /uav_2/fmu/out/battery_status_v1                           rate=   1.00Hz age=0.08s max_gap=1.004s gap_ago=2.07s stamp_advance_age=0.08s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/failsafe_flags                              rate=   1.80Hz age=0.55s max_gap=0.556s gap_ago=3.30s stamp_advance_age=0.55s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/timesync_status                             rate=   1.00Hz age=0.57s max_gap=1.010s gap_ago=1.57s stamp_advance_age=0.57s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_command_ack                         rate=   0.20Hz age=2.78s max_gap=17.007s gap_ago=2.78s stamp_advance_age=2.78s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_land_detected                       rate=   1.00Hz age=0.93s max_gap=1.004s gap_ago=3.93s stamp_advance_age=0.93s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_local_position_v1                   rate=  49.99Hz age=0.01s max_gap=0.034s gap_ago=2.98s stamp_advance_age=0.01s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_status_v1                           rate=   1.80Hz age=0.48s max_gap=0.515s gap_ago=1.99s stamp_advance_age=0.48s repeat/regress/zero=0/0/0
+----------------------------------------------------------------------------------------------------------------------
+ TRANSITIONS / ANOMALIES / WIFI EVENTS
+  -   4.779s ago [swarm_status] members=(1,)->(1, 2)
+  -   2.782s ago [px4_ack] drone=2 command=512 result=2 params=0/0
+  iw event monitor: status=running counts={}
+----------------------------------------------------------------------------------------------------------------------
+ WARNINGS (16):
+  ! Wi-Fi tx_failed +1
+  ! kernel UDP/IP errors/discards +54
+  ! heartbeat 1 max gap 5.784s (neighbor timeout=6.0s)
+  ! peer 1 clock offset approximately +494.144s
+  ! peer 3 clock offset approximately +32.956s
+  ! TF arrival gap x500_depth_1/goal: 3.530s
+  ! TF publisher source-time step x500_depth_1/goal: 4.389s
+  ! TF variable delivery delay x500_depth_1/goal: 6.642s above baseline
+  ! TF transport/publisher arrival stale x500_depth_1/odom: 14.19s
+  ! TF source timestamp stale x500_depth_1/odom: 14.19s
+  ! TF variable delivery delay x500_depth_2/odom: 0.110s above baseline
+  ! TF arrival gap x500_depth_3/goal: 0.379s
+  ! TF variable delivery delay x500_depth_3/goal: 0.309s above baseline
+  ! TF arrival gap x500_depth_3/odom: 0.335s
+  ! TF variable delivery delay x500_depth_3/odom: 0.322s above baseline
+  ! PX4 drone 2 failsafe flags: ('auto_mission_missing', 'offboard_control_signal_lost') battery_warning=0
+ logger capture=0.0033s background_health=0.4936s health_to_emit=0.0983s
+======================================================================================================================
+
+======================================================================================================================
+SWARM FLIGHT DIAGNOSTIC REPORT
+======================================================================================================================
+ identity: schema=2 report=11 drone=2 host=drone1
+ clocks: utc=2026-08-26T12:47:16.747+00:00 epoch_ns=1787748436747214398 monotonic=1765.427369 node_uptime=55.33s window=4.995s
+ runtime: ROS_DISTRO=rolling RMW=rmw_fastrtps_cpp RMW_IMPLEMENTATION=unset DOMAIN=0(default) LOCALHOST_ONLY=unset
+ software: python=3.12.3 executable=/usr/bin/python3 message_info=True pid=2192
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL HOST / POWER / SCHEDULING
+  sample: age=0.40s collection=0.239s source_window=4.99s host=drone1 kernel=6.8.0-1031-raspi machine=aarch64 uptime=1766s boot_id=1762d4b7-e5df-41fc-85de-3c03db921a36
+  resources: CPU=47.96% max_core=cpu3=49.7% load=1.73/1.05/0.89 CPUs=4 memory=11.45% temp=47.23C PSI10(cpu/mem/io)=5.78/0.00/0.00
+  Raspberry Pi throttle: 0x0 (no current/historical flags)
+  interface: name=wlan0 state=up carrier=1 MAC=2c:cf:67:06:fe:a5 MTU=1500 driver=brcmfmac tx_queue_len=1000
+  Wi-Fi link: probe=ok connected=True SSID=DroneNetwork BSSID=88:dc:97:13:8c:da freq=2442MHz signal=-42.00dBm(strong) tx/rx=72.20/57.70Mbit/s power_save=False
+  kernel interface delta: rx/tx=0.406/1.154Mbit/s packets=1262/3186 drops=0/0 errors=0/0 resets=none
+  station: inactive=1000ms avg_signal=N/AdBm throughput=N/AMbps delta_tx_packets=3171 retries=N/A failed=0 beacon_loss=N/A rx_drop_misc=N/A retry/packet=0.000 failed/1000=0.00 resets=none
+  channel survey: freq=N/AMHz noise=N/AdBm busy=N/A% rx=N/A% tx=N/A% own-BSS-rx=N/A% resets=none
+  kernel UDP/IP delta: Udp.InDatagrams=2135 Udp.OutDatagrams=3990 Udp.NoPorts=4 Udp.InErrors=0 Udp.RcvbufErrors=0 Udp.SndbufErrors=172 Ip.InDiscards=0 Ip.OutDiscards=0 Ip.InHdrErrors=0 Ip.ReasmFails=0 resets=none
+  softnet delta: processed=2123 dropped=0 time_squeeze=0 resets=none; sockets=UDP.inuse=15 UDP.mem=0 sockets.used=235
+  external probe status: iw_link=ok(0.016s,rc=0), iw_power_save=ok(0.008s,rc=0), iw_station=ok(0.020s,rc=0), iw_survey=empty(0.008s,rc=0), vcgencmd_throttled=ok(0.016s,rc=0)
+  relevant processes:
+   - logger           pid=2192    state=S CPU=82.31% RSS=93.9MiB threads=23 core=0 runqueue=1.36% nvcsw=508 wchan=0 RMW=('librmw_dds_common.so', 'librmw_dds_common__rosidl_generator_c.so', 'librmw_dds_common__rosidl_typesupport_cpp.so', 'librmw_dds_common__rosidl_typesupport_fastrtps_cpp.so', 'librmw_dds_common__rosidl_typesupport_introspection_cpp.so', 'librmw_fastrtps_cpp.so', 'librmw_fastrtps_shared_cpp.so', 'librmw_implementation.so', 'librmw_security_common.so') cmd=/usr/bin/python3 /home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger --ros-args -p drone_count:=3 -p local_drone_id:=2 -p drone_ids:=[2] -p
+   - microxrce_agent  pid=1202    state=S CPU=27.04% RSS=28.2MiB threads=54 core=2 runqueue=0.00% nvcsw=0 wchan=futex_wait_queue RMW=not-mapped cmd=MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
+----------------------------------------------------------------------------------------------------------------------
+ DDS PUBLISHER ENDPOINTS / QOS
+  /swarm/live: publishers=2 changed=True
+   - gid=010f29a89e08073f0000000000001703 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+   - gid=010fb5b2cb0837240000000000001703 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=10)
+  /swarm/status: publishers=1 changed=False
+   - gid=010f29a89e08073f0000000000001b03 node=control_node_d1 qos=BEST_EFFORT/VOLATILE/KEEP_LAST(depth=6)
+  /tf: publishers=4 changed=True
+   - gid=010f29a89e08073f0000000000001503 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010f29a89e08073f0000000000001603 node=control_node_d1 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001503 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+   - gid=010fb5b2cb0837240000000000001603 node=control_node_d3 qos=RELIABLE/VOLATILE/KEEP_LAST(depth=100)
+----------------------------------------------------------------------------------------------------------------------
+ SWARM HEARTBEATS / STATUS
+  heartbeat peer=1        rate=  0.20Hz age=1.69s max_gap=4.498s advance_age=1.69s repeated=0 regress=0 zero=0 clock(source-local)=495.124s excess_delay(last/max)=4.754/4.754s
+  heartbeat peer=2        rate=  0.60Hz age=0.88s max_gap=1.507s advance_age=0.88s repeated=0 regress=0 zero=0 clock(source-local)=-0.006s excess_delay(last/max)=0.004/0.005s
+  heartbeat peer=3        rate=  0.60Hz age=0.76s max_gap=2.273s advance_age=0.76s repeated=0 regress=0 zero=0 clock(source-local)=33.038s excess_delay(last/max)=0.023/0.879s
+  status: age=1.69s leader=1 members=(1, 2) state=IDLE armed=False offboard=False pattern=None spacing=3.00 leader_pos=(0.05259156599640846, -0.17456138134002686, 0.22119140625) goal=(0.0, 0.0, 0.0) leader_counts={1: 1} mission=(False, 0, 0, 'IDLE') message=''
+----------------------------------------------------------------------------------------------------------------------
+ TF TIMING / CONTENT / DDS DELIVERY
+  frame=x500_depth_1/goal                          parent=world                    rate=  0.60Hz arrival_age=1.56s advance_age=1.56s gap(arrival/advance)=3.772/3.772s gap_ago=1.57s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=4.379s clock(source-local)=495.020s excess_delay(last/max)=4.855/9.250s
+  frame=x500_depth_1/odom                          parent=world                    rate=  0.00Hz arrival_age=19.19s advance_age=19.19s gap(arrival/advance)=N/A/N/As gap_ago=N/As repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=N/A m/N/A rad max_implied_speed=N/A m/s max_source_step=N/As clock(source-local)=487.043s excess_delay(last/max)=12.832/N/As
+  frame=x500_depth_2/goal                          parent=world                    rate=  8.61Hz arrival_age=0.68s advance_age=0.68s gap(arrival/advance)=0.199/0.199s gap_ago=1.59s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.200s clock(source-local)=-0.004s excess_delay(last/max)=0.002/0.010s
+  frame=x500_depth_2/odom                          parent=world                    rate= 43.84Hz arrival_age=0.58s advance_age=0.58s gap(arrival/advance)=0.081/0.081s gap_ago=1.62s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.002 m/0.000 rad max_implied_speed=0.18 m/s max_source_step=0.065s clock(source-local)=-0.007s excess_delay(last/max)=0.006/0.060s
+  frame=x500_depth_3/goal                          parent=world                    rate=  9.01Hz arrival_age=0.39s advance_age=0.39s gap(arrival/advance)=1.181/1.181s gap_ago=2.96s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.000 m/0.000 rad max_implied_speed=0.00 m/s max_source_step=0.299s clock(source-local)=32.995s excess_delay(last/max)=0.090/1.125s
+  frame=x500_depth_3/odom                          parent=world                    rate= 45.64Hz arrival_age=0.38s advance_age=0.38s gap(arrival/advance)=0.962/0.962s gap_ago=3.17s repeat/regress/zero=0/0/0 writer=unknown(<unmapped>) authorities=0
+    content: parent_changes=0 writer_changes=0 invalid(empty/self/nonfinite/zero_q/nonunit_q)=0/0/0/0/0 max_step(position/angular)=0.006 m/0.000 rad max_implied_speed=0.09 m/s max_source_step=0.096s clock(source-local)=33.043s excess_delay(last/max)=0.042/1.157s
+  TF DDS writers (MessageInfo observer):
+   - gid=unknown node=<unmapped> rate=107.70Hz messages_by_batch={1: 538} missing_seq=0 duplicate_seq=0 regressed_seq=0 middleware_delay_max=N/As callback_queue_max=N/As children=('x500_depth_1/goal', 'x500_depth_1/odom', 'x500_depth_2/goal', 'x500_depth_2/odom', 'x500_depth_3/goal', 'x500_depth_3/odom')
+  TF cycles detected: none
+----------------------------------------------------------------------------------------------------------------------
+ LOCAL PX4 SEMANTICS
+  drone=2:
+   - status: age=0.40s {'arming_state': 1, 'nav_state': 14, 'nav_intention': 14, 'failsafe': False, 'gcs_lost': False, 'high_latency_lost': False, 'preflight_ok': False, 'power_input_valid': True}
+   - failsafe_flags: age=0.06s {'active': ('auto_mission_missing', 'offboard_control_signal_lost'), 'battery_warning': 0}
+   - local_position: age=0.00s {'position': (0.0014102411223575473, -3.047229528427124, -4.0133056640625), 'velocity': (0.0032047650311142206, -0.01877395063638687, 0.017841879278421402), 'finite': True, 'valid': True, 'dead_reckoning': False, 'eph': 0.418063223361969, 'epv': 0.3302421569824219, 'sample_timestamp_us': 1787748436736189, 'reset_counters': (6, 5, 5, 3, 6)}
+   - trajectory_setpoint: never received
+   - offboard_control_mode: never received
+   - battery: age=0.07s {'connected': True, 'remaining': 0.7615443468093872, 'voltage_v': 16.12932777404785, 'current_a': 0.0, 'temperature': nan, 'warning': 0, 'faults': 0}
+   - land: age=0.92s {'landed': True, 'ground_contact': True, 'maybe_landed': True, 'freefall': False, 'at_rest': True}
+   - timesync: age=0.52s {'source_protocol': 2, 'observed_offset_us': -1787746663079109, 'estimated_offset_us': -1787746663080549, 'round_trip_time_us': 3785, 'remote_timestamp_us': 1787748436214197}
+   - vehicle_command: never received
+   - command_ack: age=7.78s {'command': 512, 'result': 2, 'result_param1': 0, 'result_param2': 0}
+  PX4 window counters: none
+  PX4 window maxima: {(2, 'timesync_rtt_us'): 6597}
+----------------------------------------------------------------------------------------------------------------------
+ SUBSCRIPTION RECEIVE TIMING
+  /command: never received
+  /formation: never received
+  /manual_controller: never received
+  /swarm/command: never received
+  /swarm/formation_command: never received
+  /swarm/live                                                rate=   1.40Hz age=0.76s max_gap=1.298s gap_ago=3.88s stamp_advance_age=N/As repeat/regress/zero=0/0/0
+  /swarm/status                                              rate=   0.20Hz age=1.69s max_gap=3.655s gap_ago=1.69s stamp_advance_age=1.69s repeat/regress/zero=0/0/0
+  /tf                                                        rate= 107.70Hz age=0.38s max_gap=0.133s gap_ago=0.43s stamp_advance_age=0.38s repeat/regress/zero=0/72/0
+  /uav_2/fmu/in/offboard_control_mode: never received
+  /uav_2/fmu/in/trajectory_setpoint: never received
+  /uav_2/fmu/in/vehicle_command: never received
+  /uav_2/fmu/out/battery_status_v1                           rate=   1.00Hz age=0.07s max_gap=1.002s gap_ago=0.07s stamp_advance_age=0.07s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/failsafe_flags                              rate=   2.00Hz age=0.06s max_gap=0.556s gap_ago=1.70s stamp_advance_age=0.06s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/timesync_status                             rate=   1.00Hz age=0.52s max_gap=1.019s gap_ago=4.55s stamp_advance_age=0.52s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_command_ack                         rate=   0.00Hz age=7.78s max_gap=N/As gap_ago=N/As stamp_advance_age=7.78s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_land_detected                       rate=   1.00Hz age=0.92s max_gap=1.004s gap_ago=3.92s stamp_advance_age=0.92s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_local_position_v1                   rate=  50.05Hz age=0.00s max_gap=0.038s gap_ago=4.27s stamp_advance_age=0.00s repeat/regress/zero=0/0/0
+  /uav_2/fmu/out/vehicle_status_v1                           rate=   2.00Hz age=0.40s max_gap=0.512s gap_ago=4.45s stamp_advance_age=0.40s repeat/regress/zero=0/0/0
+----------------------------------------------------------------------------------------------------------------------
+ TRANSITIONS / ANOMALIES / WIFI EVENTS
+  ROS/PX4 events: none in this window
+  iw event monitor: status=running counts={}
+----------------------------------------------------------------------------------------------------------------------
+ WARNINGS (21):
+  ! kernel UDP/IP errors/discards +176
+  ! controller process matching 'control_node' not found
+  ! DDS publisher endpoint set changed for /swarm/live
+  ! DDS publisher endpoint set changed for /tf
+  ! DDS graph sees 2/3 heartbeat publishers
+  ! heartbeat 1 max gap 4.498s (neighbor timeout=6.0s)
+  ! peer 1 clock offset approximately +495.124s
+  ! peer 3 clock offset approximately +33.038s
+  ! TF arrival gap x500_depth_1/goal: 3.772s
+  ! TF publisher source-time step x500_depth_1/goal: 4.379s
+  ! TF variable delivery delay x500_depth_1/goal: 9.250s above baseline
+  ! TF transport/publisher arrival stale x500_depth_1/odom: 19.19s
+  ! TF source timestamp stale x500_depth_1/odom: 19.19s
+  ! TF transport/publisher arrival stale x500_depth_2/odom: 0.58s
+  ! TF source timestamp stale x500_depth_2/odom: 0.58s
+  ! TF arrival gap x500_depth_3/goal: 1.181s
+  ! TF publisher source-time step x500_depth_3/goal: 0.299s
+  ! TF variable delivery delay x500_depth_3/goal: 1.125s above baseline
+  ! TF arrival gap x500_depth_3/odom: 0.962s
+  ! TF variable delivery delay x500_depth_3/odom: 1.157s above baseline
+  ! PX4 drone 2 failsafe flags: ('auto_mission_missing', 'offboard_control_signal_lost') battery_warning=0
+ logger capture=0.0023s background_health=0.2385s health_to_emit=0.1598s
+======================================================================================================================
+[ros2run]: Received signal:  Interrupt
+[ros2run]: Received signal:  Interrupt
+Traceback (most recent call last):
+  File "/home/mbkh/multi_drone_real/install/swarm_logger/lib/swarm_logger/logger", line 33, in <module>
+  File "/home/mbkh/multi_drone_real/install/swarm_logger/lib/python3.12/site-packages/swarm_logger/logger_node.py", line 1986, in main
+    node.destroy_node()
+  File "/opt/ros/rolling/lib/python3.12/site-packages/rclpy/node.py", line 2080, in destroy_node
+    self.destroy_subscription(self._subscriptions[0])
+  File "/opt/ros/rolling/lib/python3.12/site-packages/rclpy/node.py", line 1985, in destroy_subscription
+    def destroy_subscription(self, subscription: Subscription[Any]) -> bool:
+
+KeyboardInterrupt
+[ros2run]: Received signal:  Interrupt
+[ros2run]: Interrupt

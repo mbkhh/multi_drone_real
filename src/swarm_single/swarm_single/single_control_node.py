@@ -102,10 +102,31 @@ class SingleControlNode(Node):
         self.leader_id = None
         self.is_leader = False
 
+        # Dynamic swarm transforms are high-rate state samples.  Keeping old
+        # samples or retransmitting them over a lossy Wi-Fi link only adds
+        # latency, so use a small best-effort queue on both sides of /tf.
+        # /tf_static keeps the TransformListener default reliable,
+        # transient-local QoS.
+        swarm_tf_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=5,
+        )
         self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
-        self.local_position_tf_broadcaster = TransformBroadcaster(self)
-        self.goal_tf_broadcaster = TransformBroadcaster(self)
+        self.tf_listener = tf2_ros.TransformListener(
+            self.tf_buffer,
+            self,
+            qos=swarm_tf_qos,
+        )
+        self.local_position_tf_broadcaster = TransformBroadcaster(
+            self,
+            qos=swarm_tf_qos,
+        )
+        self.goal_tf_broadcaster = TransformBroadcaster(
+            self,
+            qos=swarm_tf_qos,
+        )
         self.active_goal_transform = None
 
         self.velocity_goal = [0.0, 0.0, 0.0]

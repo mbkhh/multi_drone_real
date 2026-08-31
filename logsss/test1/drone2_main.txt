@@ -1,0 +1,301 @@
+mbkh@drone1:~/multi_drone_real$ ros2 run swarm_single control_node --ros-args   -p frame_id:=2   -r __node:=control_node_d2
+[INFO] [1787747227.131073674] [control_node_d2]: Real-flight RC/manual-control safety gate is ENABLED.
+[INFO] [1787747228.035500433] [control_node_d2]: Topology update: This is drone 2 and leader is 2
+[INFO] [1787747228.038483526] [control_node_d2]: Transitioning to LEADER role. Establishing Station connection...
+[INFO] [1787747228.040963840] [control_node_d2]: Received goal request: [0.00, 0.00, 0.00]. Broadcasting goal transform.
+[INFO] [1787747228.085447877] [control_node_d2]: Communication module initialized. Listening for swarm and station heartbeat...
+[INFO] [1787747228.129690655] [control_node_d2]: Drone 2 configured ARM position (ENU): [0.0, 5.0, 0.0]. Waiting for ARM calibration.
+[INFO] [1787747228.133633322] [control_node_d2]: SingleControlNode successfully initialized for Drone 2.
+[WARN] [1787747228.633284692] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747229.131345988] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[INFO] [1787747229.187961784] [control_node_d2]: Connection established with neighbor 1! Swarm peers count: 1
+[INFO] [1787747229.190368229] [control_node_d2]: Topology update: This is drone 2 and leader is 1
+[INFO] [1787747229.193026155] [control_node_d2]: Stepping down as leader. Reverting to FOLLOWER role.
+[WARN] [1787747229.633093228] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747230.131174265] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747230.632797135] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747231.133201024] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747231.631698449] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747232.133327727] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747232.633694523] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747233.135445097] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747233.632218282] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747234.131730226] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747234.632662985] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747235.135586040] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747235.633097743] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747236.133975373] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747236.633456169] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[INFO] [1787747237.127704039] [control_node_d2]: Connection established with neighbor 3! Swarm peers count: 2
+[WARN] [1787747237.136290187] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747237.633704779] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747238.133376705] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747238.631504723] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747239.135021871] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747239.632707426] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747240.137157222] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747240.633333463] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747241.134712314] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747241.634316795] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747242.133095628] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747242.635612832] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747243.131957572] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747243.633295350] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747244.132930701] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747244.633565386] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747245.131998145] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747245.632933830] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747246.133106663] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747246.633121607] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747247.134120366] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747247.634961718] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747248.131920199] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747248.632966902] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747249.135856569] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747249.633858105] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747250.132014457] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747250.634351846] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747251.132229419] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747251.633315234] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747252.131922196] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747252.634144659] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747253.133896659] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747253.632178659] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747254.136473936] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747254.633378121] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747255.136283917] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747255.631856768] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747256.131710453] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747256.634411120] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747257.132333527] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747257.632774601] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747258.133730341] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747258.633847767] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747259.132050285] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747259.633249914] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747260.133950210] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747260.634056969] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747261.132095450] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747261.634090098] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747262.136066913] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747262.634209264] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747263.134498727] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747263.635310541] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747264.132834615] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747264.631895504] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747265.133531855] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747265.632031170] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747266.132187373] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[INFO] [1787747266.157503355] [control_node_d2]: Follower received command payload: {"command": "arm"}
+[WARN] [1787747266.160441225] [control_node_d2]: Drone 2 world origin calibrated: current position is [0.0, 5.0, 0.0] ENU.
+[WARN] [1787747266.164481966] [control_node_d2]: Explicit ARM received: preparing Offboard with zero velocity, then switching mode and arming PX4.
+[INFO] [1787747266.166988577] [control_node_d2]: Received ARM command.
+[INFO] [1787747266.635088132] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=ARMING published=10 rate=19.9 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747267.134179132] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=ARMING published=10 rate=20.1 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747267.381842317] [control_node_d2]: Requesting Offboard mode...
+[INFO] [1787747267.633813872] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=ARMING published=10 rate=20.0 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747267.881967391] [control_node_d2]: Sending ARM command.
+[INFO] [1787747268.131911854] [control_node_d2]: Offboard armed in HOLD. Waiting for an explicit movement command.
+[INFO] [1787747268.137096354] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747268.635993613] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747269.133484446] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747269.366039890] [control_node_d2]: Follower received command payload: {"command": "takeoff", "height": 3.0}
+[INFO] [1787747269.368465705] [control_node_d2]: Received goal request: [-0.00, 5.02, 3.02]. Broadcasting goal transform.
+[WARN] [1787747269.372091057] [control_node_d2]: TAKEOFF accepted: climbing 3.00 m to ENU z=3.02.
+[INFO] [1787747269.637297464] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.003, east=+0.002, down=-0.212 m/s | ENU up=+0.212 m/s | speed=0.212 m/s
+[WARN] [1787747270.088438834] [control_node_d2]: [NAVIGATION HOLD] neighbor 1 pose is unavailable/stale; commanding zero velocity.
+[INFO] [1787747270.134969686] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747270.638100852] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[WARN] [1787747271.134790463] [control_node_d2]: [NAVIGATION HOLD] neighbor 1 pose is unavailable/stale; commanding zero velocity.
+[INFO] [1787747271.140651148] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747271.638731611] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.013, east=+0.003, down=-0.317 m/s | ENU up=+0.317 m/s | speed=0.318 m/s
+[INFO] [1787747272.135759555] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.011, east=-0.004, down=-0.665 m/s | ENU up=+0.665 m/s | speed=0.665 m/s
+[INFO] [1787747272.636493055] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.047, east=-0.030, down=-0.700 m/s | ENU up=+0.700 m/s | speed=0.702 m/s
+[INFO] [1787747273.137736314] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.143, east=-0.088, down=-0.700 m/s | ENU up=+0.700 m/s | speed=0.720 m/s
+[INFO] [1787747273.638811350] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.221, east=-0.141, down=-0.700 m/s | ENU up=+0.700 m/s | speed=0.748 m/s
+[WARN] [1787747274.031703998] [control_node_d2]: [NAVIGATION HOLD] neighbor 1 pose is unavailable/stale; commanding zero velocity.
+[INFO] [1787747274.136251313] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747274.636024127] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.299, east=-0.163, down=-0.316 m/s | ENU up=+0.316 m/s | speed=0.464 m/s
+[INFO] [1787747275.136870405] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.314, east=-0.162, down=-0.666 m/s | ENU up=+0.666 m/s | speed=0.755 m/s
+[INFO] [1787747275.637476645] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.328, east=-0.177, down=-0.700 m/s | ENU up=+0.700 m/s | speed=0.793 m/s
+[INFO] [1787747276.135052478] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=-0.350, east=-0.187, down=-0.700 m/s | ENU up=+0.700 m/s | speed=0.805 m/s
+[WARN] [1787747276.632231441] [control_node_d2]: [NAVIGATION HOLD] neighbor 1 pose is unavailable/stale; commanding zero velocity.
+[INFO] [1787747276.638375089] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.8 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747277.136231645] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747277.638069422] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.348, east=-0.113, down=-0.282 m/s | ENU up=+0.282 m/s | speed=0.462 m/s
+[INFO] [1787747278.140985959] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.317, east=-0.099, down=-0.631 m/s | ENU up=+0.631 m/s | speed=0.713 m/s
+[INFO] [1787747278.635030810] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=-0.289, east=-0.042, down=-0.700 m/s | ENU up=+0.700 m/s | speed=0.759 m/s
+[INFO] [1787747279.137154162] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.247, east=+0.048, down=-0.700 m/s | ENU up=+0.700 m/s | speed=0.744 m/s
+[INFO] [1787747279.634612162] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=-0.111, east=+0.101, down=-0.700 m/s | ENU up=+0.700 m/s | speed=0.716 m/s
+[INFO] [1787747280.137342458] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.037, east=+0.138, down=-0.556 m/s | ENU up=+0.556 m/s | speed=0.574 m/s
+[INFO] [1787747280.635362476] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.134, east=+0.135, down=-0.333 m/s | ENU up=+0.333 m/s | speed=0.383 m/s
+[INFO] [1787747281.135842809] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.222, east=+0.099, down=-0.213 m/s | ENU up=+0.213 m/s | speed=0.323 m/s
+[INFO] [1787747281.638353031] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.272, east=+0.037, down=-0.128 m/s | ENU up=+0.128 m/s | speed=0.303 m/s
+[INFO] [1787747282.135291030] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.269, east=-0.030, down=-0.068 m/s | ENU up=+0.068 m/s | speed=0.279 m/s
+[INFO] [1787747282.638851641] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.224, east=-0.034, down=-0.020 m/s | ENU up=+0.020 m/s | speed=0.227 m/s
+[INFO] [1787747283.139818956] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.184, east=-0.024, down=-0.013 m/s | ENU up=+0.013 m/s | speed=0.186 m/s
+[INFO] [1787747283.257334326] [control_node_d2]: Received new formation command: 'line' with spacing 5.0
+[INFO] [1787747283.268943919] [control_node_d2]: I am a follower from followers [2, 3]. New offset from leader: [-5.  0.  0.]
+[INFO] [1787747283.273114030] [control_node_d2]: Published goal transform for drone 2 [-5.  0.  0.]
+[INFO] [1787747283.638626085] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.046, east=+0.359, down=+0.101 m/s | ENU up=-0.101 m/s | speed=0.376 m/s
+[INFO] [1787747284.137656455] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.136, east=+0.825, down=+0.083 m/s | ENU up=-0.083 m/s | speed=0.840 m/s
+[INFO] [1787747284.636579899] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.208, east=+0.975, down=+0.080 m/s | ENU up=-0.080 m/s | speed=1.000 m/s
+[INFO] [1787747285.138204436] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.135, east=+0.985, down=+0.107 m/s | ENU up=-0.107 m/s | speed=1.000 m/s
+[INFO] [1787747285.638459528] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.016, east=+0.747, down=+0.151 m/s | ENU up=-0.151 m/s | speed=0.762 m/s
+[INFO] [1787747286.136028898] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.097, east=+0.275, down=+0.158 m/s | ENU up=-0.158 m/s | speed=0.332 m/s
+[INFO] [1787747286.637065472] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.148, east=-0.128, down=+0.126 m/s | ENU up=-0.126 m/s | speed=0.233 m/s
+[INFO] [1787747287.136801824] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.163, east=-0.091, down=+0.116 m/s | ENU up=-0.116 m/s | speed=0.220 m/s
+[INFO] [1787747287.635253120] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.152, east=+0.112, down=+0.066 m/s | ENU up=-0.066 m/s | speed=0.201 m/s
+[INFO] [1787747288.138916712] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.079, east=+0.244, down=+0.071 m/s | ENU up=-0.071 m/s | speed=0.267 m/s
+[INFO] [1787747288.635428712] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.021, east=+0.035, down=+0.057 m/s | ENU up=-0.057 m/s | speed=0.070 m/s
+[INFO] [1787747289.139416323] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.8 Hz | NED velocity: north=-0.003, east=-0.181, down=+0.119 m/s | ENU up=-0.119 m/s | speed=0.217 m/s
+[INFO] [1787747289.635281526] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.2 Hz | NED velocity: north=+0.007, east=-0.220, down=+0.122 m/s | ENU up=-0.122 m/s | speed=0.252 m/s
+[INFO] [1787747290.136360692] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.059, east=-0.104, down=-0.042 m/s | ENU up=+0.042 m/s | speed=0.127 m/s
+[INFO] [1787747290.636542433] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.144, east=-0.129, down=-0.302 m/s | ENU up=+0.302 m/s | speed=0.359 m/s
+[INFO] [1787747291.136321673] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.106, east=+0.030, down=-0.347 m/s | ENU up=+0.347 m/s | speed=0.364 m/s
+[INFO] [1787747291.636148840] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.022, east=+0.051, down=-0.283 m/s | ENU up=+0.283 m/s | speed=0.288 m/s
+[INFO] [1787747292.138324747] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.048, east=-0.066, down=-0.201 m/s | ENU up=+0.201 m/s | speed=0.217 m/s
+[INFO] [1787747292.637315728] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.000, east=+0.000, down=-0.036 m/s | ENU up=+0.036 m/s | speed=0.036 m/s
+[INFO] [1787747293.140227005] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747293.635451264] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.2 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747294.139670820] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.8 Hz | NED velocity: north=+0.025, east=+0.142, down=+0.137 m/s | ENU up=-0.137 m/s | speed=0.199 m/s
+[INFO] [1787747294.638423301] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.085, east=+0.116, down=+0.147 m/s | ENU up=-0.147 m/s | speed=0.206 m/s
+[INFO] [1787747295.135552726] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.167, east=+0.088, down=+0.155 m/s | ENU up=-0.155 m/s | speed=0.244 m/s
+[INFO] [1787747295.640478485] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.8 Hz | NED velocity: north=+0.174, east=+0.025, down=+0.148 m/s | ENU up=-0.148 m/s | speed=0.230 m/s
+[INFO] [1787747296.136819948] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.078, east=+0.032, down=+0.120 m/s | ENU up=-0.120 m/s | speed=0.147 m/s
+[INFO] [1787747296.637077096] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.016, east=-0.105, down=+0.247 m/s | ENU up=-0.247 m/s | speed=0.269 m/s
+[INFO] [1787747297.139325410] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.027, east=-0.090, down=+0.450 m/s | ENU up=-0.450 m/s | speed=0.460 m/s
+[INFO] [1787747297.637186225] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.057, east=-0.224, down=+0.448 m/s | ENU up=-0.448 m/s | speed=0.504 m/s
+[INFO] [1787747298.137962262] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.110, east=-0.239, down=+0.379 m/s | ENU up=-0.379 m/s | speed=0.461 m/s
+[INFO] [1787747298.635607595] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.097, east=-0.063, down=+0.314 m/s | ENU up=-0.314 m/s | speed=0.335 m/s
+[INFO] [1787747299.138429835] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.061, east=-0.012, down=+0.238 m/s | ENU up=-0.238 m/s | speed=0.246 m/s
+[INFO] [1787747299.637831187] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.004, east=+0.134, down=+0.190 m/s | ENU up=-0.190 m/s | speed=0.233 m/s
+[INFO] [1787747300.136907112] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.116, east=+0.302, down=+0.160 m/s | ENU up=-0.160 m/s | speed=0.361 m/s
+[INFO] [1787747300.639878408] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.124, east=+0.292, down=+0.166 m/s | ENU up=-0.166 m/s | speed=0.358 m/s
+[WARN] [1787747300.982283408] [control_node_d2]: [NAVIGATION HOLD] neighbor 1 pose is unavailable/stale; commanding zero velocity.
+[WARN] [1787747301.031686890] [control_node_d2]: [NAVIGATION HOLD] active goal or its parent transform is unavailable/stale; commanding zero velocity.
+[INFO] [1787747301.134725741] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.2 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747301.636029556] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.019, east=+0.080, down=+0.283 m/s | ENU up=-0.283 m/s | speed=0.294 m/s
+[INFO] [1787747302.139629167] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.100, east=+0.084, down=+0.194 m/s | ENU up=-0.194 m/s | speed=0.234 m/s
+[INFO] [1787747302.636630574] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.178, east=-0.082, down=+0.026 m/s | ENU up=-0.026 m/s | speed=0.198 m/s
+[WARN] [1787747303.134179962] [control_node_d2]: [NAVIGATION HOLD] active goal or its parent transform is unavailable/stale; commanding zero velocity.
+[INFO] [1787747303.141233296] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747303.634504666] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.2 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747304.134706869] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[WARN] [1787747304.182048221] [control_node_d2]: [NAVIGATION HOLD] active goal or its parent transform is unavailable/stale; commanding zero velocity.
+[INFO] [1787747304.636626239] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.011, east=-0.086, down=-0.244 m/s | ENU up=+0.244 m/s | speed=0.259 m/s
+[INFO] [1787747305.137426795] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.060, east=-0.009, down=-0.418 m/s | ENU up=+0.418 m/s | speed=0.423 m/s
+[INFO] [1787747305.636103720] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.008, east=+0.094, down=-0.237 m/s | ENU up=+0.237 m/s | speed=0.255 m/s
+[INFO] [1787747306.137458442] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.008, east=+0.212, down=-0.016 m/s | ENU up=+0.016 m/s | speed=0.212 m/s
+[INFO] [1787747306.636185812] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.068, east=+0.270, down=+0.104 m/s | ENU up=-0.104 m/s | speed=0.297 m/s
+[INFO] [1787747307.135653182] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.221, east=+0.130, down=+0.150 m/s | ENU up=-0.150 m/s | speed=0.297 m/s
+[INFO] [1787747307.636095830] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.248, east=+0.166, down=+0.103 m/s | ENU up=-0.103 m/s | speed=0.316 m/s
+[INFO] [1787747308.138501422] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.098, east=+0.021, down=+0.079 m/s | ENU up=-0.079 m/s | speed=0.128 m/s
+[WARN] [1787747308.182049700] [control_node_d2]: [NAVIGATION HOLD] active goal or its parent transform is unavailable/stale; commanding zero velocity.
+[INFO] [1787747308.637699237] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.206, east=+0.313, down=+0.054 m/s | ENU up=-0.054 m/s | speed=0.379 m/s
+[INFO] [1787747309.136017329] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=-0.339, east=+0.139, down=+0.079 m/s | ENU up=-0.079 m/s | speed=0.375 m/s
+[WARN] [1787747309.484356959] [control_node_d2]: [NAVIGATION HOLD] active goal or its parent transform is unavailable/stale; commanding zero velocity.
+[INFO] [1787747309.634932347] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747310.134972532] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747310.636412532] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.005, east=-0.284, down=+0.245 m/s | ENU up=-0.245 m/s | speed=0.375 m/s
+[INFO] [1787747311.138038254] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.067, east=-0.239, down=+0.339 m/s | ENU up=-0.339 m/s | speed=0.420 m/s
+[INFO] [1787747311.635378587] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.105, east=-0.204, down=+0.207 m/s | ENU up=-0.207 m/s | speed=0.309 m/s
+[INFO] [1787747312.138716920] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.128, east=-0.145, down=+0.193 m/s | ENU up=-0.193 m/s | speed=0.273 m/s
+[INFO] [1787747312.635699716] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.059, east=-0.089, down=+0.167 m/s | ENU up=-0.167 m/s | speed=0.199 m/s
+[INFO] [1787747313.135463197] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.038, east=-0.123, down=+0.168 m/s | ENU up=-0.168 m/s | speed=0.212 m/s
+[INFO] [1787747313.636848456] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.123, east=+0.239, down=+0.188 m/s | ENU up=-0.188 m/s | speed=0.328 m/s
+[INFO] [1787747314.136135030] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.192, east=+0.695, down=+0.138 m/s | ENU up=-0.138 m/s | speed=0.734 m/s
+[INFO] [1787747314.636409696] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.147, east=+0.684, down=+0.082 m/s | ENU up=-0.082 m/s | speed=0.704 m/s
+[INFO] [1787747315.136637511] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.039, east=+0.661, down=+0.078 m/s | ENU up=-0.078 m/s | speed=0.667 m/s
+[INFO] [1787747315.636345696] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=+0.046, east=+0.462, down=+0.104 m/s | ENU up=-0.104 m/s | speed=0.476 m/s
+[WARN] [1787747315.832121214] [control_node_d2]: [NAVIGATION HOLD] active goal or its parent transform is unavailable/stale; commanding zero velocity.
+[INFO] [1787747316.134286344] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[INFO] [1787747316.635918843] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.083, east=+0.390, down=+0.146 m/s | ENU up=-0.146 m/s | speed=0.424 m/s
+[INFO] [1787747317.137762565] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=+0.129, east=+0.889, down=+0.107 m/s | ENU up=-0.107 m/s | speed=0.904 m/s
+[INFO] [1787747317.635615491] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=+0.134, east=+0.610, down=+0.132 m/s | ENU up=-0.132 m/s | speed=0.638 m/s
+[INFO] [1787747318.135280398] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.017, east=+0.229, down=+0.127 m/s | ENU up=-0.127 m/s | speed=0.262 m/s
+[INFO] [1787747318.638696157] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=19.9 Hz | NED velocity: north=-0.114, east=-0.035, down=+0.110 m/s | ENU up=-0.110 m/s | speed=0.162 m/s
+[INFO] [1787747319.137602823] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=-0.106, east=-0.328, down=+0.156 m/s | ENU up=-0.156 m/s | speed=0.379 m/s
+[INFO] [1787747319.638269823] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.0 Hz | NED velocity: north=-0.065, east=-0.444, down=+0.139 m/s | ENU up=-0.139 m/s | speed=0.469 m/s
+[INFO] [1787747320.136292156] [control_node_d2]: [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=20.1 Hz | NED velocity: north=-0.062, east=-0.346, down=+0.126 m/s | ENU up=-0.126 m/s | speed=0.374 m/s
+[WARN] [1787747320.231261730] [control_node_d2]: [NAVIGATION HOLD] active goal or its parent transform is unavailable/stale; commanding zero velocity.
+[WARN] [1787747321.644504785] [control_node_d2]: [CONTROL GAP] loop interval was 1.061 s; commanding zero velocity until fresh feedback is processed.
+[WARN] [1787747321.652320285] [control_node_d2]: [CONTROL RATE LOW] [VELOCITY DEBUG] drone=2 state=TAKEOFF published=10 rate=6.6 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[WARN] [1787747321.681400470] [control_node_d2]: [NAVIGATION HOLD] active goal or its parent transform is unavailable/stale; commanding zero velocity.
+[WARN] [1787747323.283609432] [control_node_d2]: [CONTROL GAP] loop interval was 1.353 s; commanding zero velocity until fresh feedback is processed.
+[WARN] [1787747323.290827432] [control_node_d2]: [CONTROL RATE LOW] [VELOCITY DEBUG] drone=2 state=TAKEOFF published=7 rate=4.3 Hz | NED velocity: north=+0.000, east=+0.000, down=+0.000 m/s | ENU up=-0.000 m/s | speed=0.000 m/s
+[WARN] [1787747323.294817506] [control_node_d2]: PX4 left Offboard mode (RC/pilot takeover). ROS control released; PX4/RC/failsafe owns control. A new station ARM command is required to re-enter Offboard.
+[WARN] [1787747324.106119339] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747324.132024154] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747325.032830579] [control_node_d2]: [CONTROL GAP] loop interval was 0.651 s; commanding zero velocity until fresh feedback is processed.
+[WARN] [1787747325.039692634] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747325.131863801] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747325.844057430] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747326.525067671] [control_node_d2]: [CONTROL GAP] loop interval was 0.592 s; commanding zero velocity until fresh feedback is processed.
+[WARN] [1787747326.534165171] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747326.780889782] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747327.132596244] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747327.625583300] [control_node_d2]: [CONTROL GAP] loop interval was 0.445 s; commanding zero velocity until fresh feedback is processed.
+[WARN] [1787747327.637782040] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747328.626709540] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747328.636222262] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747329.984771095] [control_node_d2]: [CONTROL GAP] loop interval was 1.253 s; commanding zero velocity until fresh feedback is processed.
+[WARN] [1787747329.989628465] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[INFO] [1787747330.022530094] [control_node_d2]: Connection lost with neighbor 3! Removing from swarm topology.
+[INFO] [1787747330.025850039] [control_node_d2]: I am a follower from followers [2]. New offset from leader: [-5.  0.  0.]
+[INFO] [1787747330.029300298] [control_node_d2]: Published goal transform for drone 2 [-5.  0.  0.]
+[WARN] [1787747330.131098354] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747330.736037742] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747331.447920575] [control_node_d2]: [CONTROL GAP] loop interval was 0.716 s; commanding zero velocity until fresh feedback is processed.
+[WARN] [1787747331.731617612] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747332.371036408] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747332.633151778] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747333.081766833] [control_node_d2]: [CONTROL GAP] loop interval was 0.300 s; commanding zero velocity until fresh feedback is processed.
+[WARN] [1787747333.132588111] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747334.033407666] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[INFO] [1787747334.041502907] [control_node_d2]: Connection established with neighbor 3! Swarm peers count: 2
+[INFO] [1787747334.044693074] [control_node_d2]: I am a follower from followers [2, 3]. New offset from leader: [-5.  0.  0.]
+[INFO] [1787747334.048493462] [control_node_d2]: Published goal transform for drone 2 [-5.  0.  0.]
+[WARN] [1787747334.133326425] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747334.632092944] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747335.134369110] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747335.632499980] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747336.132297183] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747336.632452368] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[INFO] [1787747336.676946591] [control_node_d2]: Follower received command payload: {"command": "land"}
+[ERROR] [1787747336.679352128] [control_node_d2]: LAND rejected: companion Offboard control is not active.
+[WARN] [1787747337.132478868] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747337.632292997] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747338.133182108] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747338.631761404] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747339.132865237] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747339.633075996] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747340.132161144] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747340.634126014] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747341.135185347] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747341.633775754] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747342.133138772] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747342.634789494] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747343.131899420] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747343.634832253] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747344.132908568] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747344.631881993] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747345.134113993] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747345.632233530] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747346.134423437] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747346.633042955] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747347.132469010] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747347.632313936] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747348.132575510] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747348.634058361] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747349.132414676] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747349.634117009] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747350.133101120] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747350.633813304] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747351.131961526] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747351.633553174] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747352.132257618] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747352.637255600] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787747353.132255729] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+^C[ros2run]: Received signal:  Interrupt
+[INFO] [1787747353.143113636] [control_node_d2]: Caught KeyboardInterrupt, shutting down node.

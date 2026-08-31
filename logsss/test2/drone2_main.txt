@@ -1,0 +1,207 @@
+mbkh@drone1:~/multi_drone_real$ ros2 run swarm_single control_node --ros-args   -p frame_id:=2   -r __node:=control_node_d2
+[INFO] [1787748363.058522997] [control_node_d2]: Real-flight RC/manual-control safety gate is ENABLED.
+[INFO] [1787748363.870656404] [control_node_d2]: Topology update: This is drone 2 and leader is 2
+[INFO] [1787748363.872498700] [control_node_d2]: Transitioning to LEADER role. Establishing Station connection...
+[INFO] [1787748363.874476312] [control_node_d2]: Received goal request: [0.00, 0.00, 0.00]. Broadcasting goal transform.
+[INFO] [1787748363.917155941] [control_node_d2]: Communication module initialized. Listening for swarm and station heartbeat...
+[INFO] [1787748363.959076960] [control_node_d2]: Drone 2 configured ARM position (ENU): [0.0, 5.0, 0.0]. Waiting for ARM calibration.
+[INFO] [1787748363.962362812] [control_node_d2]: SingleControlNode successfully initialized for Drone 2.
+[WARN] [1787748364.463750200] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748364.961029978] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748365.462230866] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748365.962160792] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748366.464726736] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748366.965084921] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748367.463234087] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748367.962088013] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748368.465277772] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748368.965989031] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[INFO] [1787748369.280738790] [control_node_d2]: Connection established with neighbor 1! Swarm peers count: 1
+[INFO] [1787748369.284194642] [control_node_d2]: Topology update: This is drone 2 and leader is 1
+[INFO] [1787748369.286726068] [control_node_d2]: Stepping down as leader. Reverting to FOLLOWER role.
+[WARN] [1787748369.463291660] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748369.962573567] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748370.462767511] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748370.963934270] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748371.462792863] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748371.960312788] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748372.462951232] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748372.961407788] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748373.463360954] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748373.960720824] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748374.460761398] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748374.962289435] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748375.463578008] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748375.964466341] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748376.463864878] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748376.963562452] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748377.462772766] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748377.962416044] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748378.461073599] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748378.961350766] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748379.461051376] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748379.961320709] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748380.460860987] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748380.961719616] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748381.460638634] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748381.962462560] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748382.463463338] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748382.963496689] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748383.460719781] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748383.962556744] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748384.461750725] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748384.963543688] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748385.462831688] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748385.962310761] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748386.463635631] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748386.963083650] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748387.462614742] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748387.962699279] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[INFO] [1787748388.051614093] [control_node_d2]: Connection established with neighbor 3! Swarm peers count: 2
+[WARN] [1787748388.462003630] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748388.961720389] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748389.462073500] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748389.960728037] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748390.461662425] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748390.962301462] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748391.461122314] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748391.962079813] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748392.462293443] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748392.962090424] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748393.461898164] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748393.962620812] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748394.464201275] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748394.961559089] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748395.463498422] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748395.961883959] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748396.462881014] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748396.962216829] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748397.463755143] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748397.962414643] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748398.467499902] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748398.962658680] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748399.462177809] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748399.961775086] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748400.465076734] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748400.965822549] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748401.463142993] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748401.964375604] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748402.464450066] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748402.965928788] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748403.462778344] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748403.963029862] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748404.463088824] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748404.966038806] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748405.463212879] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[INFO] [1787748405.860563287] [control_node_d2]: Connection lost with neighbor 1! Removing from swarm topology.
+[INFO] [1787748405.863353824] [control_node_d2]: Topology update: This is drone 2 and leader is 2
+[INFO] [1787748405.865924342] [control_node_d2]: Transitioning to LEADER role. Establishing Station connection...
+[INFO] [1787748405.868680861] [control_node_d2]: Received goal request: [0.15, 4.98, -0.03]. Broadcasting goal transform.
+[WARN] [1787748405.962656620] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748406.605275934] [control_node_d2]: [CONTROL GAP] loop interval was 0.542 s; commanding zero velocity until fresh feedback is processed.
+[WARN] [1787748406.611183527] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748406.962388527] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748407.464948434] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748407.964751082] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748408.463681655] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748408.962097674] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748409.461901414] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748409.962335395] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748410.460828691] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748410.962864135] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748411.465986191] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748411.962355746] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748412.463667153] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748412.963572486] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748413.464258764] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748413.962800022] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748414.463961578] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748414.962666911] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748415.466096503] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748415.962822595] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748416.462851169] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748416.964592521] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748417.464405835] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748417.965194002] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748418.463426890] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748418.961862723] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748419.462647723] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748419.962716297] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748420.464597204] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748420.962426870] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[INFO] [1787748421.423463425] [control_node_d2]: Connection established with neighbor 1! Swarm peers count: 2
+[INFO] [1787748421.425834685] [control_node_d2]: Topology update: This is drone 2 and leader is 1
+[INFO] [1787748421.428026592] [control_node_d2]: Stepping down as leader. Reverting to FOLLOWER role.
+[WARN] [1787748421.472897759] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748421.962241444] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748422.462862869] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748422.961929610] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748423.462095109] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748423.963217720] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748424.465257405] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748424.962614979] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748425.462774071] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748425.961494775] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748426.462438774] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748426.964774681] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748427.462349977] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748427.963899940] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748428.462503032] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748428.961867014] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748429.463905402] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748429.962973198] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748430.464160920] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748430.961398698] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748431.463330290] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748431.963890567] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748432.465401456] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748432.961774993] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748433.463685029] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748433.962108640] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748434.466572399] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748434.963347899] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748435.461647158] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+[WARN] [1787748435.962504139] [control_node_d2]: [VELOCITY DEBUG] IN Idle or pilot mode
+^C[ros2run]: Received signal:  Interrupt
+Traceback (most recent call last):
+  File "/home/mbkh/multi_drone_real/install/swarm_single/lib/python3.12/site-packages/swarm_single/single_control_node.py", line 1309, in main
+    rclpy.spin(node)
+  File "/opt/ros/rolling/lib/python3.12/site-packages/rclpy/__init__.py", line 324, in spin
+    executor.spin_once()
+  File "/opt/ros/rolling/lib/python3.12/site-packages/rclpy/executors.py", line 1016, in spin_once
+    self._spin_once_impl(timeout_sec)
+  File "/opt/ros/rolling/lib/python3.12/site-packages/rclpy/executors.py", line 996, in _spin_once_impl
+    handler, entity, node = self.wait_for_ready_callbacks(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/ros/rolling/lib/python3.12/site-packages/rclpy/executors.py", line 966, in wait_for_ready_callbacks
+    return next(self._cb_iter)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/ros/rolling/lib/python3.12/site-packages/rclpy/executors.py", line 788, in _wait_for_ready_callbacks
+    with ExitStack() as context_stack:
+  File "/usr/lib/python3.12/contextlib.py", line 610, in __exit__
+    raise exc_details[1]
+  File "/usr/lib/python3.12/contextlib.py", line 595, in __exit__
+    if cb(*exc_details):
+       ^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/mbkh/multi_drone_real/install/swarm_single/lib/swarm_single/control_node", line 33, in <module>
+    sys.exit(load_entry_point('swarm-single==1.0.0', 'console_scripts', 'control_node')())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbkh/multi_drone_real/install/swarm_single/lib/python3.12/site-packages/swarm_single/single_control_node.py", line 1311, in main
+    node.get_logger().info("Caught KeyboardInterrupt, shutting down node.")
+  File "/opt/ros/rolling/lib/python3.12/site-packages/rclpy/impl/rcutils_logger.py", line 419, in info
+    return self.log(message, LoggingSeverity.INFO, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/ros/rolling/lib/python3.12/site-packages/rclpy/impl/rcutils_logger.py", line 363, in log
+    if not self.is_enabled_for(severity):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/ros/rolling/lib/python3.12/site-packages/rclpy/impl/rcutils_logger.py", line 326, in is_enabled_for
+    result: bool = _rclpy.rclpy_logging_logger_is_enabled_for(self.name, severity)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+^C[ros2run]: Received signal:  Interrupt
+[ros2run]: Interrupt
