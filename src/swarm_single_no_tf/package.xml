@@ -1,13 +1,23 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>swarm_sim</name>
+  <name>swarm_single_no_tf</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Swarm drone controller using shared local state without TF.</description>
   <maintainer email="99536958+mrwhy224@users.noreply.github.com">mahdi-roohi</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache License 2.0</license>
 
-  <exec_depend>swarm_single_no_tf</exec_depend>
+  <depend>rclpy</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>px4_msgs</depend>
+  <depend>swarm_msgs</depend>
+  <depend>swarm_config</depend>
+
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-sklearn</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

@@ -66,6 +66,8 @@ navigation:
   # Freshness uses local callback/observation time, so peer clock offsets do
   # not make healthy data appear stale.
   feedback_timeout: 0.3
+  # Freshness limit for /swarm/local_state in swarm_single_no_tf.
+  neighbor_state_timeout: 0.5
   neighbor_transform_timeout: 0.5
   braking_acceleration: 0.7
 lidar:
