@@ -32,6 +32,10 @@ control:
   # feedback sample from causing an instantaneous full-speed reversal.
   max_horizontal_acceleration: 1.0
   max_vertical_acceleration: 0.7
+  # Maximum rate at which a requested mission yaw setpoint may change.
+  # Mission yaw values are entered in degrees; this value is degrees/second.
+  # Lower this (for example, to 15-30) for a slower, smoother rotation.
+  max_yaw_rate_deg_s: 15.0
   # A single control gap longer than this commands an immediate zero setpoint.
   max_control_interval: 0.25
   # Diagnostic threshold only; the controller remains usable near 10 Hz so
@@ -42,15 +46,19 @@ control:
   min_goal_altitude: -0.5
   max_goal_altitude: 5.0
 mission:
-  # Mission points are ENU offsets from the vehicle position when the
-  # mission starts. Positive Z is up, matching the station's move command.
+  # Mission points are ENU offsets from the vehicle position when the mission
+  # starts. Positive Z is up, matching the station's move command. A waypoint
+  # may optionally contain a fourth value: yaw in PX4/NED degrees. The
+  # controller converts it to radians for PX4. Example:
+  #   - [2.0, 0.0, 0.0, 90.0]
+  # Three-value waypoints keep the leader's previous yaw.
   relative_to_start: true
   waypoints:
-    - [0.0, 0.0, 4.0]
-    - [2.0, 0.0, 4.0]
-    - [2.0, 2.0, 4.0]
-    - [0.0, 2.0, 4.0]
-    - [0.0, 0.0, 4.0]
+    - [0.0, 0.0, 4.0, 45]
+    - [2.0, 0.0, 4.0, 45]
+    - [2.0, 0.0, 4.0, 90]
+    - [2.0, 0.0, 4.0, 135]
+    - [2.0, 0.0, 4.0, 180]
   goal_tolerance: 0.1
   waypoint_dwell: 1.0
   timeout: 180.0

@@ -3,7 +3,11 @@ from rclpy.node import Node
 from std_msgs.msg import Header
 from std_msgs.msg import String
 from swarm_msgs.msg import Status, ManualControl, FormationCommand
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from rclpy.qos import (
+    QoSProfile,
+    ReliabilityPolicy,
+    HistoryPolicy,
+)
 from swarm_msgs.action import Fly
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from px4_msgs.msg import VehicleStatus
@@ -285,6 +289,13 @@ class Communication():
                 self.command_publisher.publish(out_msg)
                 self.parent_node.get_logger().info(
                     f"Leader: publishing {float(height):.2f} m TAKEOFF command."
+                )
+        elif command_type == "yaw":
+            delta_degrees = cmd.get("delta_degrees")
+            if self.parent_node.request_relative_yaw(delta_degrees):
+                self.parent_node.get_logger().info(
+                    f"Leader: accepted relative yaw move of "
+                    f"{float(delta_degrees):+.1f} degrees."
                 )
         elif command_type == "fly":
             x = float(cmd.get("x"))

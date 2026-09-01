@@ -151,6 +151,15 @@ class StationNode(Node):
 		msg = String()	
 		msg.data = json.dumps(command)
 		self.command_publisher.publish(msg)
+	def send_yaw_command(self, delta_degrees):
+		"""Ask the leader for a relative PX4/NED yaw change in degrees."""
+		command = {
+			"command": "yaw",
+			"delta_degrees": float(delta_degrees),
+		}
+		msg = String()
+		msg.data = json.dumps(command)
+		self.command_publisher.publish(msg)
 
 	def goal_response_callback(self, future):
 		goal_handle = future.result()
@@ -356,7 +365,8 @@ class StationNode(Node):
 								params = {
 									"x": 0.0,
 									"y": 0.0,
-									"z": 0.0
+									"z": 0.0,
+									"yaw": None,
 								}
 								for arg in command[1:]:
 									if '=' in arg:
@@ -370,7 +380,15 @@ class StationNode(Node):
 										else:
 											self.get_logger().info(f"Ignoring unknown parameter: {key}")
 								else:
-									self.send_fly_goal2(params["x"], params["y"], params["z"], False)
+									if params["yaw"] is not None:
+										if any(params[axis] != 0.0 for axis in ("x", "y", "z")):
+											self.get_logger().error(
+												"Use either move x/y/z or move yaw=<degrees>, not both."
+											)
+										else:
+											self.send_yaw_command(params["yaw"])
+									else:
+										self.send_fly_goal2(params["x"], params["y"], params["z"], False)
 							case 'manual':
 								if len(command) > 1 and command[1] == 'off':
 									self.manual_controller.manual_mode = False

@@ -14,7 +14,7 @@ from std_msgs.msg import String
 
 from swarm_single_no_tf.communication import Communication
 from swarm_single_no_tf.formation import PatternController
-from swarm_single_no_tf.single_control_node import SingleControlNode
+from swarm_single_no_tf.single_control_node import DroneState, SingleControlNode
 
 
 class DummyLogger:
@@ -81,8 +81,11 @@ def make_controller_stub():
         get_clock=lambda: clock,
         max_horizontal_acceleration=1.0,
         max_vertical_acceleration=0.5,
+        max_yaw_rate=math.radians(90.0),
         max_control_interval=0.25,
         last_setpoint_time=None,
+        last_yaw_setpoint_time=None,
+        commanded_yaw=0.0,
         last_commanded_velocity_setpoint=[0.0, 0.0, 0.0],
         released_reason=None,
         clock=clock,
@@ -94,6 +97,9 @@ def make_controller_stub():
     controller.release_to_pilot = release
     controller.limit_velocity_change = lambda desired, now: (
         SingleControlNode.limit_velocity_change(controller, desired, now)
+    )
+    controller.limit_yaw_change = lambda now: (
+        SingleControlNode.limit_yaw_change(controller, now)
     )
     return controller
 
@@ -177,6 +183,29 @@ def test_velocity_reversal_is_slew_limited():
     )
     assert math.isclose(reversed_command[0], 0.0, abs_tol=1e-9)
     assert math.isclose(reversed_command[2], 0.0, abs_tol=1e-9)
+
+
+def test_yaw_setpoint_is_slew_limited_and_uses_shortest_wrap_path():
+    controller = make_controller_stub()
+    controller.yaw = math.pi - 0.1
+    controller.commanded_yaw = -math.pi + 0.1
+    controller.last_yaw_setpoint_time = controller.clock.now()
+
+    controller.clock.advance(0.5)
+    limited = SingleControlNode.limit_yaw_change(
+        controller, controller.clock.now()
+    )
+
+    # The target is only 0.2 rad away across the wrap boundary, so it is
+    # reached in one update; a long 2*pi rotation must never be commanded.
+    assert math.isclose(limited, math.pi - 0.1, abs_tol=1e-9)
+
+    controller.yaw = 0.0
+    controller.clock.advance(0.1)
+    limited = SingleControlNode.limit_yaw_change(
+        controller, controller.clock.now()
+    )
+    assert math.isclose(limited, math.pi - 0.1 - math.radians(9.0), abs_tol=1e-9)
 
 
 def test_invalid_feedback_forces_immediate_zero_setpoint():
@@ -368,6 +397,27 @@ def test_leader_relays_arm_only_after_its_own_safety_checks_accept():
     assert rejected_communication.command_publisher.last_message is None
 
 
+def test_leader_accepts_relative_yaw_command_from_station():
+    received = []
+    leader = SimpleNamespace(
+        get_logger=lambda: DummyLogger(),
+        request_relative_yaw=lambda delta: (
+            received.append(float(delta)) or True
+        ),
+    )
+    communication = object.__new__(Communication)
+    communication.parent_node = leader
+
+    station_command = String()
+    station_command.data = json.dumps({
+        'command': 'yaw',
+        'delta_degrees': -20.0,
+    })
+    communication.command_leader_callback(station_command)
+
+    assert received == [-20.0]
+
+
 def make_goal_stub():
     controller = SimpleNamespace(
         navigation=SimpleNamespace(
@@ -387,6 +437,21 @@ def make_goal_stub():
         sended_goal_ack=True,
     )
     return controller
+
+
+def test_relative_yaw_command_updates_target_from_measured_heading():
+    controller = SimpleNamespace(
+        state=DroneState.TAKEOFF,
+        current_yaw_ned=math.radians(10.0),
+        yaw=0.0,
+        yaw_initialized=True,
+        mission_active=False,
+        get_logger=lambda: DummyLogger(),
+    )
+
+    assert SingleControlNode.request_relative_yaw(controller, -20.0)
+    assert math.isclose(controller.yaw, math.radians(-10.0), abs_tol=1e-9)
+    assert controller.yaw_initialized
 
 
 def test_goal_horizontal_safety_envelope():
@@ -449,6 +514,8 @@ def test_local_state_is_published_as_common_enu_odometry():
     assert message.pose.pose.position.x == 1.0
     assert message.pose.pose.position.y == 5.0
     assert message.pose.pose.position.z == 3.0
+    assert message.pose.pose.orientation.z == 0.5
+    assert message.pose.pose.orientation.w == 0.866
     assert message.twist.twist.linear.x == 0.2
     assert message.twist.twist.linear.y == -0.1
     assert message.twist.twist.linear.z == 0.3
@@ -858,6 +925,91 @@ def test_relative_mission_reuses_normal_goal_path():
     assert controller.accepted_goals == [[10.0, 20.0, 2.0]]
     assert controller.mission_active
     assert controller.motion_enabled
+
+
+def test_mission_accepts_optional_leader_yaw_without_changing_position_shape():
+    controller, _clock = make_mission_stub()
+    controller.yaw = 0.0
+    controller.yaw_initialized = False
+
+    accepted = SingleControlNode.start_mission(
+        controller,
+        [[0.0, 0.0, 2.0, 90.0], [2.0, 0.0, 2.0]],
+        relative_to_start=True,
+    )
+
+    assert accepted
+    assert controller.mission == [[10.0, 20.0, 2.0], [12.0, 20.0, 2.0]]
+    assert controller.mission_yaws == [math.pi / 2.0, None]
+    assert controller.mission_target_yaw == math.pi / 2.0
+    assert controller.yaw == math.pi / 2.0
+    assert controller.yaw_initialized
+
+
+def test_local_state_leader_yaw_rotates_formation_without_changing_geometry():
+    clock = DummyClock()
+    parent = SimpleNamespace(
+        frame_id='2',
+        leader_id=1,
+        is_leader=False,
+        peer_states={},
+        leader_yaw_enu=None,
+        leader_yaw_received_at=None,
+        active_goal_mode='formation',
+        last_seen_neighbors={1: DummyNow()},
+        stored_offset=None,
+        get_clock=lambda: clock,
+        get_logger=lambda: DummyLogger(),
+    )
+    parent.set_formation_offset = lambda offset: setattr(
+        parent, 'stored_offset', list(offset)
+    )
+    formation = PatternController(parent)
+    parent.formation = formation
+
+    formation.set_pattern('circle', spacing=3.0)
+
+    def publish_peer_yaw(peer_id, yaw_degrees):
+        yaw = math.radians(yaw_degrees)
+        message = Odometry()
+        message.header.frame_id = 'world'
+        message.child_frame_id = str(peer_id)
+        message.pose.pose.orientation.z = math.sin(yaw / 2.0)
+        message.pose.pose.orientation.w = math.cos(yaw / 2.0)
+        SingleControlNode.swarm_state_callback(parent, message)
+
+    publish_peer_yaw(1, 0.0)
+    initial_offset = list(parent.stored_offset)
+    publish_peer_yaw(1, 30.0)
+    rotated_offset = list(parent.stored_offset)
+
+    initial_radius = math.hypot(initial_offset[0], initial_offset[1])
+    rotated_radius = math.hypot(rotated_offset[0], rotated_offset[1])
+    initial_bearing = math.atan2(initial_offset[1], initial_offset[0])
+    rotated_bearing = math.atan2(rotated_offset[1], rotated_offset[0])
+
+    assert math.isclose(initial_radius, 3.0, abs_tol=1e-9)
+    assert math.isclose(rotated_radius, initial_radius, abs_tol=1e-9)
+    assert math.isclose(
+        rotated_bearing - initial_bearing,
+        math.radians(30.0),
+        abs_tol=1e-9,
+    )
+    assert math.isclose(
+        rotated_bearing - parent.leader_yaw_enu,
+        initial_bearing,
+        abs_tol=1e-9,
+    )
+
+    # A different follower's orientation must not rotate this formation.
+    publish_peer_yaw(3, 90.0)
+    assert parent.stored_offset == rotated_offset
+    assert math.isclose(parent.leader_yaw_enu, math.radians(30.0))
+
+    # A leader update must not overwrite a follower's unrelated absolute goal.
+    parent.active_goal_mode = 'absolute'
+    publish_peer_yaw(1, 90.0)
+    assert parent.stored_offset == rotated_offset
 
 
 def test_mission_advances_and_completes_after_dwell():
