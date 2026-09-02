@@ -9,6 +9,53 @@ Reports are kept off `/rosout` so the diagnostic output does not consume the
 wireless network. The node stores counters and timestamps rather than retaining
 complete ROS messages.
 
+## Lightweight no-TF flight mode
+
+Use this mode for normal flight tests with either `swarm_single_no_tf` or
+`swarm_single_no_tf_yaw`. Run one logger on each Pi, changing the local ID and
+filename for that vehicle. First create the persistent directory once on every
+drone:
+
+```bash
+mkdir -p "$HOME/swarm_flight_logs"
+```
+
+For example, the first `swarm_single_no_tf` test on drone 1 is:
+
+```bash
+ros2 run swarm_logger logger --ros-args \
+  -p drone_count:=3 \
+  -p local_drone_id:=1 \
+  -p drone_ids:="[1]" \
+  -p monitor_vehicle_topics:=false \
+  -p monitor_tf:=false \
+  -p monitor_wifi_events:=true \
+  -p print_interval:=10.0 \
+  -p wifi_interface:=wlan0 \
+  -r __node:=swarm_logger_d1 \
+  > "$HOME/swarm_flight_logs/no_tf_test1_d1.log" 2>&1
+```
+
+This keeps the passive heartbeat, topology/status, command, DDS endpoint,
+Wi-Fi, kernel UDP, controller-process, and host-health diagnostics. It avoids
+the TF reader, PX4 topic readers, and ROS network logging. Only one diagnostic
+report is written to persistent storage every 10 seconds. The files survive a
+normal shutdown and reboot. Ready-to-copy, separately named commands for all
+three drones and both controller packages are in `commands.txt`.
+
+After landing, keep the logger running for at least 12 seconds so its last full
+reporting window is written. Stop it with `Ctrl-C`, flush the filesystem, and
+then perform a normal shutdown:
+
+```bash
+sync
+sudo shutdown -h now
+```
+
+Do not remove power until the operating system has finished shutting down.
+After reboot, the files remain in `$HOME/swarm_flight_logs` and can be copied to
+the analysis computer.
+
 ## Comprehensive three-drone test mode
 
 Run one logger on each Raspberry Pi. Set `local_drone_id` and `drone_ids` to the
@@ -30,10 +77,10 @@ ros2 run swarm_logger logger --ros-args \
   > /dev/shm/swarm_logger_d1.log 2>&1
 ```
 
-Use the corresponding ID and filename on drones 2 and 3. Ready-to-copy commands
-for all three drones are in `commands.txt`. Both stdout and stderr go to the
-Pi's local memory-backed filesystem, so reports are not streamed through SSH or
-written to the SD card during flight. Each launch truncates the previous file.
+Use the corresponding ID and filename on drones 2 and 3. Both stdout and stderr
+go to the Pi's local memory-backed filesystem, so reports are not streamed
+through SSH or written to the SD card during flight. Each launch truncates the
+previous file.
 `/dev/shm` is volatile and is erased by reboot; check `df -h /dev/shm` before a
 test and retrieve the log after landing.
 

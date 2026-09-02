@@ -32,44 +32,118 @@ ros2 run swarm_single_no_tf control_node --ros-args \
   -r __node:=control_node_no_tf_d3
 
 
+# Control nodes without TF, with leader-yaw formation rotation
+# (swarm_single_no_tf_yaw)
+# Drone 1
+ros2 run swarm_single_no_tf_yaw control_node --ros-args \
+  -p frame_id:=1 \
+  -r __node:=control_node_no_tf_yaw_d1
 
-# Diagnostic logger on drone 1
+# Drone 2
+ros2 run swarm_single_no_tf_yaw control_node --ros-args \
+  -p frame_id:=2 \
+  -r __node:=control_node_no_tf_yaw_d2
+
+# Drone 3
+ros2 run swarm_single_no_tf_yaw control_node --ros-args \
+  -p frame_id:=3 \
+  -r __node:=control_node_no_tf_yaw_d3
+
+
+
+# Lightweight real-flight loggers for both no-TF controller packages.
+# Run this once on every drone before starting a logger. This directory is on
+# persistent storage and survives a normal shutdown/reboot.
+mkdir -p "$HOME/swarm_flight_logs"
+
+# Do not tail these files over Wi-Fi during flight. Stop the logger cleanly,
+# wait for disk writes, and use a new test number instead of overwriting a run.
+
+# swarm_single_no_tf test 1 - Drone 1
 ros2 run swarm_logger logger --ros-args \
   -p drone_count:=3 \
   -p local_drone_id:=1 \
   -p drone_ids:="[1]" \
-  -p monitor_vehicle_topics:=true \
-  -p monitor_tf:=true \
+  -p monitor_vehicle_topics:=false \
+  -p monitor_tf:=false \
   -p monitor_wifi_events:=true \
-  -p print_interval:=5.0 \
+  -p print_interval:=10.0 \
   -p wifi_interface:=wlan0 \
   -r __node:=swarm_logger_d1 \
-  > /dev/shm/swarm_logger_d1.log 2>&1
+  > "$HOME/swarm_flight_logs/no_tf_test1_d1.log" 2>&1
 
 
-# Diagnostic logger on drone 2
+# swarm_single_no_tf test 1 - Drone 2
 ros2 run swarm_logger logger --ros-args \
   -p drone_count:=3 \
   -p local_drone_id:=2 \
   -p drone_ids:="[2]" \
-  -p monitor_vehicle_topics:=true \
-  -p monitor_tf:=true \
+  -p monitor_vehicle_topics:=false \
+  -p monitor_tf:=false \
   -p monitor_wifi_events:=true \
-  -p print_interval:=5.0 \
+  -p print_interval:=10.0 \
   -p wifi_interface:=wlan0 \
   -r __node:=swarm_logger_d2 \
-  > /dev/shm/swarm_logger_d2.log 2>&1
+  > "$HOME/swarm_flight_logs/no_tf_test1_d2.log" 2>&1
 
 
-# Diagnostic logger on drone 3
+# swarm_single_no_tf test 1 - Drone 3
 ros2 run swarm_logger logger --ros-args \
   -p drone_count:=3 \
   -p local_drone_id:=3 \
   -p drone_ids:="[3]" \
-  -p monitor_vehicle_topics:=true \
-  -p monitor_tf:=true \
+  -p monitor_vehicle_topics:=false \
+  -p monitor_tf:=false \
   -p monitor_wifi_events:=true \
-  -p print_interval:=5.0 \
+  -p print_interval:=10.0 \
   -p wifi_interface:=wlan0 \
   -r __node:=swarm_logger_d3 \
-  > /dev/shm/swarm_logger_d3.log 2>&1
+  > "$HOME/swarm_flight_logs/no_tf_test1_d3.log" 2>&1
+
+
+# swarm_single_no_tf_yaw test 1 - Drone 1
+ros2 run swarm_logger logger --ros-args \
+  -p drone_count:=3 \
+  -p local_drone_id:=1 \
+  -p drone_ids:="[1]" \
+  -p monitor_vehicle_topics:=false \
+  -p monitor_tf:=false \
+  -p monitor_wifi_events:=true \
+  -p print_interval:=10.0 \
+  -p wifi_interface:=wlan0 \
+  -r __node:=swarm_logger_d1 \
+  > "$HOME/swarm_flight_logs/no_tf_yaw_test1_d1.log" 2>&1
+
+
+# swarm_single_no_tf_yaw test 1 - Drone 2
+ros2 run swarm_logger logger --ros-args \
+  -p drone_count:=3 \
+  -p local_drone_id:=2 \
+  -p drone_ids:="[2]" \
+  -p monitor_vehicle_topics:=false \
+  -p monitor_tf:=false \
+  -p monitor_wifi_events:=true \
+  -p print_interval:=10.0 \
+  -p wifi_interface:=wlan0 \
+  -r __node:=swarm_logger_d2 \
+  > "$HOME/swarm_flight_logs/no_tf_yaw_test1_d2.log" 2>&1
+
+
+# swarm_single_no_tf_yaw test 1 - Drone 3
+ros2 run swarm_logger logger --ros-args \
+  -p drone_count:=3 \
+  -p local_drone_id:=3 \
+  -p drone_ids:="[3]" \
+  -p monitor_vehicle_topics:=false \
+  -p monitor_tf:=false \
+  -p monitor_wifi_events:=true \
+  -p print_interval:=10.0 \
+  -p wifi_interface:=wlan0 \
+  -r __node:=swarm_logger_d3 \
+  > "$HOME/swarm_flight_logs/no_tf_yaw_test1_d3.log" 2>&1
+
+
+# After landing, leave the logger running for at least 12 seconds so the final
+# reporting window is printed. Stop it with Ctrl-C, then flush files before a
+# normal shutdown.
+sync
