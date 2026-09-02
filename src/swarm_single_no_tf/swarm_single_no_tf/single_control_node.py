@@ -104,8 +104,6 @@ class SingleControlNode(Node):
                     
         self.leader_id = None
         self.is_leader = False
-        self.leader_yaw_enu = None
-        self.leader_yaw_received_at = None
 
         self.active_goal = None
         self.active_goal_mode = None
@@ -115,26 +113,12 @@ class SingleControlNode(Node):
         self.manual_velocity = [0.0, 0.0, 0.0]
         self.leader_goal = [0.0, 0.0, 0.0]
         self.yaw = 0.0
-        # Measured yaw in the common ENU world frame. This is published by
-        # the leader; self.yaw remains the PX4/NED setpoint used locally.
-        self.current_yaw_enu = None
-        self.current_yaw_ned = None
-        # self.yaw is the requested PX4/NED yaw. This separate value is the
-        # rate-limited yaw actually sent in TrajectorySetpoint messages.
-        self.commanded_yaw = 0.0
-        self.last_yaw_setpoint_time = None
         self.yaw_initialized = False
 
         self.mission = []
-        # Keep the existing three-value position representation intact. Yaw
-        # is stored in a parallel list so old missions and callers remain
-        # compatible. Mission-file yaw is supplied in degrees and converted
-        # to PX4/NED radians while parsing.
-        self.mission_yaws = []
         self.mission_active = False
         self.mission_index = 0
         self.mission_target = None
-        self.mission_target_yaw = None
         self.mission_start_time = None
         self.mission_dwell_start = None
         self.mission_state = "IDLE"
@@ -197,17 +181,6 @@ class SingleControlNode(Node):
         self.max_vertical_acceleration = self.config_float(
             'swarm_single.control.max_vertical_acceleration', 0.7
         )
-        self.max_yaw_rate_deg_s = self.config_float(
-            'swarm_single.control.max_yaw_rate_deg_s', 20.0
-        )
-        if (
-            not math.isfinite(self.max_yaw_rate_deg_s)
-            or self.max_yaw_rate_deg_s <= 0.0
-        ):
-            raise ValueError(
-                'max_yaw_rate_deg_s must be finite and greater than zero.'
-            )
-        self.max_yaw_rate = math.radians(self.max_yaw_rate_deg_s)
         self.max_control_interval = self.config_float(
             'swarm_single.control.max_control_interval', 0.25
         )
@@ -562,7 +535,6 @@ class SingleControlNode(Node):
         self.velocity_goal = [0.0, 0.0, 0.0]
         self.last_commanded_velocity_setpoint = [0.0, 0.0, 0.0]
         self.last_setpoint_time = None
-        self.last_yaw_setpoint_time = None
         self.offboard_setpoint_counter = 0
         self.offboard_was_confirmed = False
         self.landing_started_time = None
@@ -586,7 +558,6 @@ class SingleControlNode(Node):
         self.velocity_goal = [0.0, 0.0, 0.0]
         self.last_commanded_velocity_setpoint = [0.0, 0.0, 0.0]
         self.last_setpoint_time = None
-        self.last_yaw_setpoint_time = None
         self.offboard_setpoint_counter = 0
         self.offboard_was_confirmed = False
         self.landing_started_time = None
@@ -883,11 +854,9 @@ class SingleControlNode(Node):
     def reset_mission_state(self):
         """Clear mission execution without changing the active flight mode."""
         self.mission = []
-        self.mission_yaws = []
         self.mission_active = False
         self.mission_index = 0
         self.mission_target = None
-        self.mission_target_yaw = None
         self.mission_start_time = None
         self.mission_dwell_start = None
         self.mission_state = "IDLE"
@@ -931,17 +900,15 @@ class SingleControlNode(Node):
             return False
 
         resolved_points = []
-        resolved_yaws = []
         previous = mission_origin
         for index, point in enumerate(points):
-            if not isinstance(point, (list, tuple)) or len(point) not in (3, 4):
+            if not isinstance(point, (list, tuple)) or len(point) != 3:
                 self.get_logger().error(
-                    f'Mission rejected: waypoint {index + 1} must contain '
-                    'x, y, z and optionally yaw.'
+                    f'Mission rejected: waypoint {index + 1} must contain x, y, z.'
                 )
                 return False
             try:
-                waypoint = [float(value) for value in point[:3]]
+                waypoint = [float(value) for value in point]
             except (TypeError, ValueError):
                 self.get_logger().error(
                     f'Mission rejected: waypoint {index + 1} is not numeric.'
@@ -952,30 +919,6 @@ class SingleControlNode(Node):
                     f'Mission rejected: waypoint {index + 1} is not finite.'
                 )
                 return False
-
-            waypoint_yaw = None
-            if len(point) == 4:
-                try:
-                    waypoint_yaw = float(point[3])
-                except (TypeError, ValueError):
-                    self.get_logger().error(
-                        f'Mission rejected: waypoint {index + 1} yaw '
-                        '(degrees) is not numeric.'
-                    )
-                    return False
-                if not math.isfinite(waypoint_yaw):
-                    self.get_logger().error(
-                        f'Mission rejected: waypoint {index + 1} yaw '
-                        '(degrees) is not finite.'
-                    )
-                    return False
-                # Mission files use degrees for readability. PX4 setpoints
-                # use radians, so convert and normalize equivalent complete
-                # turns before storing the internal value.
-                waypoint_yaw = math.radians(waypoint_yaw)
-                waypoint_yaw = math.atan2(
-                    math.sin(waypoint_yaw), math.cos(waypoint_yaw)
-                )
 
             if relative_to_start:
                 target = [
@@ -996,15 +939,12 @@ class SingleControlNode(Node):
                 )
                 return False
             resolved_points.append(target)
-            resolved_yaws.append(waypoint_yaw)
             previous = target
 
         self.mission = resolved_points
-        self.mission_yaws = resolved_yaws
         self.mission_active = True
         self.mission_index = 0
         self.mission_target = None
-        self.mission_target_yaw = None
         self.mission_start_time = self.get_clock().now()
         self.mission_dwell_start = None
         self.mission_state = "RUNNING"
@@ -1024,29 +964,11 @@ class SingleControlNode(Node):
             return False
 
         self.mission_target = list(target)
-        mission_yaws = getattr(self, 'mission_yaws', [])
-        target_yaw = (
-            mission_yaws[self.mission_index]
-            if self.mission_index < len(mission_yaws)
-            else None
-        )
-        self.mission_target_yaw = target_yaw
-        if target_yaw is not None:
-            # self.yaw is the local PX4/NED yaw setpoint. Followers do not
-            # copy this value; they receive measured leader ENU yaw instead.
-            self.yaw = float(target_yaw)
-            self.yaw_initialized = True
         self.mission_dwell_start = None
         self.motion_enabled = True
-        yaw_log = (
-            f', yaw={target_yaw:.3f} rad (PX4/NED)'
-            if target_yaw is not None
-            else ''
-        )
         self.get_logger().info(
             f'Mission waypoint {self.mission_index + 1}/{len(self.mission)} '
             f'activated: [{target[0]:.2f}, {target[1]:.2f}, {target[2]:.2f}]'
-            f'{yaw_log}'
         )
         return True
 
@@ -1096,7 +1018,6 @@ class SingleControlNode(Node):
         self.mission_active = False
         self.mission_index = waypoint_count
         self.mission_target = None
-        self.mission_target_yaw = None
         self.mission_dwell_start = None
         self.motion_enabled = False
         self.velocity_goal = [0.0, 0.0, 0.0]
@@ -1110,7 +1031,6 @@ class SingleControlNode(Node):
             return
         self.mission_active = False
         self.mission_target = None
-        self.mission_target_yaw = None
         self.mission_dwell_start = None
         self.motion_enabled = False
         self.velocity_goal = [0.0, 0.0, 0.0]
@@ -1186,17 +1106,9 @@ class SingleControlNode(Node):
             self.distance_to_ground = None
 
         # PX4 local position is NED. Swarm state and navigation use ENU.
-        heading_ned = float(local_position.heading)
-        yaw_enu = (math.pi / 2.0) - heading_ned
+        yaw_enu = (math.pi / 2.0) - float(local_position.heading)
         orientation_z = math.sin(yaw_enu / 2.0)
         orientation_w = math.cos(yaw_enu / 2.0)
-        if math.isfinite(heading_ned):
-            self.current_yaw_ned = math.atan2(
-                math.sin(heading_ned), math.cos(heading_ned)
-            )
-            self.current_yaw_enu = math.atan2(
-                math.sin(yaw_enu), math.cos(yaw_enu)
-            )
 
         self.navigation.local_velocity = [
             float(local_position.vy),
@@ -1218,12 +1130,11 @@ class SingleControlNode(Node):
             DroneState.ARMING,
             DroneState.PILOT_CONTROL,
         ):
-            self.yaw = heading_ned
-            self.commanded_yaw = heading_ned
+            self.yaw = float(local_position.heading)
             self.yaw_initialized = math.isfinite(self.yaw)
 
     def publish_swarm_state(self):
-        """Publish common-ENU position, orientation, and velocity without TF."""
+        """Publish this drone's common-ENU pose and velocity without TF."""
         current = self.navigation.current_pos
         velocity = self.navigation.local_velocity
         values = [*current, *velocity]
@@ -1246,27 +1157,8 @@ class SingleControlNode(Node):
         msg.twist.twist.linear.z = float(velocity[2])
         self.swarm_state_publisher.publish(msg)
 
-    @staticmethod
-    def yaw_from_enu_quaternion(orientation):
-        """Extract normalized ENU yaw from an [x, y, z, w] quaternion."""
-        try:
-            x, y, z, w = (float(value) for value in orientation)
-        except (TypeError, ValueError):
-            return None
-        if not all(math.isfinite(value) for value in (x, y, z, w)):
-            return None
-
-        norm = math.sqrt(x * x + y * y + z * z + w * w)
-        if norm <= 1e-9:
-            return None
-        x, y, z, w = (value / norm for value in (x, y, z, w))
-
-        sin_yaw = 2.0 * (w * z + x * y)
-        cos_yaw = 1.0 - 2.0 * (y * y + z * z)
-        return math.atan2(sin_yaw, cos_yaw)
-
     def swarm_state_callback(self, msg):
-        """Cache peer odometry and apply the elected leader's embedded yaw."""
+        """Cache a peer state using local receipt time, not remote clocks."""
         try:
             peer_id = int(msg.child_frame_id)
         except (TypeError, ValueError):
@@ -1296,37 +1188,12 @@ class SingleControlNode(Node):
         ):
             return
 
-        received_at = self.get_clock().now()
-        yaw_enu = SingleControlNode.yaw_from_enu_quaternion(orientation)
         self.peer_states[peer_id] = {
             'position': position,
             'orientation': orientation,
-            'yaw_enu': yaw_enu,
             'velocity': velocity,
-            'received_at': received_at,
+            'received_at': self.get_clock().now(),
         }
-
-        # Every drone publishes orientation in /swarm/local_state, but a
-        # follower rotates its fixed formation offset only from the currently
-        # elected leader. Therefore non-leader yaw cannot disturb formation.
-        leader_id = getattr(self, 'leader_id', None)
-        if getattr(self, 'is_leader', False) or leader_id is None:
-            return
-        try:
-            leader_id = int(leader_id)
-        except (TypeError, ValueError):
-            return
-        if peer_id != leader_id or yaw_enu is None:
-            return
-
-        self.leader_yaw_enu = yaw_enu
-        self.leader_yaw_received_at = received_at
-        formation = getattr(self, 'formation', None)
-        if (
-            formation is not None
-            and getattr(self, 'active_goal_mode', None) == 'formation'
-        ):
-            formation.update_leader_yaw(yaw_enu)
         
     def arm(self):
         self.get_logger().info("Sending ARM command.")
@@ -1364,97 +1231,19 @@ class SingleControlNode(Node):
                 [north, east, down], now
             )
         self.last_setpoint_time = now
-        commanded_yaw = self.limit_yaw_change(now)
 
         msg = TrajectorySetpoint()
         msg.position = [math.nan, math.nan, math.nan]
         msg.velocity = [north, east, down]
         msg.acceleration = [math.nan, math.nan, math.nan]
         msg.jerk = [math.nan, math.nan, math.nan]
-        msg.yaw = commanded_yaw
+        msg.yaw = self.yaw
         msg.yawspeed = math.nan
 
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.trajectory_setpoint_publisher.publish(msg)
         self.last_published_velocity_setpoint = (north, east, down)
         self.velocity_setpoints_since_debug += 1
-
-    def limit_yaw_change(self, now):
-        """Move the outgoing yaw setpoint toward the requested yaw safely."""
-        target = float(self.yaw)
-        if not math.isfinite(target):
-            self.release_to_pilot('Non-finite yaw setpoint rejected')
-            return 0.0
-        target = math.atan2(math.sin(target), math.cos(target))
-
-        current = getattr(self, 'commanded_yaw', target)
-        if not math.isfinite(float(current)):
-            current = target
-        current = math.atan2(math.sin(float(current)), math.cos(float(current)))
-
-        previous_time = getattr(self, 'last_yaw_setpoint_time', None)
-        if previous_time is None:
-            current = target
-        else:
-            interval = (now - previous_time).nanoseconds / 1e9
-            interval = max(0.0, min(interval, self.max_control_interval))
-            max_delta = self.max_yaw_rate * interval
-            # Use the shortest path across the +/-pi wrap boundary.
-            error = math.atan2(
-                math.sin(target - current), math.cos(target - current)
-            )
-            if abs(error) <= max_delta:
-                current = target
-            elif error > 0.0:
-                current += max_delta
-            else:
-                current -= max_delta
-            current = math.atan2(math.sin(current), math.cos(current))
-
-        self.commanded_yaw = current
-        self.last_yaw_setpoint_time = now
-        return current
-
-    def request_relative_yaw(self, delta_degrees):
-        """Request a relative PX4/NED yaw change from the station."""
-        try:
-            delta_degrees = float(delta_degrees)
-        except (TypeError, ValueError):
-            self.get_logger().error(
-                'YAW rejected: relative angle must be numeric degrees.'
-            )
-            return False
-        if not math.isfinite(delta_degrees):
-            self.get_logger().error(
-                'YAW rejected: relative angle must be finite degrees.'
-            )
-            return False
-        if self.state != DroneState.TAKEOFF:
-            self.get_logger().warning(
-                'YAW rejected: the leader must be armed in Offboard TAKEOFF '
-                'state before a yaw move is accepted.'
-            )
-            return False
-
-        current = getattr(self, 'current_yaw_ned', None)
-        if current is None or not math.isfinite(float(current)):
-            current = getattr(self, 'yaw', None)
-        if current is None or not math.isfinite(float(current)):
-            self.get_logger().error(
-                'YAW rejected: no finite current PX4 heading is available.'
-            )
-            return False
-
-        target = float(current) + math.radians(delta_degrees)
-        self.yaw = math.atan2(math.sin(target), math.cos(target))
-        self.yaw_initialized = True
-        if self.mission_active:
-            self.abort_mission('replaced by a station yaw command')
-        self.get_logger().info(
-            f'Relative yaw command accepted: delta={delta_degrees:+.1f} '
-            f'deg, target={math.degrees(self.yaw):+.1f} PX4/NED deg.'
-        )
-        return True
 
     def limit_velocity_change(self, desired, now):
         """Slew-limit NED velocity so delayed feedback cannot reverse instantly."""

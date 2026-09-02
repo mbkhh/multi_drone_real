@@ -112,12 +112,6 @@ class PatternController:
         self.rotation_y_speed = 0.0
         self.rotation_z_speed = 0.0
         self.animation_start_time = 0
-        # The pattern is calculated once in the leader-relative frame. A
-        # follower then rotates this immutable base offset by the elected
-        # leader's ENU yaw embedded in /swarm/local_state. This preserves both
-        # radius and bearing relative to the leader as the leader turns.
-        self._base_offset = None
-        self._leader_yaw_enu = None
 
         self.animation_timer = None #self.parent_node.create_timer(0.1, self.run_animation)
 
@@ -161,30 +155,6 @@ class PatternController:
     def refresh_pattern(self):
         if self.pattern_name != None:
             self.set_pattern(self.pattern_name, self.spacing, self.rotation_x, self.rotation_y, self.rotation_z)
-
-    def update_leader_yaw(self, yaw_enu: float) -> None:
-        """Rotate the stored follower offset around the leader in ENU."""
-        try:
-            yaw_enu = float(yaw_enu)
-        except (TypeError, ValueError):
-            return
-        if not np.isfinite(yaw_enu):
-            return
-        self._leader_yaw_enu = float(
-            np.arctan2(np.sin(yaw_enu), np.cos(yaw_enu))
-        )
-        self._apply_leader_yaw()
-
-    def _apply_leader_yaw(self) -> None:
-        if self._base_offset is None:
-            return
-        rotated_offset = np.asarray(self._base_offset, dtype=float)
-        if self._leader_yaw_enu is not None:
-            rotation = Rotation.from_euler(
-                'z', self._leader_yaw_enu, degrees=False
-            )
-            rotated_offset = rotation.apply(rotated_offset)
-        self.parent.set_formation_offset(rotated_offset)
     def set_pattern(self, pattern_name: str, spacing: float = 3.0, rotation_x: float = 0.0, rotation_y: float = 0.0, rotation_z: float = 0.0, **kwargs: Any) -> None:
         self.pattern_name = pattern_name
         self.spacing = spacing
@@ -218,9 +188,8 @@ class PatternController:
                 degrees=True
             )
             offset = rotation.apply(offset)
-            self._base_offset = np.asarray(offset, dtype=float)
             self.parent.get_logger().info(f"I am a follower from followers {follower_ids}. New offset from leader: {offset}")
-        self._apply_leader_yaw()
+        self._store_formation_offset(offset)
 
     def _store_formation_offset(self, offset: np.ndarray):
         """Store an offset resolved from the leader's shared local position."""

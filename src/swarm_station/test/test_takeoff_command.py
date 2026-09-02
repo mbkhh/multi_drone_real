@@ -52,18 +52,3 @@ def test_takeoff_is_sent_when_fewer_drones_than_config_are_connected(
         'command': 'takeoff',
         'height': 2.5,
     }
-
-
-def test_relative_yaw_move_is_sent_to_the_leader(monkeypatch):
-    monkeypatch.setenv('PYNPUT_BACKEND', 'dummy')
-    station_module = import_module('swarm_station.station_node')
-    publisher = DummyPublisher()
-    station = SimpleNamespace(command_publisher=publisher)
-
-    station_module.StationNode.send_yaw_command(station, -20.0)
-
-    assert publisher.last_message is not None
-    assert json.loads(publisher.last_message.data) == {
-        'command': 'yaw',
-        'delta_degrees': -20.0,
-    }

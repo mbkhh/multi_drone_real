@@ -18,21 +18,13 @@ class CirclePattern(FormationPattern):
 	def __init__(self, time: float, spacing: float = 2.0, **kwargs):
 		super(CirclePattern, self).__init__(spacing, **kwargs)
 		self.time = time
-		self.leader_yaw = 0.0
-
-	def set_leader_yaw(self, yaw: float):
-		"""Set the common-world yaw used to rotate this standalone pattern."""
-		self.leader_yaw = float(yaw)
 
 	def calculate_positions(self, ) -> Dict[int, Vector3]:
 		radius = self.spacing * (1 + len(self.follower_ids) // 8)
 		angle_step = 2 * math.pi / len(self.follower_ids)
 		positions = {}
 		for drone in self.follower_ids:
-			angle = (
-				self.follower_ids.index(drone) * angle_step * self.time
-				+ self.leader_yaw
-			)
+			angle = self.follower_ids.index(drone) * angle_step * self.time
 			positions[drone] = Vector3(radius * math.cos(angle), radius * math.sin(angle), 0)
 		return positions
 
