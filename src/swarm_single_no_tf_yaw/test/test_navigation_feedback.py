@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from builtin_interfaces.msg import Time
 
 
-navigation_module = importlib.import_module('swarm_single_no_tf.navigation')
+navigation_module = importlib.import_module('swarm_single_no_tf_yaw.navigation')
 Navigation = navigation_module.navigation
 
 

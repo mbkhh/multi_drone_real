@@ -1,7 +1,7 @@
 import math
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any
-from swarm_single_no_tf.vector3 import Vector3
+from swarm_single_no_tf_yaw.vector3 import Vector3
 
 class FormationPattern(ABC):
 	def __init__(self, spacing: float = 2.0, **kwargs):

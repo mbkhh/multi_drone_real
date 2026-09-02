@@ -1,4 +1,4 @@
-# swarm_single_no_tf
+# swarm_single_no_tf_yaw
 
 This package is a copy of `swarm_single` whose control path does not use ROS
 TF. Each drone:
@@ -18,7 +18,7 @@ legacy goal fields in `swarm_msgs/Status` are left at their default values.
 Run one instance on each companion computer:
 
 ```bash
-ros2 run swarm_single_no_tf control_node --ros-args \
+ros2 run swarm_single_no_tf_yaw control_node --ros-args \
   -p frame_id:=1 \
   -p use_configured_world_origin:=true \
   -p require_manual_control_signal:=true \
@@ -26,7 +26,7 @@ ros2 run swarm_single_no_tf control_node --ros-args \
 ```
 
 Use the correct `frame_id` on every vehicle. Do not run `swarm_single` and
-`swarm_single_no_tf` for the same drone: both publish to the same PX4 command
+`swarm_single_no_tf_yaw` for the same drone: both publish to the same PX4 command
 and setpoint topics.
 
 ## Missions and yaw
@@ -91,7 +91,7 @@ the dedicated simulation file:
 
 ```bash
 colcon build --packages-select swarm_config swarm_msgs px4_msgs \
-  swarm_station swarm_single_no_tf swarm_sim
+  swarm_station swarm_single_no_tf_yaw swarm_sim
 source install/setup.bash
-ros2 launch swarm_sim fullsim_no_tf.launch.py
+ros2 launch swarm_sim fullsim_no_tf_yaw.launch.py
 ```
