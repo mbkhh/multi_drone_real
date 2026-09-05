@@ -102,8 +102,8 @@ class SwarmLogger(Node):
     """Observe TF, DDS, PX4, Wi-Fi, and host health with bounded overhead."""
 
     def __init__(self):
-        # Reports remain local. The launch commands redirect them to /dev/shm,
-        # so neither /rosout nor an SSH terminal carries multi-kilobyte output.
+        # Reports remain local. The launch commands redirect them to a local
+        # file, so neither /rosout nor an SSH terminal carries the output.
         super().__init__('swarm_logger', enable_rosout=False)
 
         default_drone_count = int(get_config('swarm_sim.drone_count'))
@@ -1954,7 +1954,7 @@ class SwarmLogger(Node):
         lines.append(_BORDER)
 
         # Intentionally use local stdout rather than ROS logging. commands.txt
-        # redirects this to RAM-backed storage on each aircraft.
+        # redirects this to explicitly selected local storage on each aircraft.
         print('\n'.join(lines), flush=True)
 
     def close_diagnostics(self):

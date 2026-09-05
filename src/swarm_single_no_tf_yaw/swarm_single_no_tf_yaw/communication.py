@@ -6,6 +6,7 @@ from swarm_msgs.msg import Status, ManualControl, FormationCommand
 from rclpy.qos import (
     QoSProfile,
     ReliabilityPolicy,
+    DurabilityPolicy,
     HistoryPolicy,
 )
 from swarm_msgs.action import Fly
@@ -33,26 +34,63 @@ class Communication():
         self.status_interval = get_config('swarm_single.status_interval')
         self.neighbor_timeout = self.broadcast_interval * 4
 
+        # Swarm traffic crosses the Wi-Fi link. Keep it best-effort and
+        # volatile so a slow or disconnected peer cannot make a publisher
+        # wait for DDS acknowledgements/retransmissions. The command queue is
+        # deliberately a little deeper than the continuously refreshed
+        # liveness/status queues, but delivery is still not guaranteed.
+        swarm_size = max(1, int(get_config('swarm_sim.drone_count') or 1))
+        self.swarm_stream_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=max(2, swarm_size * 2),
+        )
+        self.swarm_latest_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
+        self.swarm_command_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=10,
+        )
 
         self.GOAL_TOLERANCE = get_config('swarm_single.goal_tolerance')
 
         self.liveness_topic = f"/swarm/{self.liveness_topic_name}"
-        self.liveness_publisher = self.parent_node.create_publisher(Header, self.liveness_topic, 10)
-        self.liveness_subscriber = self.parent_node.create_subscription(Header, self.liveness_topic, self._neighbor_liveness_callback, 10)
+        self.liveness_publisher = self.parent_node.create_publisher(
+            Header,
+            self.liveness_topic,
+            self.swarm_stream_qos,
+        )
+        self.liveness_subscriber = self.parent_node.create_subscription(
+            Header,
+            self.liveness_topic,
+            self._neighbor_liveness_callback,
+            self.swarm_stream_qos,
+        )
         self.liveness_broadcast_timer = self.parent_node.create_timer(self.broadcast_interval, self._broadcast_liveness)
         self.timeout_timer = self.parent_node.create_timer(self.neighbor_timeout, self._check_neighbor_timeouts)
-        
-        self.qos_profile_reliable = QoSProfile(
-            reliability=ReliabilityPolicy.BEST_EFFORT,
-            history=HistoryPolicy.KEEP_LAST,
-            depth=int(int(get_config('swarm_sim.drone_count'))*2)
-        )
 
-        self.formation_subscriber = self.parent_node.create_subscription(FormationCommand, self.formation_topic_name, self.formation_command_callback, 10)
+        self.formation_subscriber = self.parent_node.create_subscription(
+            FormationCommand,
+            self.formation_topic_name,
+            self.formation_command_callback,
+            self.swarm_command_qos,
+        )
         self.formation_publisher = None
 
 
-        self.command_subscriber = self.parent_node.create_subscription(String, self.command_topic_name, self.command_callback, 10)
+        self.command_subscriber = self.parent_node.create_subscription(
+            String,
+            self.command_topic_name,
+            self.command_callback,
+            self.swarm_command_qos,
+        )
         self.command_publisher = None
 
         self.status_publisher = None
@@ -179,13 +217,30 @@ class Communication():
         self.parent_node.goal_callback_temp( [self.parent_node.navigation.current_pos[0], self.parent_node.navigation.current_pos[1], self.parent_node.navigation.current_pos[2]])
         self.parent_node.is_leader = True
         self.send_formation_command('square', 4)
-        self.status_publisher = self.parent_node.create_publisher(Status, "/swarm/status",self.qos_profile_reliable)
-        self.manual_control_subscriber = self.parent_node.create_subscription(ManualControl, self.manual_control_topic_name, self.manual_control_handler, 10)
+        self.status_publisher = self.parent_node.create_publisher(
+            Status,
+            "/swarm/status",
+            self.swarm_latest_qos,
+        )
+        self.manual_control_subscriber = self.parent_node.create_subscription(
+            ManualControl,
+            self.manual_control_topic_name,
+            self.manual_control_handler,
+            self.swarm_latest_qos,
+        )
         self.status_timer = self.parent_node.create_timer(self.status_interval, self._broadcast_status)
         self._fly_action = ActionServer(self.parent_node, Fly, '/fly_to', execute_callback=self.execute_callback,callback_group=ReentrantCallbackGroup(),goal_callback=self.goal_callback,cancel_callback=self.cancel_callback)
 
-        self.formation_publisher = self.parent_node.create_publisher(FormationCommand, self.formation_topic_name, 10)
-        self.command_publisher = self.parent_node.create_publisher(String, self.command_topic_name, 10)
+        self.formation_publisher = self.parent_node.create_publisher(
+            FormationCommand,
+            self.formation_topic_name,
+            self.swarm_command_qos,
+        )
+        self.command_publisher = self.parent_node.create_publisher(
+            String,
+            self.command_topic_name,
+            self.swarm_command_qos,
+        )
         if (self.formation_subscriber is not None):
             self.parent_node.destroy_subscription(self.formation_subscriber)
             self.parent_node.destroy_subscription(self.command_subscriber)
@@ -193,8 +248,18 @@ class Communication():
         self.formation_subscriber = None
         self.command_subscriber = None
 
-        self.leader_formation_subscriber = self.parent_node.create_subscription(FormationCommand, self.leader_formation_topic_name, self.formation_leader_callback, 10)
-        self.leader_command_subscriber = self.parent_node.create_subscription(String, self.leader_command_topic_name, self.command_leader_callback, 10)
+        self.leader_formation_subscriber = self.parent_node.create_subscription(
+            FormationCommand,
+            self.leader_formation_topic_name,
+            self.formation_leader_callback,
+            self.swarm_command_qos,
+        )
+        self.leader_command_subscriber = self.parent_node.create_subscription(
+            String,
+            self.leader_command_topic_name,
+            self.command_leader_callback,
+            self.swarm_command_qos,
+        )
     
     def step_down_as_leader(self, ):
         self.parent_node.get_logger().info('Stepping down as leader. Reverting to FOLLOWER role.')
@@ -206,8 +271,18 @@ class Communication():
         self.status_timer.cancel()
         self.parent_node.destroy_publisher(self.formation_publisher)
         self.parent_node.destroy_publisher(self.command_publisher)
-        self.formation_subscriber = self.parent_node.create_subscription(FormationCommand, self.formation_topic_name, self.formation_command_callback, 10)
-        self.command_subscriber = self.parent_node.create_subscription(String, self.command_topic_name, self.command_callback, 10)
+        self.formation_subscriber = self.parent_node.create_subscription(
+            FormationCommand,
+            self.formation_topic_name,
+            self.formation_command_callback,
+            self.swarm_command_qos,
+        )
+        self.command_subscriber = self.parent_node.create_subscription(
+            String,
+            self.command_topic_name,
+            self.command_callback,
+            self.swarm_command_qos,
+        )
         self._fly_action.destroy()
         self._fly_action = None
         self.formation_publisher = None
