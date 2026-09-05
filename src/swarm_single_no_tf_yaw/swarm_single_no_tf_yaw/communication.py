@@ -111,6 +111,7 @@ class Communication():
         msg.leader_x        = float(self.parent_node.navigation.current_pos[0])
         msg.leader_y        = float(self.parent_node.navigation.current_pos[1])
         msg.leader_z        = float(self.parent_node.navigation.current_pos[2])
+        msg.leader_yaw      = float(self.parent_node.yaw)
         # Goals are intentionally process-local in this package. The legacy
         # Status goal fields remain at their message defaults for wire/schema
         # compatibility, but no active goal is shared with other drones.

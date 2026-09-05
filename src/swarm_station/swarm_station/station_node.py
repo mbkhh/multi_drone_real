@@ -1,4 +1,5 @@
 import rclpy
+import math
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from std_msgs.msg import String
@@ -292,7 +293,7 @@ class StationNode(Node):
 				elif command_input.upper() == 'STATUS':
 					self.get_logger().info("The swarm leader is connected.")
 					self.get_logger().info(f"Status: leader_id :{self.last_status.leader_id} , total members of swarm: {len(self.last_status.swarm_members)}")
-					self.get_logger().info(f"Leader Position: X:{self.last_status.leader_x:.2f}, Y:{self.last_status.leader_y:.2f}, Z:{self.last_status.leader_z:.2f}")
+					self.get_logger().info(f"Leader Position: X:{self.last_status.leader_x:.2f}, Y:{self.last_status.leader_y:.2f}, Z:{self.last_status.leader_z:.2f}, Yaw:{math.degrees(self.last_status.leader_yaw):.1f} deg")
 					self.get_logger().info(f"Swarm Goal: X:{self.last_status.goal_x:.2f}, Y:{self.last_status.goal_y:.2f}, Z:{self.last_status.goal_z:.2f}")
 					self.get_logger().info(f"Formation Status: Type:{self.last_status.pattern_name}, Spacing:{self.last_status.spacing}, Rotate_X:{self.last_status.rotation_x}, Rotate_Y:{self.last_status.rotation_y}, Rotate_Z:{self.last_status.rotation_z}")
 					self.get_logger().info(

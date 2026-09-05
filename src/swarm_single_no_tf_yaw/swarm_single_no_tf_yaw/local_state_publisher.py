@@ -29,7 +29,12 @@ class DroneStateSimulator(Node):
             msg.pose.pose.position.x = 2.0 * math.cos(angle)
             msg.pose.pose.position.y = 2.0 * math.sin(angle)
             msg.pose.pose.position.z = 1.0
-            msg.pose.pose.orientation.w = 1.0
+            msg.pose.pose.orientation.x = 0.0
+            msg.pose.pose.orientation.y = 0.0
+            yaw = 0
+            msg.pose.pose.orientation.z = math.sin(yaw / 2.0)
+            msg.pose.pose.orientation.w = math.cos(yaw / 2.0)
+            
             self.publisher.publish(msg)
 
 
