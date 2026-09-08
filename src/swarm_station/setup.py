@@ -24,6 +24,7 @@ setup(
 			'manual=swarm_station.manual_controller:main',
 			'lidar=swarm_station.lidar_sensor:main',
 			'station=swarm_station.station_node:main',
+			'plotter=swarm_station.position_plotter:main',
 		],
 	},
 )
