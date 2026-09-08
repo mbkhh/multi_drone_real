@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-"""Live 3D plot of swarm vehicle positions against the planned mission waypoints.
+"""Live 3D plot of swarm positions against the configured leader mission."""
 
-Subscribes to /swarm/status (one message per drone) and traces each drone's
-actual trajectory and current position, overlaying the planned waypoints loaded
-from the mission file (swarm_config/config/missions/<mission_name>.yaml).
-"""
-
+import math
+import os
 import threading
 
 import numpy as np
@@ -14,20 +11,69 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 
 import matplotlib
+
+# Some ROS installations also provide an older system Matplotlib. If a newer
+# user installation is selected, keep its namespace-package tools together
+# with it instead of accidentally importing the system copy of mplot3d.
+import mpl_toolkits
+_matplotlib_toolkits = os.path.join(
+	os.path.dirname(os.path.dirname(matplotlib.__file__)), 'mpl_toolkits'
+)
+if (
+	os.path.isdir(_matplotlib_toolkits)
+	and _matplotlib_toolkits not in mpl_toolkits.__path__
+):
+	mpl_toolkits.__path__.insert(0, _matplotlib_toolkits)
+
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers the 3d projection)
 
 from nav_msgs.msg import Odometry
-from swarm_config.config_utils import get_config
+from swarm_config.config_utils import get_config, get_mission_waypoints
+
+
+def _load_planned_xyz(waypoint_file, leader_id):
+	"""Load and validate the same four-value mission rows used by the station."""
+	waypoints = get_mission_waypoints(waypoint_file, leader_id)
+	planned_xyz = []
+	for index, point in enumerate(waypoints, start=1):
+		if not isinstance(point, (list, tuple)) or len(point) != 4:
+			raise ValueError(
+				f'Mission waypoint {index} must be [x, y, z, relative_yaw].'
+			)
+		try:
+			values = [float(value) for value in point]
+		except (TypeError, ValueError) as error:
+			raise ValueError(
+				f'Mission waypoint {index} contains a non-numeric value.'
+			) from error
+		if not all(math.isfinite(value) for value in values):
+			raise ValueError(
+				f'Mission waypoint {index} contains a non-finite value.'
+			)
+		planned_xyz.append(values[:3])
+	return planned_xyz
 
 
 class PositionPlotter(Node):
 	def __init__(self):
 		super().__init__('position_plotter')
 
-		self.declare_parameter('mission_name', 'swarm_single')
-		self.mission_name = self.get_parameter('mission_name').get_parameter_value().string_value
+		self.declare_parameter('waypoint_file', '')
+		self.declare_parameter('leader_id', 1)
+		requested_file = (
+			self.get_parameter('waypoint_file').get_parameter_value().string_value.strip()
+		)
+		self.leader_id = int(
+			self.get_parameter('leader_id').get_parameter_value().integer_value
+		)
+		configured_file = get_config('swarm_single.mission.waypoint_file')
+		self.waypoint_file = (
+			requested_file
+			or configured_file
+			or 'leader_waypoints_xyzyaw-3.txt'
+		)
 
 		self.drone_count = int(get_config('swarm_sim.drone_count'))
 
@@ -51,20 +97,25 @@ class PositionPlotter(Node):
 		self.current = {}        # drone_id -> (x, y, z)
 		self.goals = {}          # drone_id -> (x, y, z)
 
-		# The station sends the leader mission from swarm_single.yaml.  Keep the
-		# plotter tied to that same source instead of requiring a second
-		# config/missions/<name>.yaml file.  A mission waypoint may contain a
-		# fourth yaw value; plotting uses only x, y, and z.
-		waypoints = get_config('swarm_single.mission.waypoints')
-		if not isinstance(waypoints, list):
-			self.get_logger().warning(
-				"No valid swarm_single.mission.waypoints found; planned path will be empty."
+		# Load exactly the file selected by the station mission command. The
+		# fourth (relative-yaw) value is validated but is not needed by this XYZ
+		# plot. Followers have no independent mission path; they track formation.
+		try:
+			planned_xyz = _load_planned_xyz(
+				self.waypoint_file, self.leader_id
 			)
-			waypoints = []
-		self.missions = {1: [list(point[:3]) for point in waypoints
-								if isinstance(point, (list, tuple)) and len(point) >= 3]}
+		except ValueError as error:
+			self.get_logger().error(
+				f'Could not load planned mission: {error}'
+			)
+			planned_xyz = []
+		self.missions = (
+			{self.leader_id: planned_xyz} if planned_xyz else {}
+		)
 		self.get_logger().info(
-			f"Plotter started. Mission '{self.mission_name}' has {len(self.missions)} drone path(s).")
+			f"Plotter started with '{self.waypoint_file}' for leader "
+			f'{self.leader_id}: {len(planned_xyz)} waypoints.'
+		)
 
 	def _state_callback(self, msg: Odometry):
 		try:
@@ -107,7 +158,7 @@ def main(args=None):
 		ax.set_xlabel('X (m)')
 		ax.set_ylabel('Y (m)')
 		ax.set_zlabel('Z (m)')
-		ax.set_title(f"Swarm position vs mission '{node.mission_name}'")
+		ax.set_title(f"Swarm position vs mission '{node.waypoint_file}'")
 
 		# Planned waypoints (dashed) per drone.
 		for drone_id, pts in sorted(missions.items()):
