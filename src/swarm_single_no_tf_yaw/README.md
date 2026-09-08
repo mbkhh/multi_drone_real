@@ -31,33 +31,55 @@ and setpoint topics.
 
 ## Missions and yaw
 
-The station's `mission` command reads `swarm_single.mission.waypoints` from
-`swarm_single.yaml`. Each waypoint is normally `[x, y, z]`; an optional fourth
-value supplies the leader yaw in PX4/NED degrees. The controller converts this
-value to radians for PX4, for example:
+The station's `mission` command validates the configured
+`leader_waypoints_xyzyaw-3.txt` file. It sends only the filename and mode to the
+leader, and the leader loads the same installed file locally. This avoids
+sending the complete waypoint array across the swarm Wi-Fi link.
+
+The file is YAML-formatted. Its top-level key must match the elected leader ID,
+and every point is `[absolute ENU x, absolute ENU y, absolute ENU z,
+relative PX4/NED yaw degrees]`:
 
 ```yaml
-mission:
-  relative_to_start: true
-  waypoints:
-    - [0.0, 0.0, 1.0, 0.0]
-    - [2.0, 0.0, 0.0, 90.0]
-    - [0.0, 2.0, 0.0, 180.0]
+1:
+  - [0.0, 0.0, 2.0, 0.0]
+  - [2.0, 0.0, 2.0, -20.0]
+  - [2.0, 2.0, 2.0, 0.0]
 ```
 
-Only the leader executes these yaw values. Its measured common-world ENU
-orientation is already carried by the quaternion in `/swarm/local_state`.
-Followers extract yaw only from the elected leader's odometry and rotate their
-immutable base offset by that angle. There is no separate leader-yaw topic.
-Consequently, a 30-degree leader turn rotates every follower's world position
-30 degrees around the leader while preserving its radius and bearing in the
-leader-relative frame. Select a `circle` formation when every follower must
-stay exactly `spacing` metres from the leader.
+Each point is activated through the same absolute-goal handler as a station
+`set_goal x y z` command. Its yaw value is applied like `move yaw=<degrees>`
+The first yaw delta starts from the leader's measured mission-start heading;
+later deltas accumulate from the preceding mission yaw target so small tracking
+errors cannot distort the generated path. The mission moves to the next point
+only after both position and yaw are within tolerance for the configured dwell
+time.
+
+Only the leader executes the file. Followers receive a small mission-start
+notification and continue resolving their own goals from the leader's measured
+position, measured yaw, and their formation offset. There is no separate
+leader-yaw topic.
+
+The flight sequence remains explicit; the `mission` command does not arm,
+take off, or select a formation automatically:
+
+```text
+arm
+status
+takeoff
+set_formation square spacing=5 rotation_z=0
+mission
+```
+
+Wait for ARM/Offboard confirmation before takeoff, for all aircraft to reach
+takeoff height before setting the formation, and for the formation to settle
+before starting the mission. `mission another_file.txt` can select a different
+installed waypoint file when required.
 
 ### Limiting yaw speed
 
-The fourth mission value is a target heading, not an instantaneous command.
-The controller slews the PX4 yaw setpoint at most
+The fourth mission value is a relative heading change. The controller slews
+the resulting PX4 yaw target at most
 `swarm_single.control.max_yaw_rate_deg_s` degrees per second. Set this in your
 active `swarm_single.yaml`; for example, `20.0` limits a 90-degree change to
 at least 4.5 seconds:

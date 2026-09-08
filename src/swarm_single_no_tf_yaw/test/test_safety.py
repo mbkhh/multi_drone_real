@@ -418,6 +418,44 @@ def test_leader_accepts_relative_yaw_command_from_station():
     assert received == [-20.0]
 
 
+def test_leader_loads_mission_file_locally_and_relays_only_start(monkeypatch):
+    calls = []
+    leader = SimpleNamespace(
+        leader_id=1,
+        get_logger=lambda: DummyLogger(),
+        start_mission=lambda points, relative_to_start, yaw_relative: (
+            calls.append((points, relative_to_start, yaw_relative)) or True
+        ),
+    )
+    communication = object.__new__(Communication)
+    communication.parent_node = leader
+    communication.command_publisher = DummyPublisher()
+    points = [
+        [0.0, 0.0, 2.0, 0.0],
+        [1.0, 0.0, 2.0, -22.5],
+    ]
+    monkeypatch.setattr(
+        'swarm_single_no_tf_yaw.communication.get_mission_waypoints',
+        lambda filename, leader_id: points,
+    )
+
+    station_command = String()
+    station_command.data = json.dumps({
+        'command': 'mission',
+        'waypoint_file': 'leader_waypoints_xyzyaw-3.txt',
+        'leader_id': 1,
+        'waypoint_count': 2,
+        'relative_to_start': False,
+        'yaw_relative': True,
+    })
+    communication.command_leader_callback(station_command)
+
+    assert calls == [(points, False, True)]
+    assert json.loads(communication.command_publisher.last_message.data) == {
+        'command': 'mission',
+    }
+
+
 def make_goal_stub():
     controller = SimpleNamespace(
         navigation=SimpleNamespace(
@@ -877,11 +915,15 @@ def make_mission_stub():
         max_goal_altitude=5.0,
         mission_goal_tolerance=0.4,
         mission_waypoint_dwell=1.0,
+        mission_yaw_tolerance=math.radians(5.0),
         mission_timeout=60.0,
         mission=[],
+        mission_yaws=[],
+        mission_yaw_relative=False,
         mission_active=False,
         mission_index=0,
         mission_target=None,
+        mission_target_yaw=None,
         mission_start_time=None,
         mission_dwell_start=None,
         mission_state='IDLE',
@@ -892,6 +934,9 @@ def make_mission_stub():
         get_logger=lambda: DummyLogger(),
         telemetry_is_fresh=lambda: True,
         accepted_goals=[],
+        yaw=0.0,
+        yaw_initialized=True,
+        current_yaw_ned=0.0,
     )
 
     def accept_goal(goal):
@@ -944,6 +989,82 @@ def test_mission_accepts_optional_leader_yaw_without_changing_position_shape():
     assert controller.mission_target_yaw == math.pi / 2.0
     assert controller.yaw == math.pi / 2.0
     assert controller.yaw_initialized
+
+
+def test_absolute_mission_position_applies_each_yaw_as_relative_delta():
+    controller, clock = make_mission_stub()
+    controller.current_yaw_ned = math.radians(10.0)
+
+    accepted = SingleControlNode.start_mission(
+        controller,
+        [[10.0, 20.0, 2.0, -22.5]],
+        relative_to_start=False,
+        yaw_relative=True,
+    )
+
+    assert accepted
+    assert controller.mission == [[10.0, 20.0, 2.0]]
+    assert len(controller.mission_yaws) == 1
+    assert math.isclose(
+        controller.mission_yaws[0], math.radians(-22.5), abs_tol=1e-9
+    )
+    assert controller.mission_yaw_relative
+    assert math.isclose(
+        controller.mission_target_yaw,
+        math.radians(-12.5),
+        abs_tol=1e-9,
+    )
+    assert math.isclose(
+        controller.yaw,
+        math.radians(-12.5),
+        abs_tol=1e-9,
+    )
+
+    # Reaching XYZ is not enough: do not advance until measured yaw also
+    # reaches the relative target and remains there for the dwell period.
+    controller.navigation.current_pos[:3] = controller.mission_target
+    SingleControlNode.update_mission_progress(controller)
+    clock.advance(2.0)
+    SingleControlNode.update_mission_progress(controller)
+    assert controller.mission_active
+
+    controller.current_yaw_ned = controller.mission_target_yaw
+    SingleControlNode.update_mission_progress(controller)
+    clock.advance(1.1)
+    SingleControlNode.update_mission_progress(controller)
+    assert controller.mission_state == 'COMPLETED'
+
+
+def test_relative_mission_yaw_deltas_accumulate_from_previous_target():
+    controller, clock = make_mission_stub()
+    controller.current_yaw_ned = math.radians(10.0)
+    assert SingleControlNode.start_mission(
+        controller,
+        [
+            [10.0, 20.0, 2.0, -22.5],
+            [11.0, 20.0, 2.0, -22.5],
+        ],
+        relative_to_start=False,
+        yaw_relative=True,
+    )
+    first_target = math.radians(-12.5)
+    assert math.isclose(
+        controller.mission_target_yaw, first_target, abs_tol=1e-9
+    )
+
+    controller.navigation.current_pos[:3] = controller.mission_target
+    controller.current_yaw_ned = first_target
+    SingleControlNode.update_mission_progress(controller)
+    clock.advance(1.1)
+    SingleControlNode.update_mission_progress(controller)
+
+    assert controller.mission_index == 1
+    assert controller.mission_target == [11.0, 20.0, 2.0]
+    assert math.isclose(
+        controller.mission_target_yaw,
+        math.radians(-35.0),
+        abs_tol=1e-9,
+    )
 
 
 def test_local_state_leader_yaw_rotates_formation_without_changing_geometry():

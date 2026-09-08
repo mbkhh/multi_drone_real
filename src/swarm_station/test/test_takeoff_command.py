@@ -6,9 +6,13 @@ from types import SimpleNamespace
 class DummyLogger:
     def __init__(self):
         self.errors = []
+        self.infos = []
 
     def error(self, message):
         self.errors.append(message)
+
+    def info(self, message):
+        self.infos.append(message)
 
 
 class DummyPublisher:
@@ -67,3 +71,53 @@ def test_relative_yaw_move_is_sent_to_the_leader(monkeypatch):
         'command': 'yaw',
         'delta_degrees': -20.0,
     }
+
+
+def test_mission_sends_small_absolute_position_relative_yaw_file_command(
+    monkeypatch,
+):
+    monkeypatch.setenv('PYNPUT_BACKEND', 'dummy')
+    station_module = import_module('swarm_station.station_node')
+    configured_values = {
+        'swarm_single.mission.waypoint_file': (
+            'leader_waypoints_xyzyaw-3.txt'
+        ),
+        'swarm_single.mission.max_waypoints': 200,
+    }
+    monkeypatch.setattr(
+        station_module, 'get_config', configured_values.get
+    )
+    monkeypatch.setattr(
+        station_module,
+        'get_mission_waypoints',
+        lambda filename, leader_id: [
+            [0.0, 0.0, 2.0, 0.0],
+            [1.0, 0.0, 2.0, -22.5],
+        ],
+    )
+    logger = DummyLogger()
+    publisher = DummyPublisher()
+    station = SimpleNamespace(
+        last_status=SimpleNamespace(
+            control_state='TAKEOFF',
+            armed=True,
+            offboard=True,
+            leader_id=1,
+        ),
+        command_publisher=publisher,
+        get_logger=lambda: logger,
+    )
+
+    assert station_module.StationNode.send_mission(station)
+
+    assert logger.errors == []
+    payload = json.loads(publisher.last_message.data)
+    assert payload == {
+        'command': 'mission',
+        'waypoint_file': 'leader_waypoints_xyzyaw-3.txt',
+        'leader_id': 1,
+        'waypoint_count': 2,
+        'relative_to_start': False,
+        'yaw_relative': True,
+    }
+    assert 'points' not in payload

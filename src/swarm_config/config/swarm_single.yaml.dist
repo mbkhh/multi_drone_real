@@ -46,13 +46,12 @@ control:
   min_goal_altitude: -0.5
   max_goal_altitude: 5.0
 mission:
-  # Mission points are ENU offsets from the vehicle position when the mission
-  # starts. Positive Z is up, matching the station's move command. A waypoint
-  # may optionally contain a fourth value: yaw in PX4/NED degrees. The
-  # controller converts it to radians for PX4. Example:
-  #   - [2.0, 0.0, 0.0, 90.0]
-  # Three-value waypoints keep the leader's previous yaw.
-  relative_to_start: true
+  # The station validates this installed YAML-formatted text file, then sends
+  # only its name to the leader. The top-level key is the elected leader ID.
+  # Each entry is [absolute ENU x, y, z, relative PX4/NED yaw degrees].
+  waypoint_file: 'leader_waypoints_xyzyaw-3.txt'
+  relative_to_start: false
+  yaw_relative: true
   waypoints:
     - [0.000, 0.000, 5.000, 0.000]
     - [0.494, 0.000, 5.000, 0.000]
@@ -602,10 +601,13 @@ mission:
     - [0.988, 34.000, 5.000, 0.000]
     - [0.494, 34.000, 5.000, 0.000]
     - [0.000, 34.000, 5.000, 0.000]
-  goal_tolerance: 0.1
+  goal_tolerance: 0.3
+  yaw_tolerance_deg: 5.0
   waypoint_dwell: 1.0
-  timeout: 180.0
-  max_waypoints: 100
+  # The selected 121-point path has a theoretical minimum duration of about
+  # 268 seconds at 1 m/s with a one-second dwell at every waypoint.
+  timeout: 600.0
+  max_waypoints: 200
 navigation:
   time_step: 0.016
   neighbor_dist: 0.5

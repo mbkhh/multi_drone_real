@@ -12,7 +12,7 @@ from rclpy.qos import (
 from swarm_msgs.action import Fly
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from px4_msgs.msg import VehicleStatus
-from swarm_config.config_utils import get_config
+from swarm_config.config_utils import get_config, get_mission_waypoints
 import math
 import json
 import numpy as np
@@ -430,11 +430,59 @@ class Communication():
             self.command_publisher.publish(out_msg)
             self.parent_node.get_logger().info("Leader: Publishing stop animation command.")
         elif command_type == 'mission':
+            waypoint_file = cmd.get("waypoint_file")
             mission = cmd.get("points")
+            if waypoint_file is not None:
+                try:
+                    requested_leader_id = int(
+                        cmd.get("leader_id", self.parent_node.leader_id)
+                    )
+                except (TypeError, ValueError):
+                    self.parent_node.get_logger().error(
+                        'Mission rejected: leader ID is invalid.'
+                    )
+                    return
+                if requested_leader_id != int(self.parent_node.leader_id):
+                    self.parent_node.get_logger().error(
+                        'Mission rejected: waypoint file targets leader '
+                        f'{requested_leader_id}, but the elected leader is '
+                        f'{self.parent_node.leader_id}.'
+                    )
+                    return
+                try:
+                    mission = get_mission_waypoints(
+                        waypoint_file,
+                        requested_leader_id,
+                    )
+                except ValueError as error:
+                    self.parent_node.get_logger().error(
+                        f'Mission rejected: {error}'
+                    )
+                    return
+                expected_count = cmd.get("waypoint_count")
+                try:
+                    count_mismatch = (
+                        expected_count is not None
+                        and int(expected_count) != len(mission)
+                    )
+                except (TypeError, ValueError):
+                    self.parent_node.get_logger().error(
+                        'Mission rejected: station waypoint count is invalid.'
+                    )
+                    return
+                if count_mismatch:
+                    self.parent_node.get_logger().error(
+                        'Mission rejected: station expected '
+                        f'{expected_count} waypoints but local file contains '
+                        f'{len(mission)}.'
+                    )
+                    return
             relative_to_start = cmd.get("relative_to_start", True)
+            yaw_relative = bool(cmd.get("yaw_relative", False))
             if self.parent_node.start_mission(
                 mission,
                 relative_to_start=relative_to_start,
+                yaw_relative=yaw_relative,
             ):
                 self.parent_node.get_logger().info(
                     f"Leader accepted mission with {len(mission)} waypoints."
@@ -493,11 +541,10 @@ class Communication():
         return True
 
     def send_mission(self):
-        command = {
-            "command": "mission",
-            "points": self.parent_node.mission,
-            "relative_to_start": False,
-        }
+        # Followers already derive their local formation goals from the
+        # leader's shared pose. They need only a small start notification, not
+        # the leader's complete waypoint file on the Wi-Fi link.
+        command = {"command": "mission"}
         msg = String()
         msg.data = json.dumps(command)
         self.command_publisher.publish(msg)

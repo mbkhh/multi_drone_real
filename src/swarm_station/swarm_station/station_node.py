@@ -12,6 +12,7 @@ from rclpy.action import ActionClient
 from swarm_msgs.msg import Status, FormationCommand
 from swarm_msgs.action import Fly 
 from swarm_config.config_utils import get_config
+from swarm_config.config_utils import get_mission_waypoints
 from swarm_config.config_utils import get_scenario
 from swarm_station.manual_controller import ManualController
 
@@ -230,12 +231,12 @@ class StationNode(Node):
 		msg.data = json.dumps(command)
 		self.command_publisher.publish(msg)
 	
-	def send_mission(self):
+	def send_mission(self, waypoint_file=None):
 		if self.last_status is None:
 			self.get_logger().error(
 				"Mission not sent: no current leader status is available."
 			)
-			return
+			return False
 		if not (
 			self.last_status.control_state == "TAKEOFF"
 			and self.last_status.armed
@@ -245,31 +246,66 @@ class StationNode(Node):
 				"Mission not sent: run 'arm' first and wait until status "
 				"reports armed=True, offboard=True."
 			)
-			return
+			return False
 
-		points = get_config('swarm_single.mission.waypoints')
-		relative_to_start = get_config(
-			'swarm_single.mission.relative_to_start'
-		)
-		if not isinstance(points, list) or not points:
+		if waypoint_file is None:
+			waypoint_file = get_config('swarm_single.mission.waypoint_file')
+		if waypoint_file is None:
+			waypoint_file = 'leader_waypoints_xyzyaw-3.txt'
+		leader_id = int(self.last_status.leader_id)
+		try:
+			points = get_mission_waypoints(waypoint_file, leader_id)
+		except ValueError as error:
 			self.get_logger().error(
-				"Mission not sent: configure swarm_single.mission.waypoints."
+				f'Mission not sent: {error}'
 			)
-			return
+			return False
+
+		for index, point in enumerate(points, start=1):
+			if not isinstance(point, (list, tuple)) or len(point) != 4:
+				self.get_logger().error(
+					f'Mission not sent: waypoint {index} must be '
+					'[absolute x, y, z, relative yaw degrees].'
+				)
+				return False
+			try:
+				values = [float(value) for value in point]
+			except (TypeError, ValueError):
+				self.get_logger().error(
+					f'Mission not sent: waypoint {index} is not numeric.'
+				)
+				return False
+			if not all(math.isfinite(value) for value in values):
+				self.get_logger().error(
+					f'Mission not sent: waypoint {index} is not finite.'
+				)
+				return False
+
+		max_waypoints = get_config('swarm_single.mission.max_waypoints')
+		max_waypoints = 200 if max_waypoints is None else int(max_waypoints)
+		if len(points) > max_waypoints:
+			self.get_logger().error(
+				f'Mission not sent: {len(points)} points exceed the '
+				f'{max_waypoints}-point configured limit.'
+			)
+			return False
 
 		command = {
 			"command": "mission",
-			"points": points,
-			"relative_to_start": (
-				True if relative_to_start is None else bool(relative_to_start)
-			),
+			"waypoint_file": waypoint_file,
+			"leader_id": leader_id,
+			"waypoint_count": len(points),
+			"relative_to_start": False,
+			"yaw_relative": True,
 		}
 		msg = String()
 		msg.data = json.dumps(command)
 		self.command_publisher.publish(msg)
 		self.get_logger().info(
-			f"Mission sent with {len(points)} configured waypoints."
+			f"Mission '{waypoint_file}' sent for leader {leader_id} with "
+			f'{len(points)} absolute-position/relative-yaw waypoints.'
 		)
+		return True
 
 	def check_for_input(self, input=None):
 		"""
@@ -329,7 +365,15 @@ class StationNode(Node):
 							case 'stop_animation':
 								self.stop_animation_command()
 							case 'mission':
-								self.send_mission()
+								if len(command) > 2:
+									self.get_logger().error(
+										'Invalid command. Usage: mission [waypoint_file]'
+									)
+								else:
+									waypoint_file = (
+										command[1] if len(command) == 2 else None
+									)
+									self.send_mission(waypoint_file)
 							case 'start_animation':
 								params = {
 									"speed_x": 0.0,

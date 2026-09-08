@@ -131,6 +131,7 @@ class SingleControlNode(Node):
         # compatible. Mission-file yaw is supplied in degrees and converted
         # to PX4/NED radians while parsing.
         self.mission_yaws = []
+        self.mission_yaw_relative = False
         self.mission_active = False
         self.mission_index = 0
         self.mission_target = None
@@ -231,6 +232,19 @@ class SingleControlNode(Node):
         )
         self.mission_waypoint_dwell = self.config_float(
             'swarm_single.mission.waypoint_dwell', 1.0
+        )
+        self.mission_yaw_tolerance_deg = self.config_float(
+            'swarm_single.mission.yaw_tolerance_deg', 5.0
+        )
+        if (
+            not math.isfinite(self.mission_yaw_tolerance_deg)
+            or self.mission_yaw_tolerance_deg <= 0.0
+        ):
+            raise ValueError(
+                'mission.yaw_tolerance_deg must be finite and positive.'
+            )
+        self.mission_yaw_tolerance = math.radians(
+            self.mission_yaw_tolerance_deg
         )
         self.mission_timeout = self.config_float(
             'swarm_single.mission.timeout', 180.0
@@ -884,6 +898,7 @@ class SingleControlNode(Node):
         """Clear mission execution without changing the active flight mode."""
         self.mission = []
         self.mission_yaws = []
+        self.mission_yaw_relative = False
         self.mission_active = False
         self.mission_index = 0
         self.mission_target = None
@@ -892,7 +907,12 @@ class SingleControlNode(Node):
         self.mission_dwell_start = None
         self.mission_state = "IDLE"
 
-    def start_mission(self, points, relative_to_start=True):
+    def start_mission(
+        self,
+        points,
+        relative_to_start=True,
+        yaw_relative=False,
+    ):
         """Validate and start a waypoint mission using the normal goal path."""
         if self.state != DroneState.TAKEOFF:
             self.get_logger().error(
@@ -985,6 +1005,15 @@ class SingleControlNode(Node):
             else:
                 target = waypoint
 
+            if not self.min_goal_altitude <= target[2] <= self.max_goal_altitude:
+                self.get_logger().error(
+                    f'Mission rejected: waypoint {index + 1} altitude '
+                    f'{target[2]:.2f} m is outside the configured '
+                    f'[{self.min_goal_altitude:.2f}, '
+                    f'{self.max_goal_altitude:.2f}] m limits.'
+                )
+                return False
+
             leg_distance = math.hypot(
                 target[0] - previous[0], target[1] - previous[1]
             )
@@ -1001,6 +1030,7 @@ class SingleControlNode(Node):
 
         self.mission = resolved_points
         self.mission_yaws = resolved_yaws
+        self.mission_yaw_relative = bool(yaw_relative)
         self.mission_active = True
         self.mission_index = 0
         self.mission_target = None
@@ -1017,6 +1047,37 @@ class SingleControlNode(Node):
             return False
 
         target = self.mission[self.mission_index]
+        mission_yaws = getattr(self, 'mission_yaws', [])
+        waypoint_yaw = (
+            mission_yaws[self.mission_index]
+            if self.mission_index < len(mission_yaws)
+            else None
+        )
+        target_yaw = waypoint_yaw
+        yaw_delta = None
+        if (
+            waypoint_yaw is not None
+            and getattr(self, 'mission_yaw_relative', False)
+        ):
+            yaw_reference = None
+            if self.mission_index > 0:
+                yaw_reference = getattr(self, 'mission_target_yaw', None)
+            if yaw_reference is None or not math.isfinite(float(yaw_reference)):
+                yaw_reference = getattr(self, 'current_yaw_ned', None)
+            if yaw_reference is None or not math.isfinite(float(yaw_reference)):
+                yaw_reference = getattr(self, 'yaw', None)
+            if yaw_reference is None or not math.isfinite(float(yaw_reference)):
+                self.abort_mission(
+                    f'waypoint {self.mission_index + 1} has a relative yaw '
+                    'but no finite PX4 heading is available'
+                )
+                return False
+            yaw_delta = float(waypoint_yaw)
+            target_yaw = float(yaw_reference) + yaw_delta
+            target_yaw = math.atan2(
+                math.sin(target_yaw), math.cos(target_yaw)
+            )
+
         if not self.goal_callback_temp(target):
             self.abort_mission(
                 f'waypoint {self.mission_index + 1} was rejected'
@@ -1024,12 +1085,6 @@ class SingleControlNode(Node):
             return False
 
         self.mission_target = list(target)
-        mission_yaws = getattr(self, 'mission_yaws', [])
-        target_yaw = (
-            mission_yaws[self.mission_index]
-            if self.mission_index < len(mission_yaws)
-            else None
-        )
         self.mission_target_yaw = target_yaw
         if target_yaw is not None:
             # self.yaw is the local PX4/NED yaw setpoint. Followers do not
@@ -1039,7 +1094,10 @@ class SingleControlNode(Node):
         self.mission_dwell_start = None
         self.motion_enabled = True
         yaw_log = (
-            f', yaw={target_yaw:.3f} rad (PX4/NED)'
+            f', relative_yaw={math.degrees(yaw_delta):+.1f} deg, '
+            f'target_yaw={math.degrees(target_yaw):+.1f} deg PX4/NED'
+            if yaw_delta is not None
+            else f', target_yaw={math.degrees(target_yaw):+.1f} deg PX4/NED'
             if target_yaw is not None
             else ''
         )
@@ -1075,6 +1133,20 @@ class SingleControlNode(Node):
             self.mission_dwell_start = None
             return
 
+        target_yaw = getattr(self, 'mission_target_yaw', None)
+        if target_yaw is not None:
+            current_yaw = getattr(self, 'current_yaw_ned', None)
+            if current_yaw is None or not math.isfinite(float(current_yaw)):
+                self.mission_dwell_start = None
+                return
+            yaw_error = math.atan2(
+                math.sin(target_yaw - float(current_yaw)),
+                math.cos(target_yaw - float(current_yaw)),
+            )
+            if abs(yaw_error) > self.mission_yaw_tolerance:
+                self.mission_dwell_start = None
+                return
+
         if self.mission_dwell_start is None:
             self.mission_dwell_start = now
             return
@@ -1097,6 +1169,7 @@ class SingleControlNode(Node):
         self.mission_index = waypoint_count
         self.mission_target = None
         self.mission_target_yaw = None
+        self.mission_yaw_relative = False
         self.mission_dwell_start = None
         self.motion_enabled = False
         self.velocity_goal = [0.0, 0.0, 0.0]
@@ -1111,6 +1184,7 @@ class SingleControlNode(Node):
         self.mission_active = False
         self.mission_target = None
         self.mission_target_yaw = None
+        self.mission_yaw_relative = False
         self.mission_dwell_start = None
         self.motion_enabled = False
         self.velocity_goal = [0.0, 0.0, 0.0]
