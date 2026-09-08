@@ -91,8 +91,8 @@ def test_mission_sends_small_absolute_position_relative_yaw_file_command(
         station_module,
         'get_mission_waypoints',
         lambda filename, leader_id: [
-            [0.0, 0.0, 2.0, 0.0],
-            [1.0, 0.0, 2.0, -22.5],
+            [0.0, 0.0, 2.0, 0.0, False],
+            [1.0, 0.0, 2.0, -22.5, True],
         ],
     )
     logger = DummyLogger()

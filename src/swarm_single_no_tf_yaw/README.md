@@ -38,13 +38,14 @@ sending the complete waypoint array across the swarm Wi-Fi link.
 
 The file is YAML-formatted. Its top-level key must match the elected leader ID,
 and every point is `[absolute ENU x, absolute ENU y, absolute ENU z,
-relative PX4/NED yaw degrees]`:
+relative PX4/NED yaw degrees, checkpoint wait]`. The fifth value is optional
+for compatibility with older files and defaults to `false`:
 
 ```yaml
 1:
-  - [0.0, 0.0, 2.0, 0.0]
-  - [2.0, 0.0, 2.0, -20.0]
-  - [2.0, 2.0, 2.0, 0.0]
+  - [0.0, 0.0, 2.0, 0.0, false]
+  - [2.0, 0.0, 2.0, -20.0, true]
+  - [2.0, 2.0, 2.0, 0.0, false]
 ```
 
 Each point is activated through the same absolute-goal handler as a station
@@ -53,7 +54,10 @@ The first yaw delta starts from the leader's measured mission-start heading;
 later deltas accumulate from the preceding mission yaw target so small tracking
 errors cannot distort the generated path. The mission moves to the next point
 only after both position and yaw are within tolerance for the configured dwell
-time.
+time. When the fifth value is `true`, the normal dwell is replaced by
+`swarm_single.mission.checkpoint_delay` (five seconds by default). This uses
+the existing mission timer and does not block Offboard heartbeat or setpoint
+publication.
 
 Only the leader executes the file. Followers receive a small mission-start
 notification and continue resolving their own goals from the leader's measured

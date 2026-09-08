@@ -262,14 +262,18 @@ class StationNode(Node):
 			return False
 
 		for index, point in enumerate(points, start=1):
-			if not isinstance(point, (list, tuple)) or len(point) != 4:
+			if (
+				not isinstance(point, (list, tuple))
+				or len(point) not in (4, 5)
+			):
 				self.get_logger().error(
 					f'Mission not sent: waypoint {index} must be '
-					'[absolute x, y, z, relative yaw degrees].'
+					'[absolute x, y, z, relative yaw degrees] with an '
+					'optional checkpoint wait boolean.'
 				)
 				return False
 			try:
-				values = [float(value) for value in point]
+				values = [float(value) for value in point[:4]]
 			except (TypeError, ValueError):
 				self.get_logger().error(
 					f'Mission not sent: waypoint {index} is not numeric.'
@@ -278,6 +282,12 @@ class StationNode(Node):
 			if not all(math.isfinite(value) for value in values):
 				self.get_logger().error(
 					f'Mission not sent: waypoint {index} is not finite.'
+				)
+				return False
+			if len(point) == 5 and not isinstance(point[4], bool):
+				self.get_logger().error(
+					f'Mission not sent: waypoint {index} checkpoint '
+					'wait value must be true or false.'
 				)
 				return False
 

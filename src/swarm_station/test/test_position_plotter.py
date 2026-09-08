@@ -10,8 +10,8 @@ def test_plotter_loads_xyz_from_configured_waypoint_file(monkeypatch):
     def fake_loader(file_name, leader_id):
         calls.append((file_name, leader_id))
         return [
-            [0.0, 1.0, 2.0, 0.0],
-            [3.0, 4.0, 2.0, -22.5],
+            [0.0, 1.0, 2.0, 0.0, False],
+            [3.0, 4.0, 2.0, -22.5, True],
         ]
 
     monkeypatch.setattr(
@@ -31,6 +31,7 @@ def test_plotter_loads_xyz_from_configured_waypoint_file(monkeypatch):
         [0.0, 1.0, 2.0],
         [0.0, 1.0, 2.0, 'bad'],
         [0.0, 1.0, 2.0, float('nan')],
+        [0.0, 1.0, 2.0, 0.0, 'true'],
     ),
 )
 def test_plotter_rejects_invalid_mission_rows(monkeypatch, bad_point):

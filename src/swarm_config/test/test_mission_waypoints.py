@@ -74,11 +74,13 @@ def test_configured_three_drone_mission_fits_control_limits():
     )
 
     assert 0 < len(points) <= max_waypoints
-    assert all(len(point) == 4 for point in points)
+    assert all(len(point) == 5 for point in points)
     assert all(
-        all(math.isfinite(float(value)) for value in point)
+        all(math.isfinite(float(value)) for value in point[:4])
         for point in points
     )
+    assert all(isinstance(point[4], bool) for point in points)
+    assert sum(point[4] for point in points) == 3
     assert all(
         min_altitude <= float(point[2]) <= max_altitude
         for point in points

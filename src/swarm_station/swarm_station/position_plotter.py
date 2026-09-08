@@ -34,16 +34,20 @@ from swarm_config.config_utils import get_config, get_mission_waypoints
 
 
 def _load_planned_xyz(waypoint_file, leader_id):
-	"""Load and validate the same four-value mission rows used by the station."""
+	"""Load and validate the same mission rows used by the station."""
 	waypoints = get_mission_waypoints(waypoint_file, leader_id)
 	planned_xyz = []
 	for index, point in enumerate(waypoints, start=1):
-		if not isinstance(point, (list, tuple)) or len(point) != 4:
+		if (
+			not isinstance(point, (list, tuple))
+			or len(point) not in (4, 5)
+		):
 			raise ValueError(
-				f'Mission waypoint {index} must be [x, y, z, relative_yaw].'
+				f'Mission waypoint {index} must be [x, y, z, '
+				'relative_yaw] with an optional checkpoint wait boolean.'
 			)
 		try:
-			values = [float(value) for value in point]
+			values = [float(value) for value in point[:4]]
 		except (TypeError, ValueError) as error:
 			raise ValueError(
 				f'Mission waypoint {index} contains a non-numeric value.'
@@ -51,6 +55,11 @@ def _load_planned_xyz(waypoint_file, leader_id):
 		if not all(math.isfinite(value) for value in values):
 			raise ValueError(
 				f'Mission waypoint {index} contains a non-finite value.'
+			)
+		if len(point) == 5 and not isinstance(point[4], bool):
+			raise ValueError(
+				f'Mission waypoint {index} checkpoint wait value must be '
+				'true or false.'
 			)
 		planned_xyz.append(values[:3])
 	return planned_xyz

@@ -131,6 +131,9 @@ class SingleControlNode(Node):
         # compatible. Mission-file yaw is supplied in degrees and converted
         # to PX4/NED radians while parsing.
         self.mission_yaws = []
+        # A true fifth waypoint value requests a longer non-blocking dwell
+        # after both the position and yaw targets have been reached.
+        self.mission_checkpoint_waits = []
         self.mission_yaw_relative = False
         self.mission_active = False
         self.mission_index = 0
@@ -233,6 +236,16 @@ class SingleControlNode(Node):
         self.mission_waypoint_dwell = self.config_float(
             'swarm_single.mission.waypoint_dwell', 1.0
         )
+        self.mission_checkpoint_delay = self.config_float(
+            'swarm_single.mission.checkpoint_delay', 5.0
+        )
+        if (
+            not math.isfinite(self.mission_checkpoint_delay)
+            or self.mission_checkpoint_delay < 0.0
+        ):
+            raise ValueError(
+                'mission.checkpoint_delay must be finite and non-negative.'
+            )
         self.mission_yaw_tolerance_deg = self.config_float(
             'swarm_single.mission.yaw_tolerance_deg', 5.0
         )
@@ -898,6 +911,7 @@ class SingleControlNode(Node):
         """Clear mission execution without changing the active flight mode."""
         self.mission = []
         self.mission_yaws = []
+        self.mission_checkpoint_waits = []
         self.mission_yaw_relative = False
         self.mission_active = False
         self.mission_index = 0
@@ -952,12 +966,17 @@ class SingleControlNode(Node):
 
         resolved_points = []
         resolved_yaws = []
+        checkpoint_waits = []
         previous = mission_origin
         for index, point in enumerate(points):
-            if not isinstance(point, (list, tuple)) or len(point) not in (3, 4):
+            if (
+                not isinstance(point, (list, tuple))
+                or len(point) not in (3, 4, 5)
+            ):
                 self.get_logger().error(
                     f'Mission rejected: waypoint {index + 1} must contain '
-                    'x, y, z and optionally yaw.'
+                    'x, y, z, optionally yaw, and optionally a checkpoint '
+                    'wait boolean.'
                 )
                 return False
             try:
@@ -974,7 +993,7 @@ class SingleControlNode(Node):
                 return False
 
             waypoint_yaw = None
-            if len(point) == 4:
+            if len(point) >= 4:
                 try:
                     waypoint_yaw = float(point[3])
                 except (TypeError, ValueError):
@@ -996,6 +1015,16 @@ class SingleControlNode(Node):
                 waypoint_yaw = math.atan2(
                     math.sin(waypoint_yaw), math.cos(waypoint_yaw)
                 )
+
+            checkpoint_wait = False
+            if len(point) == 5:
+                if not isinstance(point[4], bool):
+                    self.get_logger().error(
+                        f'Mission rejected: waypoint {index + 1} checkpoint '
+                        'wait value must be true or false.'
+                    )
+                    return False
+                checkpoint_wait = point[4]
 
             if relative_to_start:
                 target = [
@@ -1026,10 +1055,12 @@ class SingleControlNode(Node):
                 return False
             resolved_points.append(target)
             resolved_yaws.append(waypoint_yaw)
+            checkpoint_waits.append(checkpoint_wait)
             previous = target
 
         self.mission = resolved_points
         self.mission_yaws = resolved_yaws
+        self.mission_checkpoint_waits = checkpoint_waits
         self.mission_yaw_relative = bool(yaw_relative)
         self.mission_active = True
         self.mission_index = 0
@@ -1092,7 +1123,13 @@ class SingleControlNode(Node):
             self.yaw = float(target_yaw)
             self.yaw_initialized = True
         self.mission_dwell_start = None
+        self.mission_state = "RUNNING"
         self.motion_enabled = True
+        checkpoint_waits = getattr(self, 'mission_checkpoint_waits', [])
+        checkpoint_wait = (
+            self.mission_index < len(checkpoint_waits)
+            and checkpoint_waits[self.mission_index]
+        )
         yaw_log = (
             f', relative_yaw={math.degrees(yaw_delta):+.1f} deg, '
             f'target_yaw={math.degrees(target_yaw):+.1f} deg PX4/NED'
@@ -1101,10 +1138,15 @@ class SingleControlNode(Node):
             if target_yaw is not None
             else ''
         )
+        checkpoint_log = (
+            f', checkpoint_delay={self.mission_checkpoint_delay:.1f}s'
+            if checkpoint_wait
+            else ''
+        )
         self.get_logger().info(
             f'Mission waypoint {self.mission_index + 1}/{len(self.mission)} '
             f'activated: [{target[0]:.2f}, {target[1]:.2f}, {target[2]:.2f}]'
-            f'{yaw_log}'
+            f'{yaw_log}{checkpoint_log}'
         )
         return True
 
@@ -1131,6 +1173,7 @@ class SingleControlNode(Node):
         distance = math.dist(current, self.mission_target)
         if distance > self.mission_goal_tolerance:
             self.mission_dwell_start = None
+            self.mission_state = "RUNNING"
             return
 
         target_yaw = getattr(self, 'mission_target_yaw', None)
@@ -1138,6 +1181,7 @@ class SingleControlNode(Node):
             current_yaw = getattr(self, 'current_yaw_ned', None)
             if current_yaw is None or not math.isfinite(float(current_yaw)):
                 self.mission_dwell_start = None
+                self.mission_state = "RUNNING"
                 return
             yaw_error = math.atan2(
                 math.sin(target_yaw - float(current_yaw)),
@@ -1145,14 +1189,31 @@ class SingleControlNode(Node):
             )
             if abs(yaw_error) > self.mission_yaw_tolerance:
                 self.mission_dwell_start = None
+                self.mission_state = "RUNNING"
                 return
 
+        checkpoint_waits = getattr(self, 'mission_checkpoint_waits', [])
+        checkpoint_wait = (
+            self.mission_index < len(checkpoint_waits)
+            and checkpoint_waits[self.mission_index]
+        )
+        dwell_duration = (
+            self.mission_checkpoint_delay
+            if checkpoint_wait
+            else self.mission_waypoint_dwell
+        )
         if self.mission_dwell_start is None:
             self.mission_dwell_start = now
+            if checkpoint_wait:
+                self.mission_state = "WAITING_AT_CHECKPOINT"
+                self.get_logger().info(
+                    f'Mission waypoint {self.mission_index + 1}: targets '
+                    f'reached; holding for {dwell_duration:.1f} seconds.'
+                )
             return
         if (
             (now - self.mission_dwell_start).nanoseconds / 1e9
-            < self.mission_waypoint_dwell
+            < dwell_duration
         ):
             return
 

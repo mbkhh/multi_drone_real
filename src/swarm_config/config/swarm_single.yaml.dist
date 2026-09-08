@@ -48,7 +48,9 @@ control:
 mission:
   # The station validates this installed YAML-formatted text file, then sends
   # only its name to the leader. The top-level key is the elected leader ID.
-  # Each entry is [absolute ENU x, y, z, relative PX4/NED yaw degrees].
+  # Each entry is [absolute ENU x, y, z, relative PX4/NED yaw degrees,
+  # checkpoint_wait]. A true checkpoint_wait holds the reached pose for the
+  # configured checkpoint_delay before activating the next waypoint.
   waypoint_file: 'leader_waypoints_xyzyaw-3.txt'
   relative_to_start: false
   yaw_relative: true
@@ -604,8 +606,7 @@ mission:
   goal_tolerance: 0.3
   yaw_tolerance_deg: 5.0
   waypoint_dwell: 1.0
-  # The selected 121-point path has a theoretical minimum duration of about
-  # 268 seconds at 1 m/s with a one-second dwell at every waypoint.
+  checkpoint_delay: 5.0
   timeout: 600.0
   max_waypoints: 200
 navigation:

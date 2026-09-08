@@ -431,8 +431,8 @@ def test_leader_loads_mission_file_locally_and_relays_only_start(monkeypatch):
     communication.parent_node = leader
     communication.command_publisher = DummyPublisher()
     points = [
-        [0.0, 0.0, 2.0, 0.0],
-        [1.0, 0.0, 2.0, -22.5],
+        [0.0, 0.0, 2.0, 0.0, False],
+        [1.0, 0.0, 2.0, -22.5, True],
     ]
     monkeypatch.setattr(
         'swarm_single_no_tf_yaw.communication.get_mission_waypoints',
@@ -915,10 +915,12 @@ def make_mission_stub():
         max_goal_altitude=5.0,
         mission_goal_tolerance=0.4,
         mission_waypoint_dwell=1.0,
+        mission_checkpoint_delay=5.0,
         mission_yaw_tolerance=math.radians(5.0),
         mission_timeout=60.0,
         mission=[],
         mission_yaws=[],
+        mission_checkpoint_waits=[],
         mission_yaw_relative=False,
         mission_active=False,
         mission_index=0,
@@ -1150,6 +1152,39 @@ def test_mission_advances_and_completes_after_dwell():
     assert controller.mission_state == 'COMPLETED'
     assert controller.mission_index == 1
     assert controller.velocity_goal == [0.0, 0.0, 0.0]
+
+
+def test_true_fifth_waypoint_value_holds_for_checkpoint_delay():
+    controller, clock = make_mission_stub()
+    assert SingleControlNode.start_mission(
+        controller,
+        [[0.0, 0.0, 1.0, 0.0, True]],
+        relative_to_start=True,
+    )
+    assert controller.mission_checkpoint_waits == [True]
+    controller.navigation.current_pos[:3] = controller.mission_target
+    controller.current_yaw_ned = controller.mission_target_yaw
+
+    SingleControlNode.update_mission_progress(controller)
+    assert controller.mission_state == 'WAITING_AT_CHECKPOINT'
+
+    clock.advance(4.9)
+    SingleControlNode.update_mission_progress(controller)
+    assert controller.mission_active
+
+    clock.advance(0.2)
+    SingleControlNode.update_mission_progress(controller)
+    assert controller.mission_state == 'COMPLETED'
+
+
+def test_mission_rejects_non_boolean_checkpoint_value():
+    controller, _clock = make_mission_stub()
+
+    assert not SingleControlNode.start_mission(
+        controller,
+        [[0.0, 0.0, 1.0, 0.0, 'true']],
+        relative_to_start=True,
+    )
 
 
 def test_mission_requires_active_offboard_state():
