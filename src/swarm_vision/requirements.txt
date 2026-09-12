@@ -1,0 +1,4 @@
+# Installed only in the workspace-local .venv-swarm-vision environment.
+# ROS 2, NumPy, and OpenCV come from Ubuntu/ROS through --system-site-packages.
+Flask==3.1.3
+onnxruntime==1.29.0
