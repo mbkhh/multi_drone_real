@@ -52,6 +52,30 @@ ros2 topic pub --once /swarm/vision_trigger std_msgs/msg/String \
   "{data: 'STOP'}"
 ```
 
+When `swarm_single_no_tf_yaw` and the station are running, use the station
+commands instead of publishing these topics manually:
+
+```text
+start_detection
+start_detection 32
+start_detection 0,2,32
+stop_detection
+```
+
+The station sends the request to the elected leader. The leader publishes the
+corresponding `START:<class IDs>` or `STOP` trigger. A detection is published
+as `UAV_ID:TARGET_DETECTED` on `/swarm/vision_command`; the leader puts a
+report in its existing `/swarm/status` message, and the station prints it as
+`Message from leader: VISION TARGET DETECTED by UAV_ID`.
+
+This integration is report-only. A detection never changes a goal or flight
+state and never sends LAND, RTL, arm, disarm, or PX4 commands. The leader also
+accepts the older `TARGET_DETECTED_LAND` event name only so different drones
+can be upgraded without interpreting it as a landing request.
+
+Both vision nodes wait for a `START` trigger before running inference. The web
+node can still show and record its camera stream while detection is stopped.
+
 Start the web node:
 
 ```bash

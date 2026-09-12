@@ -110,6 +110,31 @@ controls how quickly the target is sent to PX4. Followers do not receive a
 separate yaw command—they react to the leader orientation in
 `/swarm/local_state`.
 
+## Vision reporting
+
+Run `swarm_vision` on the companion computer that has the camera. The station
+can then control detection through the elected leader:
+
+```text
+start_detection
+start_detection 32
+start_detection 0,2,32
+stop_detection
+```
+
+With no class list, the station requests COCO class 32 (`sports ball`). The
+leader forwards the request on `/swarm/vision_trigger` and listens for the
+vision node on `/swarm/vision_command`. Detection reports reuse the existing
+`Status.message` field, so no additional leader-to-station DDS topic or custom
+message is introduced. The station prints a report such as:
+
+```text
+Message from leader: VISION TARGET DETECTED by UAV_1
+```
+
+Vision is report-only in this version. Its callback does not call landing,
+RTL, goal, arming, disarming, Offboard, or PX4 command methods.
+
 ## Simulation
 
 Build the simulator and TF-free controller, source the workspace, then launch

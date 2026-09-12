@@ -216,6 +216,21 @@ class StationNode(Node):
 		msg = String()
 		msg.data = json.dumps({"command": "land"})
 		self.command_publisher.publish(msg)
+	def send_start_detection_command(self, class_ids=None):
+		"""Ask the leader to start vision for selected COCO class IDs."""
+		if class_ids is None:
+			class_ids = [32]
+		msg = String()
+		msg.data = json.dumps({
+			"command": "start_detection",
+			"class_ids": [int(class_id) for class_id in class_ids],
+		})
+		self.command_publisher.publish(msg)
+	def send_stop_detection_command(self):
+		"""Ask the leader to stop vision inference."""
+		msg = String()
+		msg.data = json.dumps({"command": "stop_detection"})
+		self.command_publisher.publish(msg)
 	def stop_animation_command(self):
 		msg = String()
 		msg.data =  json.dumps({"command": "stop_animation"})
@@ -372,6 +387,48 @@ class StationNode(Node):
 								self.send_disarm_leader_command()
 							case 'land':
 								self.send_land_command()
+							case 'start_detection':
+								if len(command) > 2:
+									self.get_logger().error(
+										'Invalid command. Usage: start_detection '
+										'[class_id,class_id,...]'
+									)
+								else:
+									class_ids = [32]
+									if len(command) == 2:
+										try:
+											class_ids = [
+												int(value)
+												for value in command[1].split(',')
+												if value
+											]
+										except ValueError:
+											class_ids = None
+											self.get_logger().error(
+												'Invalid detection class list. Use '
+												'start_detection 32 or '
+												'start_detection 0,2,32.'
+											)
+									if class_ids is not None and (
+										not class_ids or any(
+											class_id < 0 or class_id > 79
+											for class_id in class_ids
+										)
+									):
+										class_ids = None
+										self.get_logger().error(
+											'Detection class IDs must be integers '
+											'from 0 through 79.'
+										)
+									if class_ids is not None:
+										self.send_start_detection_command(class_ids)
+							case 'stop_detection':
+								if len(command) != 1:
+									self.get_logger().error(
+										'Invalid command. Usage: stop_detection'
+									)
+								else:
+									self.send_stop_detection_command()
 							case 'stop_animation':
 								self.stop_animation_command()
 							case 'mission':

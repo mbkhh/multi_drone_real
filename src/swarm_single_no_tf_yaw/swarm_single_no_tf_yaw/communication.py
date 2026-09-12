@@ -19,6 +19,13 @@ import numpy as np
 import asyncio
 from rclpy.callback_groups import ReentrantCallbackGroup
 
+
+VISION_TRIGGER_TOPIC = '/swarm/vision_trigger'
+VISION_DETECTION_TOPIC = '/swarm/vision_command'
+VISION_EVENT_TARGET_DETECTED = 'TARGET_DETECTED'
+VISION_EVENT_TARGET_DETECTED_LEGACY = 'TARGET_DETECTED_LAND'
+
+
 class Communication():
     def __init__(self, parent_node: Node):
         self.parent_node = parent_node
@@ -98,6 +105,8 @@ class Communication():
         self.leader_command_subscriber = None
         self.manual_control_subscriber = None
         self.status_timer = None
+        self.vision_trigger_publisher = None
+        self.vision_detection_subscriber = None
 
         # --- Action Server State --- ### NEW ###
         self._action_goal_handle = None
@@ -260,6 +269,22 @@ class Communication():
             self.command_leader_callback,
             self.swarm_command_qos,
         )
+        # Vision is connected only through the currently elected leader. The
+        # command topic contains detection events; it is never treated as a
+        # flight command by this controller.
+        self.vision_trigger_publisher = self.parent_node.create_publisher(
+            String,
+            VISION_TRIGGER_TOPIC,
+            10,
+        )
+        self.vision_detection_subscriber = (
+            self.parent_node.create_subscription(
+                String,
+                VISION_DETECTION_TOPIC,
+                self.vision_detection_callback,
+                10,
+            )
+        )
     
     def step_down_as_leader(self, ):
         self.parent_node.get_logger().info('Stepping down as leader. Reverting to FOLLOWER role.')
@@ -268,6 +293,14 @@ class Communication():
         self.parent_node.destroy_subscription(self.manual_control_subscriber)
         self.parent_node.destroy_subscription(self.leader_formation_subscriber)
         self.parent_node.destroy_subscription(self.leader_command_subscriber)
+        if self.vision_detection_subscriber is not None:
+            self.parent_node.destroy_subscription(
+                self.vision_detection_subscriber
+            )
+        if self.vision_trigger_publisher is not None:
+            self.parent_node.destroy_publisher(
+                self.vision_trigger_publisher
+            )
         self.status_timer.cancel()
         self.parent_node.destroy_publisher(self.formation_publisher)
         self.parent_node.destroy_publisher(self.command_publisher)
@@ -292,6 +325,8 @@ class Communication():
         self.status_publisher = None
         self.manual_control_subscriber = None
         self.status_timer = None
+        self.vision_trigger_publisher = None
+        self.vision_detection_subscriber = None
 
     def command_callback(self, msg: String):
         self.parent_node.get_logger().info(f"Follower received command payload: {msg.data}")
@@ -429,6 +464,73 @@ class Communication():
             out_msg.data = json.dumps({"command": "stop_animation"})
             self.command_publisher.publish(out_msg)
             self.parent_node.get_logger().info("Leader: Publishing stop animation command.")
+        elif command_type == 'start_detection':
+            class_ids = cmd.get('class_ids')
+            if class_ids is None:
+                trigger_payload = 'START'
+            elif not isinstance(class_ids, list) or not class_ids:
+                self.parent_node.get_logger().error(
+                    'Vision start rejected: class_ids must be a non-empty '
+                    'list of COCO class IDs.'
+                )
+                return
+            else:
+                validated_ids = []
+                for value in class_ids:
+                    try:
+                        numeric_value = float(value)
+                        class_id = int(numeric_value)
+                    except (TypeError, ValueError, OverflowError):
+                        self.parent_node.get_logger().error(
+                            f'Vision start rejected: invalid class ID {value!r}.'
+                        )
+                        return
+                    if (
+                        not math.isfinite(numeric_value)
+                        or numeric_value != class_id
+                        or class_id < 0
+                        or class_id > 79
+                    ):
+                        self.parent_node.get_logger().error(
+                            'Vision start rejected: class IDs must be '
+                            'integers from 0 through 79.'
+                        )
+                        return
+                    if class_id not in validated_ids:
+                        validated_ids.append(class_id)
+                trigger_payload = 'START:' + ','.join(
+                    str(class_id) for class_id in validated_ids
+                )
+
+            if self.vision_trigger_publisher is None:
+                self.parent_node.get_logger().error(
+                    'Vision start rejected: leader trigger publisher is '
+                    'not available.'
+                )
+                return
+            trigger = String()
+            trigger.data = trigger_payload
+            self.vision_trigger_publisher.publish(trigger)
+            self.parent_node.message = (
+                f'VISION STARTED: {trigger_payload}'
+            )
+            self.parent_node.get_logger().info(
+                f'Leader published vision trigger: {trigger_payload}'
+            )
+        elif command_type == 'stop_detection':
+            if self.vision_trigger_publisher is None:
+                self.parent_node.get_logger().error(
+                    'Vision stop rejected: leader trigger publisher is '
+                    'not available.'
+                )
+                return
+            trigger = String()
+            trigger.data = 'STOP'
+            self.vision_trigger_publisher.publish(trigger)
+            self.parent_node.message = 'VISION STOPPED'
+            self.parent_node.get_logger().info(
+                'Leader published vision trigger: STOP'
+            )
         elif command_type == 'mission':
             waypoint_file = cmd.get("waypoint_file")
             mission = cmd.get("points")
@@ -488,6 +590,33 @@ class Communication():
                     f"Leader accepted mission with {len(mission)} waypoints."
                 )
                 self.send_mission()
+
+    def vision_detection_callback(self, msg: String):
+        """Queue a detection report for the existing station status stream."""
+        payload = msg.data.strip()
+        if ':' not in payload:
+            self.parent_node.get_logger().warning(
+                f'Ignoring malformed vision detection: {payload!r}'
+            )
+            return
+
+        source, event = (part.strip() for part in payload.split(':', 1))
+        if not source or event not in (
+            VISION_EVENT_TARGET_DETECTED,
+            VISION_EVENT_TARGET_DETECTED_LEGACY,
+        ):
+            self.parent_node.get_logger().warning(
+                f'Ignoring unknown vision detection: {payload!r}'
+            )
+            return
+
+        # The legacy event name is accepted for rolling upgrades, but neither
+        # event causes LAND, RTL, a goal change, or any other flight action.
+        report = f'VISION TARGET DETECTED by {source}'
+        self.parent_node.message = report
+        self.parent_node.get_logger().warning(
+            f'{report}; queued for Ground Station status report only.'
+        )
 
     def execute_takeoff(self, height):
         try:

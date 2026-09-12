@@ -73,6 +73,56 @@ def test_relative_yaw_move_is_sent_to_the_leader(monkeypatch):
     }
 
 
+def test_start_detection_is_sent_to_the_leader(monkeypatch):
+    monkeypatch.setenv('PYNPUT_BACKEND', 'dummy')
+    station_module = import_module('swarm_station.station_node')
+    publisher = DummyPublisher()
+    station = SimpleNamespace(command_publisher=publisher)
+
+    station_module.StationNode.send_start_detection_command(
+        station, [32, 0]
+    )
+
+    assert json.loads(publisher.last_message.data) == {
+        'command': 'start_detection',
+        'class_ids': [32, 0],
+    }
+
+
+def test_stop_detection_is_sent_to_the_leader(monkeypatch):
+    monkeypatch.setenv('PYNPUT_BACKEND', 'dummy')
+    station_module = import_module('swarm_station.station_node')
+    publisher = DummyPublisher()
+    station = SimpleNamespace(command_publisher=publisher)
+
+    station_module.StationNode.send_stop_detection_command(station)
+
+    assert json.loads(publisher.last_message.data) == {
+        'command': 'stop_detection',
+    }
+
+
+def test_station_input_parses_detection_class_list(monkeypatch):
+    monkeypatch.setenv('PYNPUT_BACKEND', 'dummy')
+    station_module = import_module('swarm_station.station_node')
+    logger = DummyLogger()
+    sent_class_ids = []
+    station = SimpleNamespace(
+        leader_is_connected=True,
+        get_logger=lambda: logger,
+        send_start_detection_command=lambda values: sent_class_ids.append(
+            values
+        ),
+    )
+
+    station_module.StationNode.check_for_input(
+        station, 'start_detection 32,0'
+    )
+
+    assert sent_class_ids == [[32, 0]]
+    assert logger.errors == []
+
+
 def test_mission_sends_small_absolute_position_relative_yaw_file_command(
     monkeypatch,
 ):

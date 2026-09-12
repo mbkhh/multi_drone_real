@@ -74,8 +74,57 @@ class SwarmVisionNode(Node):
             0.0, float(self.get_parameter('command_interval').value)
         )
         self.last_command_time = 0.0
+        self.detection_enabled = False
         self.cmd_pub = self.create_publisher(String, '/swarm/vision_command', 10)
+        self.trigger_subscription = self.create_subscription(
+            String,
+            '/swarm/vision_trigger',
+            self.trigger_callback,
+            10,
+        )
         self.get_logger().info(f'نود بینایی پرنده {self.uav_id} روی تاپیک سراسری /swarm/vision_command فعال شد.')
+
+    def trigger_callback(self, msg):
+        """Enable selected COCO classes with START[:ids], or stop detection."""
+        global selected_classes, detect_all, target_currently_detected
+
+        payload = msg.data.strip().upper()
+        if payload.startswith('START'):
+            if ':' in payload:
+                requested = []
+                for value in payload.split(':', 1)[1].split(','):
+                    value = value.strip()
+                    if not value:
+                        continue
+                    try:
+                        class_id = int(value)
+                    except ValueError:
+                        self.get_logger().warning(
+                            f'Ignoring invalid class ID: {value}'
+                        )
+                        continue
+                    if class_id in COCO_CLASSES:
+                        requested.append(class_id)
+                    else:
+                        self.get_logger().warning(
+                            f'Ignoring unknown COCO class ID: {class_id}'
+                        )
+                if requested:
+                    selected_classes = requested
+                    detect_all = False
+            self.detection_enabled = True
+            names = [COCO_CLASSES[value] for value in selected_classes]
+            self.get_logger().info(
+                f'Detection active for {selected_classes} ({names}).'
+            )
+        elif payload in ('STOP', 'DISABLE'):
+            self.detection_enabled = False
+            target_currently_detected = False
+            self.get_logger().info('Detection stopped.')
+        else:
+            self.get_logger().warning(
+                'Unknown vision trigger. Use START, START:32,0,29, or STOP.'
+            )
 
     def publish_command(self, command_str):
         now = time.monotonic()
@@ -138,7 +187,10 @@ def vision_loop():
         frame_count += 1
         current_time = time.time()
         
-        if frame_count % inference_skip == 0:
+        detection_enabled = (
+            ros_node is not None and ros_node.detection_enabled
+        )
+        if detection_enabled and frame_count % inference_skip == 0:
             try:
                 detected, annotated_frame = run_onnx_inference(frame)
             except Exception as error:
@@ -148,16 +200,21 @@ def vision_loop():
                     )
                 stop_event.wait(0.1)
                 continue
+            if ros_node is None or not ros_node.detection_enabled:
+                # STOP may arrive while inference is running.
+                detected = False
             cached_detected = detected
         else:
-            detected = cached_detected
+            detected = cached_detected if detection_enabled else False
             annotated_frame = frame.copy()
+            if not detection_enabled:
+                cached_detected = False
             
         target_currently_detected = detected
         
-        # مخابره پیام روی تاپیک واحد با ساختار UAV_1:TARGET_DETECTED_LAND
+        # Detection is report-only. Flight actions are decided elsewhere.
         if detected and ros_node is not None:
-            ros_node.publish_command("TARGET_DETECTED_LAND")
+            ros_node.publish_command("TARGET_DETECTED")
 
         fps = 1.0 / (current_time - prev_time) if (current_time - prev_time) > 0 else 0
         prev_time = current_time

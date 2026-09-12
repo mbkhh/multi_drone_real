@@ -146,7 +146,7 @@ class FlightVisionNode(Node):
             return
         self.last_command_time = now
         message = String()
-        message.data = f'{self.uav_id}:TARGET_DETECTED_LAND'
+        message.data = f'{self.uav_id}:TARGET_DETECTED'
         self.command_publisher.publish(message)
         self.get_logger().info(f'Published vision command: {message.data}')
 
@@ -167,6 +167,9 @@ class FlightVisionNode(Node):
             except Exception as error:
                 self.get_logger().error(f'Vision inference failed: {error}')
                 self.detection_enabled = False
+                continue
+            if not self.detection_enabled:
+                # STOP may arrive while inference is running.
                 continue
             if not detected:
                 continue

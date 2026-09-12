@@ -418,6 +418,65 @@ def test_leader_accepts_relative_yaw_command_from_station():
     assert received == [-20.0]
 
 
+def test_leader_bridges_station_vision_start_and_stop_to_trigger_topic():
+    leader = SimpleNamespace(
+        message='',
+        get_logger=lambda: DummyLogger(),
+    )
+    communication = object.__new__(Communication)
+    communication.parent_node = leader
+    communication.vision_trigger_publisher = DummyPublisher()
+
+    start_command = String()
+    start_command.data = json.dumps({
+        'command': 'start_detection',
+        'class_ids': [32, 0, 32],
+    })
+    communication.command_leader_callback(start_command)
+
+    assert communication.vision_trigger_publisher.last_message.data == (
+        'START:32,0'
+    )
+    assert leader.message == 'VISION STARTED: START:32,0'
+
+    stop_command = String()
+    stop_command.data = json.dumps({'command': 'stop_detection'})
+    communication.command_leader_callback(stop_command)
+
+    assert communication.vision_trigger_publisher.last_message.data == 'STOP'
+    assert leader.message == 'VISION STOPPED'
+
+
+def test_vision_detection_only_queues_a_station_status_report():
+    leader = SimpleNamespace(
+        message='',
+        get_logger=lambda: DummyLogger(),
+    )
+    communication = object.__new__(Communication)
+    communication.parent_node = leader
+
+    detection = String()
+    detection.data = 'UAV_1:TARGET_DETECTED'
+    communication.vision_detection_callback(detection)
+
+    assert leader.message == 'VISION TARGET DETECTED by UAV_1'
+
+
+def test_legacy_land_named_detection_is_report_only():
+    leader = SimpleNamespace(
+        message='',
+        get_logger=lambda: DummyLogger(),
+    )
+    communication = object.__new__(Communication)
+    communication.parent_node = leader
+
+    detection = String()
+    detection.data = 'UAV_1:TARGET_DETECTED_LAND'
+    communication.vision_detection_callback(detection)
+
+    assert leader.message == 'VISION TARGET DETECTED by UAV_1'
+
+
 def test_leader_loads_mission_file_locally_and_relays_only_start(monkeypatch):
     calls = []
     leader = SimpleNamespace(
