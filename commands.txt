@@ -147,3 +147,17 @@ ros2 run swarm_logger logger --ros-args \
 # reporting window is printed. Stop it with Ctrl-C, then flush files before a
 # normal shutdown.
 sync
+
+#vision commands
+./run_swarm_vision.sh flight --ros-args   -p uav_id:=UAV_1   -p camera_index:=0   -p input_size:=320   -p inference_threads:=1
+./run_swarm_vision.sh flight --ros-args   -p uav_id:=UAV_2   -p camera_index:=0   -p input_size:=320   -p inference_threads:=1
+./run_swarm_vision.sh flight --ros-args   -p uav_id:=UAV_3   -p camera_index:=0   -p input_size:=320   -p inference_threads:=1
+
+#vision web
+./run_swarm_vision.sh web --ros-args \
+  -p uav_id:=UAV_1 \
+  -p camera_index:=0 \
+  -p input_size:=320 \
+  -p inference_threads:=1 \
+  -p web_host:=0.0.0.0 \
+  -p web_port:=5000
