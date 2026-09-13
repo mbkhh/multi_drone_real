@@ -59,6 +59,8 @@ commands instead of publishing these topics manually:
 start_detection
 start_detection 32
 start_detection 0,2,32
+start_detection return_land
+start_detection return_land 32
 stop_detection
 ```
 
@@ -68,10 +70,20 @@ as `UAV_ID:TARGET_DETECTED` on `/swarm/vision_command`; the leader puts a
 report in its existing `/swarm/status` message, and the station prints it as
 `Message from leader: VISION TARGET DETECTED by UAV_ID`.
 
-This integration is report-only. A detection never changes a goal or flight
-state and never sends LAND, RTL, arm, disarm, or PX4 commands. The leader also
-accepts the older `TARGET_DETECTED_LAND` event name only so different drones
-can be upgraded without interpreting it as a landing request.
+`start_detection` remains report-only. With `start_detection return_land`, the
+first detection stops inference, cancels the active waypoint mission, and
+sets the leader's local goal to `[0, 0, detection_height]`. The followers keep
+following the leader normally. Once the leader is within the normal goal
+tolerance of that full XYZ goal, it starts the existing controlled landing on
+itself and sends the existing LAND command to the followers. It intentionally
+does not wait for follower position confirmation.
+
+The return action is accepted only while the leader is armed in Offboard,
+manual control is inactive, PX4/RC safety telemetry is valid, and the current
+height is inside the configured goal envelope. Report-only mode never changes
+the goal or flight state. The leader accepts the older
+`TARGET_DETECTED_LAND` event name for rolling upgrades, but its action is
+still selected only by the station's `report` or `return_land` mode.
 
 Both vision nodes wait for a `START` trigger before running inference. The web
 node can still show and record its camera stream while detection is stopped.

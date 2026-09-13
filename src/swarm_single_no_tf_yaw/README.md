@@ -119,6 +119,8 @@ can then control detection through the elected leader:
 start_detection
 start_detection 32
 start_detection 0,2,32
+start_detection return_land
+start_detection return_land 32
 stop_detection
 ```
 
@@ -132,8 +134,22 @@ message is introduced. The station prints a report such as:
 Message from leader: VISION TARGET DETECTED by UAV_1
 ```
 
-Vision is report-only in this version. Its callback does not call landing,
-RTL, goal, arming, disarming, Offboard, or PX4 command methods.
+Plain `start_detection` is report-only. `start_detection return_land` selects
+a one-shot response: the first target detection stops inference, aborts the
+active waypoint mission, and sends the leader toward absolute common-ENU
+`[x=0, y=0]` while preserving its measured detection height. Followers keep
+following the leader through the existing formation controller. When the
+leader reaches the complete `[0, 0, detection_height]` goal, the leader starts
+its existing controlled landing and broadcasts the existing LAND command.
+Follower arrival is deliberately not checked.
+
+This mode does not use PX4 RTL or auto-land. Return is rejected unless the
+leader is armed in Offboard, manual control is inactive, safety telemetry is
+valid, and detection height is inside the goal envelope. The fixed home goal
+may be farther away than the ordinary single `set_goal` distance limit;
+velocity and acceleration limits remain active for the full return.
+An explicit station move, yaw, mission, LAND, or manual-control request cancels
+the pending automatic return/landing sequence before applying that new request.
 
 ## Simulation
 

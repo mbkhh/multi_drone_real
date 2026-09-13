@@ -426,6 +426,9 @@ def test_leader_bridges_station_vision_start_and_stop_to_trigger_topic():
     communication = object.__new__(Communication)
     communication.parent_node = leader
     communication.vision_trigger_publisher = DummyPublisher()
+    communication.vision_detection_action = 'report'
+    communication.vision_return_land_active = False
+    communication.vision_return_height = None
 
     start_command = String()
     start_command.data = json.dumps({
@@ -437,7 +440,7 @@ def test_leader_bridges_station_vision_start_and_stop_to_trigger_topic():
     assert communication.vision_trigger_publisher.last_message.data == (
         'START:32,0'
     )
-    assert leader.message == 'VISION STARTED: START:32,0'
+    assert leader.message == 'VISION STARTED: START:32,0, action=report'
 
     stop_command = String()
     stop_command.data = json.dumps({'command': 'stop_detection'})
@@ -454,6 +457,7 @@ def test_vision_detection_only_queues_a_station_status_report():
     )
     communication = object.__new__(Communication)
     communication.parent_node = leader
+    communication.vision_detection_action = 'report'
 
     detection = String()
     detection.data = 'UAV_1:TARGET_DETECTED'
@@ -469,12 +473,133 @@ def test_legacy_land_named_detection_is_report_only():
     )
     communication = object.__new__(Communication)
     communication.parent_node = leader
+    communication.vision_detection_action = 'report'
 
     detection = String()
     detection.data = 'UAV_1:TARGET_DETECTED_LAND'
     communication.vision_detection_callback(detection)
 
     assert leader.message == 'VISION TARGET DETECTED by UAV_1'
+
+
+def test_selected_detection_returns_at_current_height_then_lands_swarm():
+    vehicle_status = VehicleStatus()
+    vehicle_status.arming_state = VehicleStatus.ARMING_STATE_ARMED
+    vehicle_status.nav_state = VehicleStatus.NAVIGATION_STATE_OFFBOARD
+    calls = SimpleNamespace(
+        aborted=[],
+        goal=None,
+        land_count=0,
+    )
+    leader = SimpleNamespace(
+        state='TAKEOFF',
+        vehicle_status=vehicle_status,
+        manual_control=False,
+        navigation=SimpleNamespace(current_pos=[12.0, -5.0, 3.0]),
+        min_goal_altitude=-0.5,
+        max_goal_altitude=5.0,
+        mission_goal_tolerance=0.4,
+        mission_active=True,
+        motion_enabled=False,
+        message='',
+        get_logger=lambda: DummyLogger(),
+        safety_violation_reason=lambda: None,
+    )
+
+    def abort_mission(reason):
+        calls.aborted.append(reason)
+        leader.mission_active = False
+
+    def set_local_goal(goal):
+        calls.goal = list(goal)
+
+    def request_land():
+        calls.land_count += 1
+        leader.state = 'LANDING'
+        return True
+
+    leader.abort_mission = abort_mission
+    leader.set_local_goal = set_local_goal
+    leader.request_land = request_land
+
+    communication = object.__new__(Communication)
+    communication.parent_node = leader
+    communication.vision_detection_action = 'return_land'
+    communication.vision_return_land_active = False
+    communication.vision_trigger_publisher = DummyPublisher()
+    communication.vision_return_height = None
+    communication.command_publisher = DummyPublisher()
+    communication.GOAL_TOLERANCE = 0.1
+
+    detection = String()
+    detection.data = 'UAV_1:TARGET_DETECTED'
+    communication.vision_detection_callback(detection)
+
+    assert calls.aborted == [
+        'target detected; return-home landing selected'
+    ]
+    assert calls.goal == [0.0, 0.0, 3.0]
+    assert leader.motion_enabled
+    assert communication.vision_return_land_active
+    assert communication.vision_trigger_publisher.last_message.data == 'STOP'
+    assert calls.land_count == 0
+
+    leader.navigation.current_pos = [0.2, -0.1, 3.6]
+    communication.update_vision_return_land()
+    assert calls.land_count == 0
+
+    leader.navigation.current_pos = [0.2, -0.1, 3.0]
+    communication.update_vision_return_land()
+
+    assert calls.land_count == 1
+    assert json.loads(
+        communication.command_publisher.last_message.data
+    ) == {'command': 'land'}
+    assert not communication.vision_return_land_active
+
+
+def test_return_land_detection_is_rejected_outside_offboard():
+    vehicle_status = VehicleStatus()
+    leader = SimpleNamespace(
+        state='IDLE',
+        vehicle_status=vehicle_status,
+        message='',
+        get_logger=lambda: DummyLogger(),
+    )
+    communication = object.__new__(Communication)
+    communication.parent_node = leader
+    communication.vision_detection_action = 'return_land'
+    communication.vision_return_land_active = False
+    communication.vision_trigger_publisher = DummyPublisher()
+
+    detection = String()
+    detection.data = 'UAV_1:TARGET_DETECTED'
+    communication.vision_detection_callback(detection)
+
+    assert 'RETURN REJECTED' in leader.message
+    assert not communication.vision_return_land_active
+    assert communication.vision_detection_action == 'report'
+    assert communication.vision_trigger_publisher.last_message.data == 'STOP'
+
+
+def test_explicit_override_cancels_pending_vision_landing():
+    leader = SimpleNamespace(
+        message='',
+        get_logger=lambda: DummyLogger(),
+    )
+    communication = object.__new__(Communication)
+    communication.parent_node = leader
+    communication.vision_detection_action = 'report'
+    communication.vision_return_land_active = True
+    communication.vision_return_height = 3.0
+
+    communication.cancel_vision_return_land('station move/set_goal command')
+
+    assert not communication.vision_return_land_active
+    assert communication.vision_return_height is None
+    assert leader.message == (
+        'VISION RETURN CANCELLED: station move/set_goal command'
+    )
 
 
 def test_leader_loads_mission_file_locally_and_relays_only_start(monkeypatch):

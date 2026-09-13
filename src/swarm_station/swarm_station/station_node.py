@@ -216,7 +216,9 @@ class StationNode(Node):
 		msg = String()
 		msg.data = json.dumps({"command": "land"})
 		self.command_publisher.publish(msg)
-	def send_start_detection_command(self, class_ids=None):
+	def send_start_detection_command(
+		self, class_ids=None, on_detection='report'
+	):
 		"""Ask the leader to start vision for selected COCO class IDs."""
 		if class_ids is None:
 			class_ids = [32]
@@ -224,6 +226,7 @@ class StationNode(Node):
 		msg.data = json.dumps({
 			"command": "start_detection",
 			"class_ids": [int(class_id) for class_id in class_ids],
+			"on_detection": str(on_detection),
 		})
 		self.command_publisher.publish(msg)
 	def send_stop_detection_command(self):
@@ -388,18 +391,31 @@ class StationNode(Node):
 							case 'land':
 								self.send_land_command()
 							case 'start_detection':
-								if len(command) > 2:
+								if len(command) > 3:
 									self.get_logger().error(
 										'Invalid command. Usage: start_detection '
+										'[report|return_land] '
 										'[class_id,class_id,...]'
 									)
 								else:
+									on_detection = 'report'
 									class_ids = [32]
-									if len(command) == 2:
+									arguments = command[1:]
+									if arguments and arguments[0] in (
+										'report', 'return_land'
+									):
+										on_detection = arguments.pop(0)
+									if len(arguments) > 1:
+										class_ids = None
+										self.get_logger().error(
+											'Invalid command. Put the action before '
+											'the optional class list.'
+										)
+									elif arguments:
 										try:
 											class_ids = [
 												int(value)
-												for value in command[1].split(',')
+												for value in arguments[0].split(',')
 												if value
 											]
 										except ValueError:
@@ -421,7 +437,9 @@ class StationNode(Node):
 											'from 0 through 79.'
 										)
 									if class_ids is not None:
-										self.send_start_detection_command(class_ids)
+										self.send_start_detection_command(
+											class_ids, on_detection
+										)
 							case 'stop_detection':
 								if len(command) != 1:
 									self.get_logger().error(

@@ -24,6 +24,8 @@ VISION_TRIGGER_TOPIC = '/swarm/vision_trigger'
 VISION_DETECTION_TOPIC = '/swarm/vision_command'
 VISION_EVENT_TARGET_DETECTED = 'TARGET_DETECTED'
 VISION_EVENT_TARGET_DETECTED_LEGACY = 'TARGET_DETECTED_LAND'
+VISION_ACTION_REPORT = 'report'
+VISION_ACTION_RETURN_LAND = 'return_land'
 
 
 class Communication():
@@ -107,6 +109,9 @@ class Communication():
         self.status_timer = None
         self.vision_trigger_publisher = None
         self.vision_detection_subscriber = None
+        self.vision_detection_action = VISION_ACTION_REPORT
+        self.vision_return_land_active = False
+        self.vision_return_height = None
 
         # --- Action Server State --- ### NEW ###
         self._action_goal_handle = None
@@ -120,6 +125,7 @@ class Communication():
         """Handles manual control commands from the user."""
         #self.parent_node.get_logger().info(f"Manual Control: {msg.vx}, {msg.vy}, {msg.vz}, {msg.vyaw}")
         if msg.manual_mode:
+            self.cancel_vision_return_land('manual control requested')
             if self.parent_node.mission_active:
                 self.parent_node.abort_mission('manual control requested')
             self.parent_node.manual_control = True
@@ -145,6 +151,8 @@ class Communication():
 
     def _broadcast_status(self):
         # self.parent_node.get_logger().info("publishing status")
+
+        self.update_vision_return_land()
 
         msg = Status()
         msg.timestamp = int(self.parent_node.get_clock().now().nanoseconds / 1000)
@@ -327,6 +335,9 @@ class Communication():
         self.status_timer = None
         self.vision_trigger_publisher = None
         self.vision_detection_subscriber = None
+        self.vision_detection_action = VISION_ACTION_REPORT
+        self.vision_return_land_active = False
+        self.vision_return_height = None
 
     def command_callback(self, msg: String):
         self.parent_node.get_logger().info(f"Follower received command payload: {msg.data}")
@@ -390,6 +401,7 @@ class Communication():
                     "Leader: publishing ARM command."
                 )
         elif command_type == "takeoff":
+            self.cancel_vision_return_land('station TAKEOFF command')
             height = cmd.get("height", 3.0)
             if self.execute_takeoff(height):
                 out_msg = String()
@@ -402,6 +414,7 @@ class Communication():
                     f"Leader: publishing {float(height):.2f} m TAKEOFF command."
                 )
         elif command_type == "yaw":
+            self.cancel_vision_return_land('station yaw command')
             delta_degrees = cmd.get("delta_degrees")
             if self.parent_node.request_relative_yaw(delta_degrees):
                 self.parent_node.get_logger().info(
@@ -409,6 +422,7 @@ class Communication():
                     f"{float(delta_degrees):+.1f} degrees."
                 )
         elif command_type == "fly":
+            self.cancel_vision_return_land('station move/set_goal command')
             x = float(cmd.get("x"))
             y = float(cmd.get("y"))
             z = float(cmd.get("z"))
@@ -432,6 +446,7 @@ class Communication():
         elif command_type == "disarm_leader":
             self.parent_node.request_safe_disarm()
         elif command_type == "land":
+            self.cancel_vision_return_land('station LAND command')
             if self.parent_node.request_land():
                 out_msg = String()
                 out_msg.data = json.dumps({"command": "land"})
@@ -465,6 +480,24 @@ class Communication():
             self.command_publisher.publish(out_msg)
             self.parent_node.get_logger().info("Leader: Publishing stop animation command.")
         elif command_type == 'start_detection':
+            detection_action = str(
+                cmd.get('on_detection', VISION_ACTION_REPORT)
+            ).strip().lower()
+            if detection_action not in (
+                VISION_ACTION_REPORT,
+                VISION_ACTION_RETURN_LAND,
+            ):
+                self.parent_node.get_logger().error(
+                    'Vision start rejected: on_detection must be report or '
+                    'return_land.'
+                )
+                return
+            if self.vision_return_land_active:
+                self.parent_node.get_logger().error(
+                    'Vision start rejected: return-home landing is already '
+                    'active.'
+                )
+                return
             class_ids = cmd.get('class_ids')
             if class_ids is None:
                 trigger_payload = 'START'
@@ -510,12 +543,16 @@ class Communication():
                 return
             trigger = String()
             trigger.data = trigger_payload
+            self.vision_detection_action = detection_action
+            self.vision_return_height = None
             self.vision_trigger_publisher.publish(trigger)
             self.parent_node.message = (
-                f'VISION STARTED: {trigger_payload}'
+                f'VISION STARTED: {trigger_payload}, '
+                f'action={detection_action}'
             )
             self.parent_node.get_logger().info(
-                f'Leader published vision trigger: {trigger_payload}'
+                f'Leader published vision trigger: {trigger_payload}; '
+                f'on detection={detection_action}.'
             )
         elif command_type == 'stop_detection':
             if self.vision_trigger_publisher is None:
@@ -527,11 +564,15 @@ class Communication():
             trigger = String()
             trigger.data = 'STOP'
             self.vision_trigger_publisher.publish(trigger)
-            self.parent_node.message = 'VISION STOPPED'
+            if not self.vision_return_land_active:
+                self.vision_detection_action = VISION_ACTION_REPORT
+                self.vision_return_height = None
+                self.parent_node.message = 'VISION STOPPED'
             self.parent_node.get_logger().info(
                 'Leader published vision trigger: STOP'
             )
         elif command_type == 'mission':
+            self.cancel_vision_return_land('station mission command')
             waypoint_file = cmd.get("waypoint_file")
             mission = cmd.get("points")
             if waypoint_file is not None:
@@ -610,13 +651,162 @@ class Communication():
             )
             return
 
-        # The legacy event name is accepted for rolling upgrades, but neither
-        # event causes LAND, RTL, a goal change, or any other flight action.
         report = f'VISION TARGET DETECTED by {source}'
         self.parent_node.message = report
         self.parent_node.get_logger().warning(
-            f'{report}; queued for Ground Station status report only.'
+            f'{report}; queued for Ground Station status report.'
         )
+        if self.vision_detection_action == VISION_ACTION_RETURN_LAND:
+            self.start_vision_return_land(source)
+
+    def start_vision_return_land(self, source):
+        """Latch a safe horizontal return to [0, 0] at current altitude."""
+        if self.vision_return_land_active:
+            return
+
+        # Consume this one-shot action before checking flight state. A failed
+        # safety check must not retry on every camera frame.
+        self.vision_detection_action = VISION_ACTION_REPORT
+        if self.vision_trigger_publisher is not None:
+            trigger = String()
+            trigger.data = 'STOP'
+            self.vision_trigger_publisher.publish(trigger)
+
+        if (
+            self.parent_node.state != 'TAKEOFF'
+            or self.parent_node.vehicle_status.arming_state
+            != VehicleStatus.ARMING_STATE_ARMED
+            or self.parent_node.vehicle_status.nav_state
+            != VehicleStatus.NAVIGATION_STATE_OFFBOARD
+        ):
+            self.parent_node.message = (
+                f'VISION TARGET DETECTED by {source}; RETURN REJECTED: '
+                'leader is not armed in Offboard'
+            )
+            self.parent_node.get_logger().error(self.parent_node.message)
+            return
+        if self.parent_node.manual_control:
+            self.parent_node.message = (
+                f'VISION TARGET DETECTED by {source}; RETURN REJECTED: '
+                'manual control is active'
+            )
+            self.parent_node.get_logger().error(self.parent_node.message)
+            return
+
+        safety_violation = self.parent_node.safety_violation_reason()
+        if safety_violation is not None:
+            self.parent_node.message = (
+                f'VISION TARGET DETECTED by {source}; RETURN REJECTED: '
+                f'{safety_violation}'
+            )
+            self.parent_node.get_logger().error(self.parent_node.message)
+            return
+
+        current = [
+            float(value)
+            for value in self.parent_node.navigation.current_pos[:3]
+        ]
+        if not all(math.isfinite(value) for value in current):
+            self.parent_node.message = (
+                f'VISION TARGET DETECTED by {source}; RETURN REJECTED: '
+                'leader position is not finite'
+            )
+            self.parent_node.get_logger().error(self.parent_node.message)
+            return
+        if not (
+            self.parent_node.min_goal_altitude
+            <= current[2]
+            <= self.parent_node.max_goal_altitude
+        ):
+            self.parent_node.message = (
+                f'VISION TARGET DETECTED by {source}; RETURN REJECTED: '
+                'current height is outside the goal safety envelope'
+            )
+            self.parent_node.get_logger().error(self.parent_node.message)
+            return
+
+        if self.parent_node.mission_active:
+            self.parent_node.abort_mission(
+                'target detected; return-home landing selected'
+            )
+
+        # Home is a fixed trusted target. Use the normal local-goal state, but
+        # do not apply the ordinary one-command distance limit: the configured
+        # mission can legitimately finish much farther than that limit from
+        # [0, 0]. Velocity and acceleration limits remain fully active.
+        self.vision_return_height = current[2]
+        self.parent_node.set_local_goal(
+            [0.0, 0.0, self.vision_return_height]
+        )
+        self.parent_node.motion_enabled = True
+        self.vision_return_land_active = True
+
+        home_distance = math.hypot(current[0], current[1])
+        self.parent_node.message = (
+            f'VISION TARGET DETECTED by {source}; RETURNING HOME from '
+            f'{home_distance:.2f} m at z={self.vision_return_height:.2f}'
+        )
+        self.parent_node.get_logger().warning(self.parent_node.message)
+
+    def update_vision_return_land(self):
+        """Land the swarm once the returning leader reaches home."""
+        if not self.vision_return_land_active:
+            return
+        if self.parent_node.state != 'TAKEOFF':
+            self.vision_return_land_active = False
+            self.vision_return_height = None
+            self.parent_node.message = (
+                'VISION RETURN CANCELLED: leader left active Offboard flight'
+            )
+            self.parent_node.get_logger().warning(self.parent_node.message)
+            return
+
+        current = [
+            float(value)
+            for value in self.parent_node.navigation.current_pos[:3]
+        ]
+        if not all(math.isfinite(value) for value in current):
+            return
+        return_height = self.vision_return_height
+        if return_height is None or not math.isfinite(float(return_height)):
+            self.cancel_vision_return_land(
+                'saved return height is unavailable'
+            )
+            return
+        tolerance = max(
+            float(self.GOAL_TOLERANCE),
+            float(self.parent_node.mission_goal_tolerance),
+        )
+        target = [0.0, 0.0, float(return_height)]
+        if math.dist(current, target) > tolerance:
+            return
+
+        if self.parent_node.request_land():
+            out_msg = String()
+            out_msg.data = json.dumps({'command': 'land'})
+            self.command_publisher.publish(out_msg)
+            self.parent_node.message = (
+                'VISION RETURN HOME COMPLETE: leader reached [0, 0]; '
+                'LAND sent to swarm'
+            )
+            self.parent_node.get_logger().warning(self.parent_node.message)
+        else:
+            self.parent_node.message = (
+                'VISION RETURN HOME COMPLETE: leader LAND request rejected'
+            )
+            self.parent_node.get_logger().error(self.parent_node.message)
+        self.vision_return_land_active = False
+        self.vision_return_height = None
+
+    def cancel_vision_return_land(self, reason):
+        """Cancel a pending automatic landing when control is overridden."""
+        if not getattr(self, 'vision_return_land_active', False):
+            return
+        self.vision_return_land_active = False
+        self.vision_return_height = None
+        self.vision_detection_action = VISION_ACTION_REPORT
+        self.parent_node.message = f'VISION RETURN CANCELLED: {reason}'
+        self.parent_node.get_logger().warning(self.parent_node.message)
 
     def execute_takeoff(self, height):
         try:
