@@ -161,3 +161,106 @@ sync
   -p inference_threads:=1 \
   -p web_host:=0.0.0.0 \
   -p web_port:=5000
+
+# =============================================================================
+# Decentralized control (swarm_single_decenter)
+# =============================================================================
+# IMPORTANT:
+# - Run only one control package on each real drone.
+# - Real flight uses the normal ROS domain. Clear any simulation-only domain.
+# - Keep Fast DDS selected so the laptop station can communicate with the Pis.
+
+# Build/update the decentralized packages on each computer
+colcon build --packages-select \
+  swarm_msgs swarm_config swarm_single_decenter swarm_station_decenter
+source install/setup.bash
+
+
+# Real drone 1
+unset ROS_DOMAIN_ID
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+ros2 run swarm_single_decenter control_node --ros-args \
+  -p frame_id:=1 \
+  -r __node:=control_node_decenter_d1
+
+# Real drone 2
+unset ROS_DOMAIN_ID
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+ros2 run swarm_single_decenter control_node --ros-args \
+  -p frame_id:=2 \
+  -r __node:=control_node_decenter_d2
+
+# Real drone 3
+unset ROS_DOMAIN_ID
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+ros2 run swarm_single_decenter control_node --ros-args \
+  -p frame_id:=3 \
+  -r __node:=control_node_decenter_d3
+
+
+# Decentralized station on the laptop for REAL drones
+unset ROS_DOMAIN_ID
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+ros2 daemon stop
+ros2 run swarm_station_decenter station
+
+
+# Decentralized three-drone simulation.
+# Domain 99 isolates SITL from real drones. Use domain 99 in every additional
+# simulation terminal, but NEVER use it for the real-drone station.
+export ROS_DOMAIN_ID=99
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+ros2 daemon stop
+ros2 launch swarm_single_decenter fullsim_decenter.launch.py
+
+
+# Commands typed inside swarm_station_decenter
+#
+# Local station commands
+help
+status
+exit
+
+# Normal all-drone sequence
+all arm
+status
+all takeoff 3
+all mission
+status
+all land
+
+# The default mission above loads:
+# waypoints_decentralized_36x34.yaml
+#
+# Use another mission file for every drone:
+all mission waypoints_decentralized_36x34.yaml
+
+# Commands without a target also go to all drones:
+arm
+takeoff 3
+mission
+land
+
+# Target one drone by numeric ID or by "drone ID":
+2 arm
+drone 2 takeoff 3
+2 move 10 12 2
+2 set_goal 10 12 2
+2 move_relative 1 -2 0
+2 yaw -22.5
+2 mission
+2 mission waypoints_decentralized_36x34.yaml
+2 abort_mission
+2 land
+2 disarm
+
+# Emergency/mission management for all drones
+all abort_mission
+all land
+all disarm
+
+# Coordinate behavior:
+# - move and set_goal use absolute shared ENU coordinates.
+# - move_relative adds x/y/z to each selected drone's current goal.
+# - yaw is a relative change in degrees.
+# - status is local to the station and shows every recently connected drone.
