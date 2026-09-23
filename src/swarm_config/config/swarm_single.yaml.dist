@@ -611,10 +611,13 @@ mission:
   max_waypoints: 200
 navigation:
   time_step: 0.016
-  neighbor_dist: 0.5
+  # Start considering another drone well before the two collision radii
+  # overlap. This is shared by TF-free and decentralized navigation.
+  neighbor_dist: 6.0
   max_neighbors: 20
-  time_horizon: 3.0
-  radius: 0.5
+  time_horizon: 5.0
+  # Effective safety radius per drone; two drones preserve 1.5 m combined.
+  radius: 0.75
   max_speed: 1.0
   good_dist_to_goal: 0.1
   # Freshness uses local callback/observation time, so peer clock offsets do
