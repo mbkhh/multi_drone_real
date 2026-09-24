@@ -189,6 +189,59 @@ class DecentralizedStationNode(Node):
                 self.publish_command(target, command)
                 return
 
+            if command in ('start_detection', 'start_dection'):
+                if target != 'all':
+                    raise ValueError(
+                        'Detection is swarm-wide. Use: start_detection '
+                        '[report|return_land] [class_id,class_id,...]'
+                    )
+                if len(arguments) > 2:
+                    raise ValueError(
+                        'Usage: start_detection [report|return_land] '
+                        '[class_id,class_id,...]'
+                    )
+                on_detection = 'report'
+                if arguments and arguments[0].lower() in (
+                    'report',
+                    'return_land',
+                ):
+                    on_detection = arguments.pop(0).lower()
+                if len(arguments) > 1:
+                    raise ValueError(
+                        'Put the action before the optional detection class list'
+                    )
+                class_ids = [32]
+                if arguments:
+                    try:
+                        class_ids = [
+                            int(value)
+                            for value in arguments[0].split(',')
+                            if value
+                        ]
+                    except ValueError as error:
+                        raise ValueError(
+                            'Detection class IDs must be comma-separated integers'
+                        ) from error
+                if not class_ids or any(
+                    class_id < 0 or class_id > 79 for class_id in class_ids
+                ):
+                    raise ValueError(
+                        'Detection class IDs must be integers from 0 through 79'
+                    )
+                self.publish_command(
+                    'all',
+                    'start_detection',
+                    class_ids=class_ids,
+                    on_detection=on_detection,
+                )
+                return
+
+            if command == 'stop_detection':
+                if target != 'all' or arguments:
+                    raise ValueError('Usage: stop_detection')
+                self.publish_command('all', 'stop_detection')
+                return
+
             if command == 'takeoff':
                 if len(arguments) > 1:
                     raise ValueError('Usage: [all|ID] takeoff [height]')
@@ -266,6 +319,9 @@ class DecentralizedStationNode(Node):
             '  [all|ID|drone ID] abort_mission\n'
             '  [all|ID|drone ID] land\n'
             '  [all|ID|drone ID] disarm\n'
+            '  start_detection [report|return_land] [class_id,class_id,...]\n'
+            '  stop_detection\n'
+            'Detection commands are always swarm-wide.\n'
             'A command without a target is sent to all drones.'
         )
 

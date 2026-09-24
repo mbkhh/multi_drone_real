@@ -26,6 +26,14 @@ class DummyLogger:
         self.infos.append(message)
 
 
+class DummyPublisher:
+    def __init__(self):
+        self.messages = []
+
+    def publish(self, message):
+        self.messages.append(message)
+
+
 def make_communication(drone_id=2):
     logger = DummyLogger()
     node = SimpleNamespace(
@@ -143,3 +151,83 @@ def test_takeoff_rejects_nonfinite_local_position():
 
     assert not communication.execute_takeoff(2.0)
     assert 'not finite' in logger.errors[-1]
+
+
+def test_start_detection_publishes_unchanged_vision_trigger():
+    communication, node, _ = make_communication(1)
+    communication.vision_trigger_publisher = DummyPublisher()
+    communication.vision_return_land_active = False
+    communication.vision_return_target = None
+    communication.vision_detection_action = 'report'
+    node.message = ''
+
+    communication.execute_start_detection({
+        'class_ids': [32, 29],
+        'on_detection': 'return_land',
+    })
+
+    assert communication.vision_detection_action == 'return_land'
+    assert communication.vision_trigger_publisher.messages[-1].data == (
+        'START:32,29'
+    )
+
+
+def test_detection_returns_each_drone_to_its_configured_home_then_lands(
+    monkeypatch,
+):
+    homes = {
+        1: [0.0, 0.0, 0.0],
+        2: [0.0, 5.0, 0.0],
+        3: [0.0, 10.0, 0.0],
+    }
+    monkeypatch.setattr(
+        communication_module,
+        'get_config',
+        lambda key: 0.1 if key == 'swarm_single.goal_tolerance' else None,
+    )
+
+    for drone_id, home in homes.items():
+        communication, node, _ = make_communication(drone_id)
+        status = VehicleStatus()
+        status.arming_state = VehicleStatus.ARMING_STATE_ARMED
+        status.nav_state = VehicleStatus.NAVIGATION_STATE_OFFBOARD
+        goals = []
+        land_requests = []
+        mission_aborts = []
+        node.state = 'TAKEOFF'
+        node.vehicle_status = status
+        node.manual_control = False
+        node.safety_violation_reason = lambda: None
+        node.initial_world_position = home
+        node.navigation = SimpleNamespace(current_pos=[12.0, 18.0, 2.4])
+        node.min_goal_altitude = -0.5
+        node.max_goal_altitude = 5.0
+        node.mission_active = True
+        node.abort_mission = lambda reason: mission_aborts.append(reason)
+        node.set_local_goal = lambda goal: goals.append(list(goal))
+        node.motion_enabled = False
+        node.mission_goal_tolerance = 0.3
+        node.message = ''
+        node.request_land = lambda: land_requests.append(True) or True
+        communication.vision_trigger_publisher = DummyPublisher()
+        communication.vision_detection_action = 'return_land'
+        communication.vision_return_land_active = False
+        communication.vision_return_target = None
+
+        detection = String()
+        detection.data = 'UAV_2:TARGET_DETECTED'
+        communication.vision_detection_callback(detection)
+
+        expected_target = [home[0], home[1], 2.4]
+        assert goals == [expected_target]
+        assert mission_aborts
+        assert node.motion_enabled
+        assert communication.vision_return_land_active
+        assert communication.vision_trigger_publisher.messages[-1].data == 'STOP'
+
+        node.navigation.current_pos = expected_target
+        communication.update_vision_return_land()
+
+        assert land_requests == [True]
+        assert not communication.vision_return_land_active
+        assert communication.vision_return_target is None

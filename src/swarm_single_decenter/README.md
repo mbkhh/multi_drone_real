@@ -31,6 +31,26 @@ its position. A final predicted-closest-approach filter removes closing speed
 and gives the pair opposite horizontal escape directions if a close pass is
 still predicted. It logs `[COLLISION AVOIDANCE]` when that backup activates.
 
+## Vision detection and decentralized return
+
+The existing `swarm_vision` nodes are used without modification. Start a
+swarm-wide detection response from `swarm_station_decenter` with:
+
+```text
+start_detection return_land 32,29
+```
+
+All decentralized controllers subscribe to `/swarm/vision_command`. The first
+valid target event stops detection, aborts each active mission, and sends every
+armed Offboard drone horizontally home at its current altitude. Home is that
+drone's configured `initial_world_position`: `[0, 0]`, `[0, 5]`, and `[0, 10]`
+for drones 1, 2, and 3 with the current configuration. Each drone starts its
+existing controlled landing independently after reaching its own home target.
+
+`start_detection report 32,29` reports detections without changing flight, and
+`stop_detection` stops inference. Detection commands are deliberately
+swarm-wide; they cannot target only one decentralized drone.
+
 ## Build
 
 ```bash

@@ -132,3 +132,33 @@ def test_status_command_prints_all_cached_drones():
     assert 'Connected drones: [1, 2]' in output
     assert '[1] state=TAKEOFF' in output
     assert '[2] state=TAKEOFF' in output
+
+
+def test_start_detection_return_land_is_sent_to_all_drones():
+    station = make_station()
+
+    station.handle_command('start_detection return_land 32,29')
+
+    assert last_payload(station) == {
+        'target': 'all',
+        'command': 'start_detection',
+        'class_ids': [32, 29],
+        'on_detection': 'return_land',
+    }
+
+
+def test_misspelled_start_dection_alias_is_supported():
+    station = make_station()
+
+    station.handle_command('start_dection return_land 32,29')
+
+    assert last_payload(station)['command'] == 'start_detection'
+
+
+def test_detection_cannot_be_started_for_only_one_drone():
+    station = make_station()
+
+    station.handle_command('2 start_detection return_land 32')
+
+    assert not station.command_publisher.messages
+    assert 'swarm-wide' in station.logger.errors[-1]

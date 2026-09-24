@@ -18,6 +18,10 @@ all takeoff 3
 all mission waypoints_decentralized_36x34.yaml
 all land
 
+start_detection return_land 32,29
+start_detection report 32,29
+stop_detection
+
 2 arm
 2 takeoff 3
 2 mission
@@ -42,3 +46,8 @@ all mission
 
 Wait for `status` to show all drones armed and in Offboard before takeoff, and
 confirm takeoff before starting the mission.
+
+Vision commands are always sent to all drones. In `return_land` mode, a target
+event from any unchanged `swarm_vision` node makes every armed Offboard drone
+return at its current height to its own configured initial position and then
+start its existing controlled landing independently.
