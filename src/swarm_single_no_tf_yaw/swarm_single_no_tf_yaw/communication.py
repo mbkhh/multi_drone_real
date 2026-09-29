@@ -571,6 +571,34 @@ class Communication():
             self.parent_node.get_logger().info(
                 'Leader published vision trigger: STOP'
             )
+        elif command_type == 'online_mission':
+            self.cancel_vision_return_land('station online mission command')
+            parameters = cmd.get("parameters", {})
+            if not isinstance(parameters, dict):
+                self.parent_node.get_logger().error(
+                    'Online mission rejected: parameters must be an object.'
+                )
+                return
+            try:
+                accepted, plan = (
+                    self.parent_node.online_waypoint_generator.start_mission(
+                        parameters
+                    )
+                )
+            except (TypeError, ValueError, RuntimeError, OverflowError) as error:
+                self.parent_node.get_logger().error(
+                    f'Online mission rejected: {error}'
+                )
+                return
+            if not accepted:
+                return
+            leader_waypoint_count = len(plan["waypoints"].get(1, []))
+            self.parent_node.message = (
+                f'ONLINE MISSION STARTED: {leader_waypoint_count} '
+                f'leader waypoints; generated {len(plan["waypoints"])} paths'
+            )
+            self.parent_node.get_logger().info(self.parent_node.message)
+            self.send_mission()
         elif command_type == 'mission':
             self.cancel_vision_return_land('station mission command')
             waypoint_file = cmd.get("waypoint_file")

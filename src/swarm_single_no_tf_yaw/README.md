@@ -162,3 +162,30 @@ colcon build --packages-select swarm_config swarm_msgs px4_msgs \
 source install/setup.bash
 ros2 launch swarm_sim fullsim_no_tf_yaw.launch.py
 ```
+## Online coverage missions
+
+The separate `online_mission` command runs the supplied coverage planner on
+the elected leader. It generates all vehicle paths locally and then sends only
+the generated leader path through the existing mission state machine; the
+offline `mission [waypoint_file]` command is unchanged.
+
+Use key=value inputs (all values have planner defaults, so only the values you
+need to change are required):
+
+```text
+online_mission Lx=34 Ly=36 num_quads=3 d=4 min_turn_radius=4 coverage_spacing=4 ds_waypoint=1 altitude=4 turn_waypoints=8
+```
+
+The available inputs are `Lx`, `Ly`, `num_quads`, `d`,
+`min_turn_radius`, `coverage_spacing`, `max_path_length`,
+`ds_waypoint`, `altitude`, and `turn_waypoints`. Use
+`relative_to_start=true` when the generated x/y/z values should be offsets
+from the leader pose when the command is accepted; the default is absolute
+common-ENU coordinates. `altitude` must stay inside the controller's normal
+goal-altitude safety limits.
+
+Run `arm`, wait for Offboard, run `takeoff`, settle the formation, and then
+issue `online_mission`. The planner's `d` and `num_quads` should match the
+formation spacing and number of vehicles. Generated straight legs are sampled
+at `ds_waypoint`, and the normal mission waypoint-count, leg-distance,
+telemetry, yaw, and timeout safety checks still apply.

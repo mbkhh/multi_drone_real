@@ -19,6 +19,7 @@ from px4_msgs.msg import (
 )
 
 from swarm_single_no_tf_yaw.navigation import navigation
+from swarm_single_no_tf_yaw.online_waypoint_generator import OnlineWaypointGenerator
 from swarm_single_no_tf_yaw.formation import PatternController
 # from swarm_single_no_tf_yaw.lidar_handler import lidarHandler
 from swarm_single_no_tf_yaw.communication import Communication
@@ -267,6 +268,7 @@ class SingleControlNode(Node):
         )
 
         self.navigation = navigation(self)
+        self.online_waypoint_generator = OnlineWaypointGenerator(self)
         self.formation = PatternController(self)
         self.communication = Communication(self)
 

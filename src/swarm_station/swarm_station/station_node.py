@@ -335,6 +335,94 @@ class StationNode(Node):
 		)
 		return True
 
+	def send_online_mission(self, parameters=None):
+		"""Send a separate command that generates coverage waypoints on leader."""
+		if self.last_status is None:
+			self.get_logger().error(
+				"Online mission not sent: no current leader status is available."
+			)
+			return False
+		if not (
+			self.last_status.control_state == "TAKEOFF"
+			and self.last_status.armed
+			and self.last_status.offboard
+		):
+			self.get_logger().error(
+				"Online mission not sent: run 'arm' first and wait until status "
+				"reports armed=True, offboard=True."
+			)
+			return False
+
+		if parameters is None:
+			parameters = {}
+		if not isinstance(parameters, dict):
+			self.get_logger().error(
+				"Online mission not sent: parameters must be key=value pairs."
+			)
+			return False
+
+		allowed = {
+			"lx", "ly", "num_quads", "d", "min_turn_radius",
+			"coverage_spacing", "max_path_length", "ds_waypoint", "altitude",
+			"turn_waypoints", "relative_to_start",
+		}
+		normalized = {}
+		for key, value in parameters.items():
+			key = str(key).lower()
+			if key not in allowed:
+				self.get_logger().error(
+					f"Online mission not sent: unknown input '{key}'."
+				)
+				return False
+			if key == "relative_to_start":
+				if isinstance(value, bool):
+					normalized[key] = value
+				elif str(value).lower() in ("true", "yes", "1"):
+					normalized[key] = True
+				elif str(value).lower() in ("false", "no", "0"):
+					normalized[key] = False
+				else:
+					self.get_logger().error(
+						"Online mission input relative_to_start must be true or false."
+					)
+					return False
+				continue
+			if key == "max_path_length" and str(value).lower() in (
+				"inf", "+inf", "infinity", "+infinity"
+			):
+				normalized[key] = "inf"
+				continue
+			try:
+				numeric = float(value)
+			except (TypeError, ValueError):
+				self.get_logger().error(
+					f"Online mission input {key} must be numeric."
+				)
+				return False
+			if not math.isfinite(numeric):
+				self.get_logger().error(
+					f"Online mission input {key} must be finite."
+				)
+				return False
+			if key in ("num_quads", "turn_waypoints") and int(numeric) != numeric:
+				self.get_logger().error(
+					f"Online mission input {key} must be an integer."
+				)
+				return False
+			normalized[key] = int(numeric) if key in (
+				"num_quads", "turn_waypoints"
+			) else numeric
+
+		command = {"command": "online_mission", "parameters": normalized}
+		msg = String()
+		msg.data = json.dumps(command)
+		self.command_publisher.publish(msg)
+		self.get_logger().info(
+			"Online coverage mission request sent; waypoints will be generated "
+			"locally by the elected leader."
+		)
+		return True
+
 	def check_for_input(self, input=None):
 		"""
 		Called by a timer to check for keyboard input without blocking.
@@ -449,6 +537,21 @@ class StationNode(Node):
 									self.send_stop_detection_command()
 							case 'stop_animation':
 								self.stop_animation_command()
+							case 'online_mission':
+								parameters = {}
+								valid = True
+								for arg in command[1:]:
+									if '=' not in arg:
+										self.get_logger().error(
+											'Invalid command. Use online_mission '
+											'key=value pairs.'
+										)
+										valid = False
+										break
+									key, value = arg.split('=', 1)
+									parameters[key.lower()] = value
+								if valid:
+									self.send_online_mission(parameters)
 							case 'mission':
 								if len(command) > 2:
 									self.get_logger().error(
