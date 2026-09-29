@@ -33,7 +33,7 @@ class Config:
     min_turn_radius: float = 4.0
     coverage_spacing: float = 4.0
     max_path_length: float = inf
-    ds_waypoint: float = 1.0
+    ds_waypoint: float = 4.0
     altitude: float = 5.0
     turn_waypoints: int = 8
 
@@ -223,7 +223,7 @@ def path_to_flight_waypoints(segments, config):
             [np.cos(first["theta1"]), np.sin(first["theta1"])]
         )
     start_new = point_to_new_frame(start_old, config.Lx, config.Ly)
-    rows.append([start_new[0], start_new[1], config.altitude, 0.0])
+    rows.append([start_new[0], start_new[1], config.altitude, 0.0, False])
 
     for segment in segments:
         if segment["type"] == "line":
@@ -234,11 +234,14 @@ def path_to_flight_waypoints(segments, config):
             for step in range(1, steps + 1):
                 point = previous + (end_new - previous) * (step / steps)
                 if np.linalg.norm(point - np.asarray(rows[-1][:2])) > 1e-10:
-                    rows.append([point[0], point[1], config.altitude, 0.0])
+                    rows.append([point[0], point[1], config.altitude, 0.0,False])
             continue
 
         yaw_relative = -segment["arcsign"] * yaw_step
         for step in range(1, int(config.turn_waypoints) + 1):
+            checkpoint=False
+            if(step==1 or step==config.turn_waypoints/2 or step==config.turn_waypoints):
+                checkpoint=True
             theta = (
                 segment["theta1"]
                 + segment["arcsign"] * (step / config.turn_waypoints) * np.pi
@@ -248,7 +251,7 @@ def path_to_flight_waypoints(segments, config):
             )
             point_new = point_to_new_frame(point_old, config.Lx, config.Ly)
             rows.append(
-                [point_new[0], point_new[1], config.altitude, yaw_relative]
+                [point_new[0], point_new[1], config.altitude, yaw_relative,checkpoint]
             )
 
     return np.asarray(rows, dtype=float)

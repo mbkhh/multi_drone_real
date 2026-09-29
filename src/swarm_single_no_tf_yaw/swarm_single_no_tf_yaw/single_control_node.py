@@ -1020,13 +1020,18 @@ class SingleControlNode(Node):
 
             checkpoint_wait = False
             if len(point) == 5:
-                if not isinstance(point[4], bool):
+                if isinstance(point[4], bool):
+                    checkpoint_wait = point[4]
+
+                elif point[4] in (0, 1):
+                    checkpoint_wait = bool(point[4])
+
+                else:
                     self.get_logger().error(
                         f'Mission rejected: waypoint {index + 1} checkpoint '
-                        'wait value must be true or false.'
+                        'wait value must be true, false, 1, or 0.'
                     )
                     return False
-                checkpoint_wait = point[4]
 
             if relative_to_start:
                 target = [
