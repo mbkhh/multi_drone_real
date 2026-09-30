@@ -192,6 +192,10 @@ class PositionPlotter(Node):
 					f"Plotter started with '{self.waypoint_file}' for leader "
 					f'{self.leader_id}: {len(planned_xyz)} waypoints.'
 				)
+		except (TypeError, ValueError, RuntimeError, OverflowError) as error:
+			self.get_logger().error(
+					f'Could not init: {error}'
+				)
 	def _online_command_callback(self, msg: String):
 		"""Refresh the plan when the station issues an online mission command."""
 		try:
@@ -201,8 +205,10 @@ class PositionPlotter(Node):
 				f'Ignoring malformed mission command in plotter: {error}'
 			)
 			return
+			
 		if not isinstance(command, dict) or command.get('command') != 'online_mission':
 			return
+			
 		try:
 			missions, planner_config = _load_online_missions(
 				command.get('parameters', {})
@@ -211,20 +217,19 @@ class PositionPlotter(Node):
 			self.get_logger().error(
 				f'Could not update online plot plan: {error}'
 			)
+			# Added the fallback logic from your dangling except block here
+			self.missions = {}
 			return
+			
 		with self.lock:
 			self.missions = missions
 			self.waypoint_file = '<online planner>'
+			
 		self.get_logger().info(
 			f'Plotter updated from online_mission: {len(missions)} paths, '
 			f'{len(missions.get(self.leader_id, []))} leader waypoints '
 			f'(Lx={planner_config.Lx:g}, Ly={planner_config.Ly:g}).'
 		)
-		except (TypeError, ValueError, RuntimeError, OverflowError) as error:
-			self.get_logger().error(
-				f'Could not load planned mission: {error}'
-			)
-			self.missions = {}
 
 	def _state_callback(self, msg: Odometry):
 		try:
