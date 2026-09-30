@@ -340,6 +340,10 @@ class SingleControlNode(Node):
 
         self.offboard_setpoint_counter = 0
         self.vehicle_status = VehicleStatus()
+        # Keep edge-triggered PX4 diagnostics so an abort records the status
+        # transition that caused it, without logging every 20 Hz sample.
+        self._last_arming_state = None
+        self._last_nav_state = None
         self.last_published_velocity_setpoint = None
         self.last_commanded_velocity_setpoint = [0.0, 0.0, 0.0]
         self.velocity_setpoints_since_debug = 0
@@ -1272,14 +1276,63 @@ class SingleControlNode(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.offboard_control_mode_publisher.publish(msg)
 
+    def _px4_status_context(self, vehicle_status):
+        """Return compact PX4/failsafe context for an abort diagnostic."""
+        flags = self.failsafe_flags
+        return (
+            f'arming_state={getattr(vehicle_status, "arming_state", "?")}, '
+            f'nav_state={getattr(vehicle_status, "nav_state", "?")}, '
+            f'nav_user_intention={getattr(vehicle_status, "nav_state_user_intention", "?")}, '
+            f'disarm_reason={getattr(vehicle_status, "latest_disarming_reason", "?")}, '
+            f'failsafe={bool(getattr(vehicle_status, "failsafe", False))}, '
+            f'preflight={getattr(vehicle_status, "pre_flight_checks_pass", "?")}, '
+            f'manual_lost={getattr(flags, "manual_control_signal_lost", "?")}, '
+            f'local_pos_invalid={getattr(flags, "local_position_invalid", "?")}, '
+            f'local_vel_invalid={getattr(flags, "local_velocity_invalid", "?")}, '
+            f'landed={getattr(self.vehicle_land_detected, "landed", "?")}'
+        )
+
     def vehicle_status_callback(self, vehicle_status):
+        previous_arming = getattr(self, "_last_arming_state", None)
+        status_context_builder = getattr(self, '_px4_status_context', None)
+        if callable(status_context_builder):
+            status_context = status_context_builder(vehicle_status)
+        else:
+            status_context = (
+                f'arming_state={getattr(vehicle_status, "arming_state", "?")}, '
+                f'disarm_reason={getattr(vehicle_status, "latest_disarming_reason", "?")}, '
+                f'nav_state={getattr(vehicle_status, "nav_state", "?")}, '
+                f'failsafe={bool(getattr(vehicle_status, "failsafe", False))}'
+            )
+        previous_nav = getattr(self, "_last_nav_state", None)
         self.vehicle_status = vehicle_status
         self.last_vehicle_status_time = self.get_clock().now()
+        self._last_arming_state = vehicle_status.arming_state
+        self._last_nav_state = vehicle_status.nav_state
+        if (
+            previous_arming is not None
+            and previous_arming != vehicle_status.arming_state
+        ):
+            self.get_logger().warning(
+                f'[PX4 STATUS] arming_state {previous_arming} -> '
+                f'{vehicle_status.arming_state}; '
+                f'{status_context}'
+            )
+        if previous_nav is not None and previous_nav != vehicle_status.nav_state:
+            self.get_logger().warning(
+                f'[PX4 STATUS] nav_state {previous_nav} -> '
+                f'{vehicle_status.nav_state}; '
+                f'{status_context}'
+            )
         if (
             self.state == DroneState.TAKEOFF
             and vehicle_status.arming_state
             != VehicleStatus.ARMING_STATE_ARMED
         ):
+            self.get_logger().error(
+                'PX4 reported disarm while companion control was active: '
+                f'{status_context}'
+            )
             self.release_to_pilot(
                 'PX4 disarmed while companion control was active'
             )

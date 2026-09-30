@@ -15,6 +15,9 @@
   <depend>swarm_msgs</depend>
   <depend>swarm_config</depend>
 
+  <exec_depend>swarm_single_no_tf_yaw</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-matplotlib</exec_depend>
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>

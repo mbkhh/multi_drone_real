@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Live 3D plot of swarm positions against the configured leader mission."""
 
+import json
 import math
 import os
 import threading
@@ -30,7 +31,9 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers the 3d projection)
 
 from nav_msgs.msg import Odometry
+from std_msgs.msg import String
 from swarm_config.config_utils import get_config, get_mission_waypoints
+from swarm_single_no_tf_yaw.online_waypoint_generator import OnlineWaypointGenerator
 
 
 def _load_planned_xyz(waypoint_file, leader_id):
@@ -65,23 +68,73 @@ def _load_planned_xyz(waypoint_file, leader_id):
 	return planned_xyz
 
 
+def _load_online_missions(parameters=None):
+	"""Generate plot paths from the same planner used by online_mission."""
+	if parameters is None or parameters == "":
+		parameters = {}
+	if isinstance(parameters, str):
+		try:
+			parameters = json.loads(parameters)
+		except json.JSONDecodeError as error:
+			raise ValueError(
+				"online_config must be a JSON object of planner inputs."
+			) from error
+	if not isinstance(parameters, dict):
+		raise ValueError("online_config must decode to a JSON object.")
+
+	result = OnlineWaypointGenerator(None).generate(parameters)
+	missions = {}
+	for raw_drone_id, points in result["waypoints"].items():
+		planned_xyz = []
+		for index, point in enumerate(points, start=1):
+			if not isinstance(point, (list, tuple)) or len(point) not in (4, 5):
+				raise ValueError(
+					f"Online waypoint {index} for drone {raw_drone_id} "
+					"must contain x, y, z, yaw, and optional checkpoint wait."
+			)
+			try:
+				values = [float(value) for value in point[:4]]
+			except (TypeError, ValueError) as error:
+				raise ValueError(
+					f"Online waypoint {index} for drone {raw_drone_id} "
+					"contains a non-numeric value."
+			) from error
+			if not all(math.isfinite(value) for value in values):
+				raise ValueError(
+					f"Online waypoint {index} for drone {raw_drone_id} "
+					"contains a non-finite value."
+			)
+			if len(point) == 5 and point[4] not in (True, False, 0, 1):
+				raise ValueError(
+					f"Online waypoint {index} for drone {raw_drone_id} "
+					"has an invalid checkpoint wait value."
+			)
+			planned_xyz.append(values[:3])
+		missions[int(raw_drone_id)] = planned_xyz
+	return missions, result["config"]
+
+
 class PositionPlotter(Node):
 	def __init__(self):
 		super().__init__('position_plotter')
 
 		self.declare_parameter('waypoint_file', '')
 		self.declare_parameter('leader_id', 1)
+		self.declare_parameter('online_mission', False)
+		self.declare_parameter('online_config', '')
 		requested_file = (
 			self.get_parameter('waypoint_file').get_parameter_value().string_value.strip()
 		)
 		self.leader_id = int(
 			self.get_parameter('leader_id').get_parameter_value().integer_value
 		)
+		online_enabled = self.get_parameter('online_mission').get_parameter_value().bool_value
+		online_config = self.get_parameter('online_config').get_parameter_value().string_value.strip()
 		configured_file = get_config('swarm_single.mission.waypoint_file')
 		self.waypoint_file = (
-			requested_file
-			or configured_file
-			or 'leader_waypoints_xyzyaw-3.txt'
+			'<online planner>'
+			if online_enabled
+			else requested_file or configured_file or 'leader_waypoints_xyzyaw-3.txt'
 		)
 
 		self.drone_count = int(get_config('swarm_sim.drone_count'))
@@ -103,28 +156,75 @@ class PositionPlotter(Node):
 		# Shared state read by the matplotlib thread.
 		self.lock = threading.Lock()
 		self.trajectories = {}   # drone_id -> [(x, y, z), ...]
+		self.command_subscriber = self.create_subscription(
+			String,
+			get_config('swarm_single.leader_command_topic_name'),
+			self._online_command_callback,
+			qos,
+		)
 		self.current = {}        # drone_id -> (x, y, z)
 		self.goals = {}          # drone_id -> (x, y, z)
 
-		# Load exactly the file selected by the station mission command. The
-		# fourth (relative-yaw) value is validated but is not needed by this XYZ
-		# plot. Followers have no independent mission path; they track formation.
+		# Offline mode reads the same installed file as the station. Online
+		# mode generates the controller-ready paths, not the diagnostic sampled
+		# leader array, so the plot agrees with the active mission.
 		try:
-			planned_xyz = _load_planned_xyz(
-				self.waypoint_file, self.leader_id
+			if online_enabled:
+				self.missions, planner_config = _load_online_missions(
+					online_config
+				)
+				planned_count = len(
+					self.missions.get(self.leader_id, [])
+				)
+				self.get_logger().info(
+					f'Online plot plan: {len(self.missions)} drone paths; '
+					f'leader {self.leader_id} has {planned_count} waypoints '
+					f'(Lx={planner_config.Lx:g}, Ly={planner_config.Ly:g}).'
+				)
+			else:
+				planned_xyz = _load_planned_xyz(
+					self.waypoint_file, self.leader_id
+				)
+				self.missions = (
+					{self.leader_id: planned_xyz} if planned_xyz else {}
+				)
+				self.get_logger().info(
+					f"Plotter started with '{self.waypoint_file}' for leader "
+					f'{self.leader_id}: {len(planned_xyz)} waypoints.'
+				)
+	def _online_command_callback(self, msg: String):
+		"""Refresh the plan when the station issues an online mission command."""
+		try:
+			command = json.loads(msg.data)
+		except (TypeError, ValueError, json.JSONDecodeError) as error:
+			self.get_logger().warning(
+				f'Ignoring malformed mission command in plotter: {error}'
 			)
-		except ValueError as error:
+			return
+		if not isinstance(command, dict) or command.get('command') != 'online_mission':
+			return
+		try:
+			missions, planner_config = _load_online_missions(
+				command.get('parameters', {})
+			)
+		except (TypeError, ValueError, RuntimeError, OverflowError) as error:
+			self.get_logger().error(
+				f'Could not update online plot plan: {error}'
+			)
+			return
+		with self.lock:
+			self.missions = missions
+			self.waypoint_file = '<online planner>'
+		self.get_logger().info(
+			f'Plotter updated from online_mission: {len(missions)} paths, '
+			f'{len(missions.get(self.leader_id, []))} leader waypoints '
+			f'(Lx={planner_config.Lx:g}, Ly={planner_config.Ly:g}).'
+		)
+		except (TypeError, ValueError, RuntimeError, OverflowError) as error:
 			self.get_logger().error(
 				f'Could not load planned mission: {error}'
 			)
-			planned_xyz = []
-		self.missions = (
-			{self.leader_id: planned_xyz} if planned_xyz else {}
-		)
-		self.get_logger().info(
-			f"Plotter started with '{self.waypoint_file}' for leader "
-			f'{self.leader_id}: {len(planned_xyz)} waypoints.'
-		)
+			self.missions = {}
 
 	def _state_callback(self, msg: Odometry):
 		try:

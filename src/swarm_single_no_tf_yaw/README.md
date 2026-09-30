@@ -173,7 +173,7 @@ Use key=value inputs (all values have planner defaults, so only the values you
 need to change are required):
 
 ```text
-online_mission Lx=34 Ly=36 num_quads=3 d=4 min_turn_radius=4 coverage_spacing=4 ds_waypoint=1 altitude=4 turn_waypoints=8
+online_mission Lx=25 Ly=36 num_quads=3 d=4 min_turn_radius=4 coverage_spacing=4 ds_waypoint=4 altitude=5 turn_waypoints=8
 ```
 
 The available inputs are `Lx`, `Ly`, `num_quads`, `d`,
@@ -189,3 +189,13 @@ issue `online_mission`. The planner's `d` and `num_quads` should match the
 formation spacing and number of vehicles. Generated straight legs are sampled
 at `ds_waypoint`, and the normal mission waypoint-count, leg-distance,
 telemetry, yaw, and timeout safety checks still apply.
+
+To plot the same online plan, start the plotter with the JSON planner inputs.
+It draws all generated vehicle paths and subscribes to the same `/swarm/local_state`
+topic as the controller:
+
+```bash
+ros2 run swarm_station plotter --ros-args \
+  -p online_mission:=true \
+  -p 'online_config:={"Lx":25,"Ly":36,"num_quads":3,"d":4,"min_turn_radius":4,"coverage_spacing":4,"ds_waypoint":4,"altitude":5,"turn_waypoints":8}'
+```

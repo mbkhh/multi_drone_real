@@ -26,7 +26,7 @@ class Config:
     compatible with the controller's normal per-goal safety limit.
     """
 
-    Lx: float = 34.0
+    Lx: float = 25
     Ly: float = 36.0
     num_quads: int = 3
     d: float = 4.0
@@ -258,10 +258,20 @@ def path_to_flight_waypoints(segments, config):
 
 
 def build_waypoint_dictionary(quad_paths, config):
-    return {
-        index + 1: path_to_flight_waypoints(path, config).tolist()
-        for index, path in enumerate(quad_paths)
-    }
+    """Return controller-ready Python rows for every vehicle path.
+
+    ``numpy.asarray`` promotes the fifth checkpoint column to a float when it
+    is mixed with the numeric XYZ/yaw columns. Restore the fifth value to a
+    real bool so online plans have the same shape as mission-file rows.
+    """
+    result = {}
+    for index, path in enumerate(quad_paths):
+        rows = path_to_flight_waypoints(path, config).tolist()
+        for row in rows:
+            if len(row) == 5:
+                row[4] = bool(round(float(row[4])))
+        result[index + 1] = rows
+    return result
 
 
 def max_coverage_gap(row_spacing, d, max_offset, num_quads):
@@ -524,6 +534,27 @@ class OnlineWaypointGenerator:
         leader_waypoints = result["waypoints"].get(1)
         if not leader_waypoints:
             raise ValueError("online planner generated no leader waypoints.")
+
+        # Validate against the same limits used by mission files before the
+        # controller state is changed.
+        max_waypoints = getattr(self.parent_node, "max_mission_waypoints", None)
+        if max_waypoints is not None and len(leader_waypoints) > int(max_waypoints):
+            raise ValueError(
+                f"online planner generated {len(leader_waypoints)} leader "
+                f"waypoints; the controller limit is {int(max_waypoints)}. "
+                "Increase mission.max_waypoints or increase ds_waypoint."
+            )
+        min_altitude = getattr(self.parent_node, "min_goal_altitude", None)
+        max_altitude = getattr(self.parent_node, "max_goal_altitude", None)
+        if min_altitude is not None and max_altitude is not None:
+            for index, waypoint in enumerate(leader_waypoints, start=1):
+                altitude = float(waypoint[2])
+                if not float(min_altitude) <= altitude <= float(max_altitude):
+                    raise ValueError(
+                        f"online waypoint {index} altitude {altitude:.2f} m "
+                        f"is outside the controller range "
+                        f"[{float(min_altitude):.2f}, {float(max_altitude):.2f}] m."
+                    )
         accepted = self.parent_node.start_mission(
             leader_waypoints,
             relative_to_start=relative_to_start,
@@ -535,4 +566,3 @@ class OnlineWaypointGenerator:
 # Keep the package's existing lower-case class naming style available to
 # callers while exposing the conventional class name above.
 online_waypoint_generator = OnlineWaypointGenerator
-
