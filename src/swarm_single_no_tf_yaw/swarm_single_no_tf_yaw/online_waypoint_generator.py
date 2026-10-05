@@ -6,6 +6,7 @@ timers: generation is a short, deterministic operation which is requested by
 the leader and then handed to the existing mission controller.
 """
 
+import time
 from dataclasses import dataclass
 from math import ceil, floor, inf
 
@@ -439,8 +440,6 @@ class OnlineWaypointGenerator:
 
     def __init__(self, parent_node):
         self.parent_node = parent_node
-        self.last_config = None
-        self.last_result = None
 
     @staticmethod
     def _float(value, name):
@@ -511,16 +510,14 @@ class OnlineWaypointGenerator:
             merged.update(parameters)
         merged.update(overrides)
         config = self._config_from_parameters(merged)
-        result = plan(config)
-        self.last_config = config
-        self.last_result = result
-        return result
+        return plan(config)
 
     def start_mission(self, parameters=None, **overrides):
         """Generate a plan and start its leader waypoints.
 
-        Returns ``(accepted, result)``.  ``result`` is returned even when the
-        controller rejects the mission so callers can report useful counts.
+        Returns ``(accepted, summary)``. Planner scratch data is not retained
+        after this call; normal mission execution stores only validated leader
+        waypoint, yaw, and checkpoint arrays on the controller.
         """
         merged = {}
         if parameters is not None:
@@ -530,7 +527,9 @@ class OnlineWaypointGenerator:
         merged.update(overrides)
         relative_to_start = bool(merged.pop("relative_to_start", False))
         yaw_relative = bool(merged.pop("yaw_relative", True))
+        generation_started = time.perf_counter()
         result = self.generate(merged)
+        generation_seconds = time.perf_counter() - generation_started
         leader_waypoints = result["waypoints"].get(1)
         if not leader_waypoints:
             raise ValueError("online planner generated no leader waypoints.")
@@ -555,12 +554,17 @@ class OnlineWaypointGenerator:
                         f"is outside the controller range "
                         f"[{float(min_altitude):.2f}, {float(max_altitude):.2f}] m."
                     )
+        summary = {
+            "leader_waypoint_count": len(leader_waypoints),
+            "path_count": len(result["waypoints"]),
+            "generation_seconds": generation_seconds,
+        }
         accepted = self.parent_node.start_mission(
             leader_waypoints,
             relative_to_start=relative_to_start,
             yaw_relative=yaw_relative,
         )
-        return bool(accepted), result
+        return bool(accepted), summary
 
 
 # Keep the package's existing lower-case class naming style available to

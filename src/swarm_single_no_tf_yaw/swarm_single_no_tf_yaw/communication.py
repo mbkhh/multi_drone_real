@@ -580,7 +580,7 @@ class Communication():
                 )
                 return
             try:
-                accepted, plan = (
+                accepted, summary = (
                     self.parent_node.online_waypoint_generator.start_mission(
                         parameters
                     )
@@ -592,10 +592,12 @@ class Communication():
                 return
             if not accepted:
                 return
-            leader_waypoint_count = len(plan["waypoints"].get(1, []))
+            leader_waypoint_count = summary["leader_waypoint_count"]
+            generation_ms = summary["generation_seconds"] * 1000.0
             self.parent_node.message = (
                 f'ONLINE MISSION STARTED: {leader_waypoint_count} '
-                f'leader waypoints; generated {len(plan["waypoints"])} paths'
+                f'leader waypoints; generated {summary["path_count"]} paths '
+                f'once in {generation_ms:.1f} ms; planner scratch released'
             )
             self.parent_node.get_logger().info(self.parent_node.message)
             self.send_mission()

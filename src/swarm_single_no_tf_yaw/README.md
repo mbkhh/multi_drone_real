@@ -169,6 +169,12 @@ the elected leader. It generates all vehicle paths locally and then sends only
 the generated leader path through the existing mission state machine; the
 offline `mission [waypoint_file]` command is unchanged.
 
+Generation runs exactly once when the command is accepted. The controller
+copies the validated leader positions, yaws, and checkpoint flags into the
+same arrays used by a file mission, then releases the complete multi-drone
+planner result. No planner function runs from the control loop, waypoint
+progress timer, or swarm callbacks during mission execution.
+
 Use key=value inputs (all values have planner defaults, so only the values you
 need to change are required):
 
