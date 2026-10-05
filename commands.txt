@@ -264,3 +264,19 @@ all disarm
 # - move_relative adds x/y/z to each selected drone's current goal.
 # - yaw is a relative change in degrees.
 # - status is local to the station and shows every recently connected drone.
+
+
+# =============================================================================
+# Real-flight GUI launcher (station + 3 remote processes per drone)
+# =============================================================================
+
+# Build once on the laptop
+source /opt/ros/rolling/setup.bash
+colcon build --packages-select swarm_flight_launcher
+source install/setup.bash
+
+# Start the GUI (it clears simulation ROS_DOMAIN_ID itself)
+./run_swarm_launcher.sh
+
+# Equivalent command after sourcing the workspace
+ros2 run swarm_flight_launcher launcher
