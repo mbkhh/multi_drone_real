@@ -5,21 +5,26 @@ P900 transparent serial link. It does not replace DDS networking, create an IP
 link, or configure the radio with AT commands. The existing station and flight
 nodes continue to publish and subscribe to their normal ROS topics.
 
-The current version is intentionally limited to one Point-to-Point route:
+The current Point-to-Point version transports three routes:
 
 | Topic ID | ROS topic | ROS type | Direction |
 |---:|---|---|---|
 | 1 | `/swarm/command` | `std_msgs/msg/String` | station -> drone |
+| 2 | `/swarm/formation_command` | `swarm_msgs/msg/FormationCommand` | station -> drone |
+| 3 | `/swarm/status` | `swarm_msgs/msg/Status` | drone -> station |
 
-The station bridge subscribes to `/swarm/command`, serializes the complete ROS
-message with ROS 2 CDR serialization, frames it, and writes it to the P900. The
-drone bridge validates the received frame, deserializes the same message type,
-and republishes `/swarm/command`. The drone bridge never subscribes to that
-topic, so its publication cannot loop back over the radio.
+The station bridge subscribes to `/swarm/command` and
+`/swarm/formation_command`, serializes each complete ROS message with ROS 2
+CDR serialization, frames it, and writes it to the P900. The drone bridge
+validates each frame, deserializes it, and republishes it on the original topic.
+In the reverse direction, the drone bridge subscribes to `/swarm/status`,
+sends it over the radio, and the station bridge republishes it locally. The
+role directions in the registry ensure that a bridge never subscribes to a
+topic it republishes, preventing feedback loops.
 
 If DDS discovery still connects the station computer directly to the drone
-computer over Wi-Fi, the command can also take that old direct path and arrive
-twice. When P900 must be the only station-to-drone command path, isolate DDS
+computer over Wi-Fi, a transported message can also take that direct path and
+arrive twice. When P900 must be the only inter-computer path, isolate DDS
 between the two sides: for example, run the station nodes and station bridge in
 one `ROS_DOMAIN_ID`, and run the drone/swarm nodes and drone bridge in another.
 All drones may share the same drone-side domain. This is ordinary local ROS
@@ -106,9 +111,9 @@ ros2 run swarm_p900_bridge bridge_node --ros-args \
 | `ros_rx_queue_size` | `100` | Bounded serial-to-ROS handoff queue. |
 
 Serial I/O runs in a dedicated worker. ROS callbacks only serialize and enqueue
-frames, so they do not wait for serial reads or writes. A command is discarded
-if the port is disconnected or the bounded queue is full; commands are not
-held for later execution after reconnection.
+frames, so they do not wait for serial reads or writes. A message is discarded
+if the port is disconnected or the bounded queue is full; messages are not held
+for later delivery after reconnection.
 
 ## Transport frame
 
@@ -118,7 +123,7 @@ All integer fields use network byte order (big-endian):
 |---|---:|---|
 | Magic | 4 bytes | `P9R2`, used for stream resynchronization |
 | Version | 1 byte | Protocol version, currently 1 |
-| Topic ID | 2 bytes | Registry ID, currently 1 for `/swarm/command` |
+| Topic ID | 2 bytes | Registry ID selecting command, formation, or status |
 | Source role | 1 byte | 0 station, 1 drone |
 | Source node ID | 1 byte | 0..254 |
 | Destination node ID | 1 byte | 0..254 unicast, 255 broadcast |
@@ -131,7 +136,7 @@ The incremental parser accepts partial reads and multiple frames per read. It
 searches for the magic marker after garbage or corruption, checks length before
 processing a payload, validates CRC32, and discards unknown topics safely.
 Sequence gaps, duplicates, and out-of-order packets are counted and logged but
-do not cause a valid command to be rejected.
+do not cause a valid message to be rejected.
 
 ## Adding another selected topic
 
@@ -144,6 +149,7 @@ in one place:
 - ROS message class;
 - roles allowed to transmit it;
 - roles allowed to receive and publish it.
+- local ROS QoS reliability and history depth.
 
 The bridge creates ROS subscriptions and publishers from the registry. Message
 fields are never copied manually; ROS serialization handles the registered
@@ -199,8 +205,8 @@ ros2 topic pub --once /swarm/command std_msgs/msg/String \
 ```
 
 The drone echo must print exactly `P900_LINK_TEST`. The station startup table
-must list the topic under TX only, and the drone table under RX only. After this
-isolated test, use the same ROS domain as the existing local nodes on each
+must list command/formation under TX and status under RX; the drone table must
+show the inverse directions. After this isolated test, use the same ROS domain
 computer and start the normal station/control software. Ensure no `p900_test`
 script still has the serial port open when starting the bridge.
 

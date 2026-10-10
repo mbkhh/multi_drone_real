@@ -3,12 +3,16 @@
 from dataclasses import dataclass
 from typing import FrozenSet, Type
 
+from rclpy.qos import ReliabilityPolicy
 from std_msgs.msg import String
+from swarm_msgs.msg import FormationCommand, Status
 
 from swarm_p900_bridge.roles import ROLE_DRONE, ROLE_STATION, VALID_ROLES
 
 
 COMMAND_TOPIC_ID = 1
+FORMATION_COMMAND_TOPIC_ID = 2
+STATUS_TOPIC_ID = 3
 
 
 @dataclass(frozen=True)
@@ -20,6 +24,8 @@ class TopicRoute:
     message_type: Type
     sender_roles: FrozenSet[str]
     receiver_roles: FrozenSet[str]
+    qos_reliability: ReliabilityPolicy
+    qos_depth: int
 
 
 # Add future transported topics here. The bridge node creates the correct ROS
@@ -31,6 +37,26 @@ TOPIC_REGISTRY = {
         message_type=String,
         sender_roles=frozenset({ROLE_STATION}),
         receiver_roles=frozenset({ROLE_DRONE}),
+        qos_reliability=ReliabilityPolicy.RELIABLE,
+        qos_depth=10,
+    ),
+    FORMATION_COMMAND_TOPIC_ID: TopicRoute(
+        topic_id=FORMATION_COMMAND_TOPIC_ID,
+        topic_name='/swarm/formation_command',
+        message_type=FormationCommand,
+        sender_roles=frozenset({ROLE_STATION}),
+        receiver_roles=frozenset({ROLE_DRONE}),
+        qos_reliability=ReliabilityPolicy.RELIABLE,
+        qos_depth=10,
+    ),
+    STATUS_TOPIC_ID: TopicRoute(
+        topic_id=STATUS_TOPIC_ID,
+        topic_name='/swarm/status',
+        message_type=Status,
+        sender_roles=frozenset({ROLE_DRONE}),
+        receiver_roles=frozenset({ROLE_STATION}),
+        qos_reliability=ReliabilityPolicy.BEST_EFFORT,
+        qos_depth=1,
     ),
 }
 

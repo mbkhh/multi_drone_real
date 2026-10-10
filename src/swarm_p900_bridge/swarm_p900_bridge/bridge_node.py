@@ -11,7 +11,6 @@ from rclpy.qos import (
     DurabilityPolicy,
     HistoryPolicy,
     QoSProfile,
-    ReliabilityPolicy,
 )
 from rclpy.serialization import deserialize_message, serialize_message
 
@@ -122,13 +121,8 @@ class P900BridgeNode(Node):
         self._rx_frames = queue.Queue(maxsize=ros_rx_queue_size)
         self._serial_events = queue.SimpleQueue()
 
-        qos = QoSProfile(
-            reliability=ReliabilityPolicy.RELIABLE,
-            durability=DurabilityPolicy.VOLATILE,
-            history=HistoryPolicy.KEEP_LAST,
-            depth=10,
-        )
         for route in self.tx_routes:
+            qos = self._qos_for_route(route)
             subscription = self.create_subscription(
                 route.message_type,
                 route.topic_name,
@@ -139,6 +133,7 @@ class P900BridgeNode(Node):
             )
             self._route_subscriptions.append(subscription)
         for route in self.rx_routes:
+            qos = self._qos_for_route(route)
             self._route_publishers[route.topic_id] = self.create_publisher(
                 route.message_type,
                 route.topic_name,
@@ -181,6 +176,16 @@ class P900BridgeNode(Node):
         if not 0 <= requested <= BROADCAST_NODE_ID:
             raise ValueError('destination_node_id must be in 0..255')
         return requested
+
+    @staticmethod
+    def _qos_for_route(route):
+        """Build the local ROS QoS profile declared by a topic route."""
+        return QoSProfile(
+            reliability=route.qos_reliability,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=route.qos_depth,
+        )
 
     def _transmit_message(self, route, message):
         try:

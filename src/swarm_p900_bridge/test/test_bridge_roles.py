@@ -4,6 +4,11 @@ import rclpy
 from std_msgs.msg import String
 
 from swarm_p900_bridge.bridge_node import P900BridgeNode
+from swarm_p900_bridge.topic_registry import (
+    COMMAND_TOPIC_ID,
+    FORMATION_COMMAND_TOPIC_ID,
+    STATUS_TOPIC_ID,
+)
 
 
 def make_node(role, node_id, destination_node_id):
@@ -27,32 +32,43 @@ def destroy_node(node):
         rclpy.shutdown()
 
 
-def test_station_role_creates_only_command_transmitter():
+def test_station_role_creates_expected_topic_directions():
     node = None
     try:
         node = make_node('station', 0, 1)
 
         assert [route.topic_name for route in node.tx_routes] == [
-            '/swarm/command'
+            '/swarm/command',
+            '/swarm/formation_command',
         ]
-        assert node.rx_routes == ()
-        assert len(node._route_subscriptions) == 1
-        assert node._route_publishers == {}
+        assert [route.topic_name for route in node.rx_routes] == [
+            '/swarm/status',
+        ]
+        assert len(node._route_subscriptions) == 2
+        assert tuple(node._route_publishers) == (
+            STATUS_TOPIC_ID,
+        )
     finally:
         destroy_node(node)
 
 
-def test_drone_role_creates_only_command_receiver():
+def test_drone_role_creates_expected_topic_directions():
     node = None
     try:
         node = make_node('drone', 1, 0)
 
-        assert node.tx_routes == ()
-        assert [route.topic_name for route in node.rx_routes] == [
-            '/swarm/command'
+        assert [route.topic_name for route in node.tx_routes] == [
+            '/swarm/status',
         ]
-        assert node._route_subscriptions == []
-        assert tuple(node._route_publishers) == (1,)
+        assert [route.topic_name for route in node.rx_routes] == [
+            '/swarm/command',
+            '/swarm/formation_command',
+        ]
+        assert len(node._route_subscriptions) == 1
+        assert tuple(node._route_publishers) == (
+            COMMAND_TOPIC_ID,
+            FORMATION_COMMAND_TOPIC_ID,
+        )
     finally:
         destroy_node(node)
 
