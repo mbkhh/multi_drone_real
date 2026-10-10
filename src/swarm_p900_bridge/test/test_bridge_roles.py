@@ -1,6 +1,7 @@
 """ROS integration smoke tests for both bridge roles."""
 
 import rclpy
+from std_msgs.msg import String
 
 from swarm_p900_bridge.bridge_node import P900BridgeNode
 
@@ -54,3 +55,14 @@ def test_drone_role_creates_only_command_receiver():
         assert tuple(node._route_publishers) == (1,)
     finally:
         destroy_node(node)
+
+
+def test_message_summary_is_single_line_and_bounded():
+    message = String(data='arm\n' + ('x' * 400))
+
+    summary = P900BridgeNode._message_summary(message)
+
+    assert summary.startswith("'arm\\n")
+    assert '\n' not in summary
+    assert len(summary) == 300
+    assert summary.endswith('...')

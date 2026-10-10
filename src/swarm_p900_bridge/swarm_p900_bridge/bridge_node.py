@@ -213,6 +213,14 @@ class P900BridgeNode(Node):
                 )
             return
 
+        self.get_logger().info(
+            'ROS RX -> P900 TX: '
+            f'topic=[{route.topic_id}] {route.topic_name}, '
+            f'sequence={sequence}, source={self.node_id}, '
+            f'destination={self.destination_node_id}, '
+            f'payload={len(payload)} bytes, '
+            f'data={self._message_summary(message)}'
+        )
         self._next_sequence[route.topic_id] = (
             sequence + 1
         ) & 0xFFFFFFFF
@@ -272,10 +280,27 @@ class P900BridgeNode(Node):
             )
             return
 
+        self.get_logger().info(
+            'P900 RX -> ROS PUB: '
+            f'topic=[{frame.topic_id}] {route.topic_name}, '
+            f'sequence={frame.sequence}, source={frame.source_node_id}, '
+            f'destination={frame.destination_node_id}, '
+            f'payload={len(frame.payload)} bytes, '
+            f'data={self._message_summary(message)}'
+        )
         self._route_publishers[route.topic_id].publish(message)
         with self._counter_lock:
             self._counters.rx_frames += 1
             self._counters.rx_bytes += frame.wire_size
+
+    @staticmethod
+    def _message_summary(message, max_characters=300):
+        """Return a compact one-line representation for packet logging."""
+        value = getattr(message, 'data', message)
+        summary = repr(value).replace('\n', '\\n')
+        if len(summary) > max_characters:
+            summary = summary[:max_characters - 3] + '...'
+        return summary
 
     def _warn_sequence(self, frame, observation):
         now = time.monotonic()
