@@ -1,4 +1,4 @@
-"""Launch one station- or drone-side P900 selected-topic bridge."""
+"""Launch one station, leader or follower P900 selected-topic bridge."""
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
@@ -20,7 +20,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'role',
             default_value='station',
-            description='Bridge role: station or drone.',
+            description='Bridge role: station, leader or follower.',
         ),
         DeclareLaunchArgument(
             'serial_port',
@@ -35,13 +35,15 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'node_id',
             default_value='-1',
-            description='0..254; -1 selects 0 for station or 1 for drone.',
+            description=(
+                '0..254; -1 selects station=100, leader=1, follower=2.'
+            ),
         ),
         DeclareLaunchArgument(
             'destination_node_id',
             default_value='-1',
             description=(
-                '0..254 unicast, 255 broadcast; -1 selects the P2P peer.'
+                'Legacy global override; use -1 for registry-driven PMP.'
             ),
         ),
         DeclareLaunchArgument(

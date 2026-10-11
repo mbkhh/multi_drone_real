@@ -48,3 +48,22 @@ def test_loopback_serial_worker_sends_and_receives_without_ros_callbacks():
         transport.stop()
 
     assert not transport.connected
+
+
+def test_latest_frame_replaces_stale_frame_instead_of_queueing_it():
+    transport = SerialTransport(
+        port='loop://',
+        baud_rate=230400,
+        on_bytes=lambda data: None,
+    )
+    # Exercise the newest-only storage without racing the worker thread.
+    transport._connected_event.set()
+
+    first = transport.send_latest(b'state-A', key=(7, 2))
+    second = transport.send_latest(b'state-E', key=(7, 2))
+
+    assert first.accepted and not first.replaced
+    assert second.accepted and second.replaced
+    assert list(transport._latest_frames.values()) == [b'state-E']
+    assert transport.stats.replaced_latest_frames == 1
+    transport._connected_event.clear()

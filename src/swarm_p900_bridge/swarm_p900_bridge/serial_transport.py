@@ -1,5 +1,6 @@
 """Non-blocking, reconnecting serial I/O worker for a transparent radio."""
 
+from collections import OrderedDict
 from dataclasses import dataclass
 import queue
 import threading
@@ -21,8 +22,17 @@ class SerialStats:
     tx_bytes: int = 0
     rx_bytes: int = 0
     dropped_tx_frames: int = 0
+    replaced_latest_frames: int = 0
     read_errors: int = 0
     write_errors: int = 0
+
+
+@dataclass(frozen=True)
+class LatestSendResult:
+    """Result of placing one replaceable frame in the serial worker."""
+
+    accepted: bool
+    replaced: bool = False
 
 
 class SerialTransport:
@@ -65,6 +75,8 @@ class SerialTransport:
 
         self.stats = SerialStats()
         self._tx_queue = queue.Queue(maxsize=int(tx_queue_size))
+        self._latest_frames = OrderedDict()
+        self._latest_lock = threading.Lock()
         self._stop_event = threading.Event()
         self._connected_event = threading.Event()
         self._thread = None
@@ -119,6 +131,32 @@ class SerialTransport:
             self.stats.dropped_tx_frames += 1
             return False
         return True
+
+    def send_latest(self, frame, key):
+        """
+        Store only the newest frame for a logical high-rate stream.
+
+        Unlike ``send()``, this never builds a FIFO of stale states.  Replacing
+        an unsent frame is expected and is reported for diagnostics.
+        """
+        if not isinstance(frame, (bytes, bytearray, memoryview)):
+            raise TypeError('serial frame must be bytes-like')
+        if not self.connected:
+            self.stats.dropped_tx_frames += 1
+            return LatestSendResult(accepted=False)
+        try:
+            hash(key)
+        except TypeError as error:
+            raise TypeError('latest-frame key must be hashable') from error
+
+        with self._latest_lock:
+            replaced = key in self._latest_frames
+            if replaced:
+                # Reinsert so multiple state sources are serviced fairly.
+                del self._latest_frames[key]
+                self.stats.replaced_latest_frames += 1
+            self._latest_frames[key] = bytes(frame)
+        return LatestSendResult(accepted=True, replaced=replaced)
 
     def _run(self):
         while not self._stop_event.is_set():
@@ -176,7 +214,10 @@ class SerialTransport:
         try:
             frame = self._tx_queue.get_nowait()
         except queue.Empty:
-            return
+            with self._latest_lock:
+                if not self._latest_frames:
+                    return
+                _, frame = self._latest_frames.popitem(last=False)
 
         device = self._get_serial()
         offset = 0
@@ -226,8 +267,12 @@ class SerialTransport:
             try:
                 self._tx_queue.get_nowait()
             except queue.Empty:
-                return
+                break
             self.stats.dropped_tx_frames += 1
+        with self._latest_lock:
+            latest_count = len(self._latest_frames)
+            self._latest_frames.clear()
+        self.stats.dropped_tx_frames += latest_count
 
     def _close_serial(self, notify=True):
         with self._serial_lock:
