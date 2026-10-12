@@ -49,6 +49,11 @@ ros2 run swarm_single_no_tf_yaw control_node --ros-args \
   -p frame_id:=3 \
   -r __node:=control_node_no_tf_yaw_d3
 
+# Type in the normal swarm_station console for a one-shot report from the
+# leader and every connected follower (services, ROS/UAV_N topic counts,
+# PX4/control/mission/swarm state, telemetry age and host health).
+full_status
+
 
 
 # Lightweight real-flight loggers for both no-TF controller packages.

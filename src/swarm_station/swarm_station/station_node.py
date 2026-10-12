@@ -16,6 +16,8 @@ from swarm_config.config_utils import get_mission_waypoints
 from swarm_config.config_utils import get_scenario
 from swarm_station.manual_controller import ManualController
 
+FULL_STATUS_REPORT_TOPIC = '/swarm/full_status_report'
+
 class StationNode(Node):
 	"""
 	A Ground Control Station node to send high-level commands to the drone swarm.
@@ -24,6 +26,7 @@ class StationNode(Node):
 
 	# --- Configuration ---
 	LEADER_TIMEOUT_SEC = 5.0 # Seconds to wait before declaring leader lost
+	FULL_STATUS_TIMEOUT_SEC = 10.0
 	
 	def __init__(self):
 		super().__init__('station_node')
@@ -48,8 +51,14 @@ class StationNode(Node):
 
 		self.AckQueue = {}
 		self.last_status = None
+		self.pending_full_status = {}
+		self._full_status_received_keys = []
 
 		self.status_subscriber = self.create_subscription(Status, "/swarm/status", self._swarm_status_callback, self.qos_profile_reliable)
+		self.full_status_subscriber = self.create_subscription(
+			String, FULL_STATUS_REPORT_TOPIC,
+			self._full_status_report_callback, 10
+		)
 		self.formation_publisher = self.create_publisher(FormationCommand, get_config('swarm_single.formation_command_topic_name'), 10 )
 		self.command_publisher = self.create_publisher(String, get_config('swarm_single.leader_command_topic_name'), 10 )
 		self.get_logger().info("Station Node initialized.")
@@ -102,6 +111,159 @@ class StationNode(Node):
 			if elapsed_time > self.LEADER_TIMEOUT_SEC:
 				self.get_logger().info("Connection to swarm leader lost (timeout).")
 				self.leader_is_connected = False
+		self._check_full_status_timeouts()
+
+	def _check_full_status_timeouts(self):
+		"""Report drones that did not answer a one-shot request in time."""
+		now_ns = self.get_clock().now().nanoseconds
+		for request_id, pending in list(self.pending_full_status.items()):
+			elapsed = (now_ns - pending['sent_ns']) / 1e9
+			if elapsed <= self.FULL_STATUS_TIMEOUT_SEC:
+				continue
+			missing = sorted(pending['expected'] - pending['received'])
+			if missing:
+				self.get_logger().warning(
+					f"FULL_STATUS {request_id} timed out; no report from "
+					f"drone(s) {missing}."
+				)
+			else:
+				self.get_logger().info(
+					f"FULL_STATUS {request_id} collection window closed."
+				)
+			del self.pending_full_status[request_id]
+
+	def send_full_status_command(self):
+		"""Request one read-only diagnostic snapshot from every swarm drone."""
+		request_id = f"{self.get_clock().now().nanoseconds:x}"
+		expected = set()
+		if self.last_status is not None:
+			for value in list(self.last_status.swarm_members) + [
+				self.last_status.leader_id
+			]:
+				try:
+					drone_id = int(value)
+				except (TypeError, ValueError):
+					continue
+				if 1 <= drone_id <= 254:
+					expected.add(drone_id)
+		msg = String()
+		msg.data = json.dumps(
+			{'command': 'full_status', 'request_id': request_id},
+			separators=(',', ':'),
+		)
+		self.pending_full_status[request_id] = {
+			'expected': expected,
+			'received': set(),
+			'sent_ns': self.get_clock().now().nanoseconds,
+		}
+		self.command_publisher.publish(msg)
+		self.get_logger().info(
+			f"FULL_STATUS request {request_id} sent; expected drone IDs: "
+			f"{sorted(expected) if expected else 'unknown'}."
+		)
+
+	def _full_status_report_callback(self, msg):
+		"""Validate, deduplicate and print one leader-forwarded report."""
+		try:
+			envelope = json.loads(msg.data)
+			report = envelope.get('report')
+			request_id = envelope.get('request_id')
+			drone_id = int(report.get('drone_id'))
+		except (AttributeError, TypeError, ValueError, json.JSONDecodeError):
+			self.get_logger().warning('Malformed FULL_STATUS report ignored.')
+			return
+		if (
+			envelope.get('kind') != 'full_status_report'
+			or not isinstance(request_id, str)
+			or not isinstance(report, dict)
+			or not 1 <= drone_id <= 254
+		):
+			self.get_logger().warning('Invalid FULL_STATUS report ignored.')
+			return
+
+		key = (request_id, drone_id)
+		if key in self._full_status_received_keys:
+			return
+		self._full_status_received_keys.append(key)
+		if len(self._full_status_received_keys) > 128:
+			del self._full_status_received_keys[:-128]
+
+		pending = self.pending_full_status.get(request_id)
+		if pending is not None:
+			pending['received'].add(drone_id)
+		self._print_full_status(request_id, report)
+		if (
+			pending is not None
+			and pending['expected']
+			and pending['expected'].issubset(pending['received'])
+		):
+			self.get_logger().info(
+				f"FULL_STATUS {request_id} complete for drone IDs "
+				f"{sorted(pending['received'])}."
+			)
+			del self.pending_full_status[request_id]
+
+	def _print_full_status(self, request_id, report):
+		"""Print a compact human-readable diagnostic without dumping JSON."""
+		def dictionary(value):
+			return value if isinstance(value, dict) else {}
+
+		drone_id = report.get('drone_id', '?')
+		services = dictionary(report.get('services'))
+		service_text = ', '.join(
+			f"{name.removeprefix('swarm-').removesuffix('.service')}={state}"
+			for name, state in services.items()
+		) or 'unavailable'
+		topics = dictionary(report.get('ros_topics'))
+		control = dictionary(report.get('control'))
+		mission = dictionary(report.get('mission'))
+		swarm = dictionary(report.get('swarm'))
+		pose = dictionary(report.get('pose'))
+		telemetry = dictionary(report.get('telemetry_age_s'))
+		system = dictionary(report.get('system'))
+		memory = dictionary(system.get('memory'))
+
+		self.get_logger().info(
+			f"===== FULL_STATUS drone {drone_id} "
+			f"({report.get('hostname', '?')}) request={request_id} ====="
+		)
+		self.get_logger().info(f"Services: {service_text}")
+		self.get_logger().info(
+			f"ROS topics: total={topics.get('total', '?')}, "
+			f"{topics.get('uav_marker', 'UAV_N')}={topics.get('uav_count', '?')}, "
+			f"FMU={topics.get('uav_fmu_count', '?')}"
+		)
+		self.get_logger().info(
+			f"Control: state={control.get('state', '?')}, "
+			f"leader={control.get('leader_id', '?')}, "
+			f"armed={control.get('armed', '?')}, "
+			f"offboard={control.get('offboard', '?')}, "
+			f"preflight={control.get('preflight_ok', '?')}, "
+			f"failsafe={control.get('failsafe', '?')}, "
+			f"motion={control.get('motion_enabled', '?')}"
+		)
+		self.get_logger().info(
+			f"Mission: state={mission.get('state', '?')}, "
+			f"active={mission.get('active', '?')}, "
+			f"waypoint={mission.get('index', '?')}/{mission.get('count', '?')}; "
+			f"swarm neighbors={swarm.get('neighbors', [])}, "
+			f"peer_states={swarm.get('peer_state_count', '?')}"
+		)
+		self.get_logger().info(
+			f"Pose: xyz={pose.get('position', [])}, yaw={pose.get('yaw_deg', '?')} deg; "
+			f"telemetry ages(s)={telemetry}"
+		)
+		self.get_logger().info(
+			f"System: uptime={system.get('uptime_s', '?')} s, "
+			f"load1={system.get('load_1m', '?')}, "
+			f"temp={system.get('cpu_temp_c', '?')} C, "
+			f"memory_available={memory.get('available_mb', '?')} MB"
+		)
+		if report.get('errors'):
+			self.get_logger().warning(
+				f"FULL_STATUS drone {drone_id} collection warnings: "
+				f"{report['errors']}"
+			)
 	def send_formation(self, pattern_name, spacing = 3.0, rotation_x = 0.0,rotation_y = 0.0,rotation_z = 0.0):
 		msg = FormationCommand()
 		msg.pattern_name = pattern_name
@@ -470,6 +632,13 @@ class StationNode(Node):
 						self.get_logger().error("Cannot send goal: No swarm leader is connected.")
 					else:
 						match command[0].lower():
+							case 'full_status':
+								if len(command) != 1:
+									self.get_logger().error(
+										'Invalid command. Usage: full_status'
+									)
+								else:
+									self.send_full_status_command()
 							case 'arm':
 								self.send_arm_command()
 							case 'takeoff':

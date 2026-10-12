@@ -80,6 +80,23 @@ takeoff height before setting the formation, and for the formation to settle
 before starting the mission. `mission another_file.txt` can select a different
 installed waypoint file when required.
 
+## One-shot full status
+
+Type this in the normal station console:
+
+```text
+full_status
+```
+
+The leader takes a local read-only snapshot and sends the same one-shot request
+to every follower. Followers return their reports through the leader. The
+station prints, per drone: the active state of the XRCE agent, P900 bridge,
+control and vision systemd services; total ROS topic count; the count under
+that drone's `UAV_N` namespace; PX4/control/mission state; neighbors and peer
+state; pose; telemetry age; and small host resource indicators. Collection
+runs outside the control executor and does not arm, move, land, change mode or
+otherwise alter flight control.
+
 ### Limiting yaw speed
 
 The fourth mission value is a relative heading change. The controller slews

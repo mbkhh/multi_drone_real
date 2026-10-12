@@ -73,6 +73,32 @@ def test_relative_yaw_move_is_sent_to_the_leader(monkeypatch):
     }
 
 
+def test_full_status_is_a_one_shot_command_with_request_id(monkeypatch):
+    monkeypatch.setenv('PYNPUT_BACKEND', 'dummy')
+    station_module = import_module('swarm_station.station_node')
+    publisher = DummyPublisher()
+    logger = DummyLogger()
+    now = SimpleNamespace(nanoseconds=123456789)
+    station = SimpleNamespace(
+        last_status=SimpleNamespace(swarm_members=[1, 2], leader_id=1),
+        pending_full_status={},
+        command_publisher=publisher,
+        get_clock=lambda: SimpleNamespace(now=lambda: now),
+        get_logger=lambda: logger,
+    )
+
+    station_module.StationNode.send_full_status_command(station)
+
+    payload = json.loads(publisher.last_message.data)
+    assert payload == {
+        'command': 'full_status',
+        'request_id': f'{now.nanoseconds:x}',
+    }
+    assert station.pending_full_status[payload['request_id']]['expected'] == {
+        1, 2,
+    }
+
+
 def test_start_detection_is_sent_to_the_leader(monkeypatch):
     monkeypatch.setenv('PYNPUT_BACKEND', 'dummy')
     station_module = import_module('swarm_station.station_node')

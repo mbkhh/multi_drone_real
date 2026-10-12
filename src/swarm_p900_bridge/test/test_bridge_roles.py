@@ -13,6 +13,8 @@ from swarm_p900_bridge.state_codec import (
 from swarm_p900_bridge.topic_registry import (
     COMMAND_TOPIC_ID,
     FOLLOWER_COMMAND_TOPIC_ID,
+    FULL_STATUS_REPORT_TOPIC_ID,
+    FULL_STATUS_RESPONSE_TOPIC_ID,
     FORMATION_COMMAND_TOPIC_ID,
     FORMATION_TOPIC_ID,
     LIVENESS_TOPIC_ID,
@@ -57,6 +59,7 @@ def test_station_role_creates_expected_topic_directions():
         ]
         assert [route.topic_id for route in node.rx_routes] == [
             STATUS_TOPIC_ID,
+            FULL_STATUS_REPORT_TOPIC_ID,
         ]
     finally:
         destroy_node(node)
@@ -73,6 +76,7 @@ def test_leader_role_creates_expected_topic_directions():
             LIVENESS_TOPIC_ID,
             LOCAL_STATE_TOPIC_ID,
             VISION_TRIGGER_TOPIC_ID,
+            FULL_STATUS_REPORT_TOPIC_ID,
         ]
         assert [route.topic_id for route in node.rx_routes] == [
             COMMAND_TOPIC_ID,
@@ -80,6 +84,7 @@ def test_leader_role_creates_expected_topic_directions():
             LIVENESS_TOPIC_ID,
             LOCAL_STATE_TOPIC_ID,
             VISION_COMMAND_TOPIC_ID,
+            FULL_STATUS_RESPONSE_TOPIC_ID,
         ]
     finally:
         destroy_node(node)
@@ -93,6 +98,7 @@ def test_follower_role_creates_expected_topic_directions():
             LIVENESS_TOPIC_ID,
             LOCAL_STATE_TOPIC_ID,
             VISION_COMMAND_TOPIC_ID,
+            FULL_STATUS_RESPONSE_TOPIC_ID,
         ]
         assert [route.topic_id for route in node.rx_routes] == [
             FOLLOWER_COMMAND_TOPIC_ID,

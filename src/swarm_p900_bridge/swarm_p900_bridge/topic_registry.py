@@ -30,6 +30,8 @@ LIVENESS_TOPIC_ID = 6
 LOCAL_STATE_TOPIC_ID = 7
 VISION_TRIGGER_TOPIC_ID = 8
 VISION_COMMAND_TOPIC_ID = 9
+FULL_STATUS_RESPONSE_TOPIC_ID = 10
+FULL_STATUS_REPORT_TOPIC_ID = 11
 
 CODEC_CDR = 'cdr'
 CODEC_COMPACT_STATE = 'compact_state'
@@ -231,6 +233,26 @@ TOPIC_REGISTRY = {
         message_type=String,
         links=(
             _link(ROLE_FOLLOWER, {ROLE_LEADER}, LEADER_NODE_ID),
+        ),
+        qos_reliability=ReliabilityPolicy.RELIABLE,
+        qos_depth=10,
+    ),
+    FULL_STATUS_RESPONSE_TOPIC_ID: TopicRoute(
+        topic_id=FULL_STATUS_RESPONSE_TOPIC_ID,
+        topic_name='/swarm/full_status_response',
+        message_type=String,
+        links=(
+            _link(ROLE_FOLLOWER, {ROLE_LEADER}, LEADER_NODE_ID),
+        ),
+        qos_reliability=ReliabilityPolicy.RELIABLE,
+        qos_depth=10,
+    ),
+    FULL_STATUS_REPORT_TOPIC_ID: TopicRoute(
+        topic_id=FULL_STATUS_REPORT_TOPIC_ID,
+        topic_name='/swarm/full_status_report',
+        message_type=String,
+        links=(
+            _link(ROLE_LEADER, {ROLE_STATION}, STATION_NODE_ID),
         ),
         qos_reliability=ReliabilityPolicy.RELIABLE,
         qos_depth=10,

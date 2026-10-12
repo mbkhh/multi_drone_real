@@ -27,6 +27,14 @@ and the topic registry performs an additional role/direction check.
 | 7 | `/swarm/local_state` | `nav_msgs/msg/Odometry` | leader -> 255; follower -> leader 1 | follower frames -> 255 |
 | 8 | `/swarm/vision_trigger` | `std_msgs/msg/String` | leader -> broadcast 255 | no |
 | 9 | `/swarm/vision_command` | `std_msgs/msg/String` | follower -> leader 1 | no |
+| 10 | `/swarm/full_status_response` | `std_msgs/msg/String` | follower -> leader 1 | no |
+| 11 | `/swarm/full_status_report` | `std_msgs/msg/String` | leader -> station 100 | no |
+
+`full_status` itself travels once over the existing command topics (ID 1 and
+then ID 4). Each follower returns one compact JSON diagnostic on ID 10. The
+leader forwards each response, plus its own report, to the station on ID 11.
+These two return routes are intentionally not broadcast and have no relay
+policy, preventing a ROS/P900 feedback loop.
 
 The old `role:=drone` launch value remains an alias for `role:=leader`. Its
 wire role code is still 1, preserving the existing topic 1-3 frame behavior.

@@ -17,7 +17,16 @@ import math
 import json
 import numpy as np
 import asyncio
+import queue
+import threading
 from rclpy.callback_groups import ReentrantCallbackGroup
+
+from swarm_single_no_tf_yaw.system_report import (
+    FULL_STATUS_REPORT_KIND,
+    FULL_STATUS_RESPONSE_KIND,
+    collect_full_status,
+    valid_request_id,
+)
 
 
 VISION_TRIGGER_TOPIC = '/swarm/vision_trigger'
@@ -26,6 +35,8 @@ VISION_EVENT_TARGET_DETECTED = 'TARGET_DETECTED'
 VISION_EVENT_TARGET_DETECTED_LEGACY = 'TARGET_DETECTED_LAND'
 VISION_ACTION_REPORT = 'report'
 VISION_ACTION_RETURN_LAND = 'return_land'
+FULL_STATUS_RESPONSE_TOPIC = '/swarm/full_status_response'
+FULL_STATUS_REPORT_TOPIC = '/swarm/full_status_report'
 
 
 class Communication():
@@ -112,6 +123,30 @@ class Communication():
         self.vision_detection_action = VISION_ACTION_REPORT
         self.vision_return_land_active = False
         self.vision_return_height = None
+
+        # Full status is deliberately separate from flight status. The
+        # potentially blocking systemd/ROS-graph inspection runs in a daemon
+        # worker and the timer publishes the result back on the ROS executor.
+        self.full_status_response_publisher = self.parent_node.create_publisher(
+            String, FULL_STATUS_RESPONSE_TOPIC, 10
+        )
+        self.full_status_response_subscriber = (
+            self.parent_node.create_subscription(
+                String,
+                FULL_STATUS_RESPONSE_TOPIC,
+                self._full_status_response_callback,
+                10,
+            )
+        )
+        self.full_status_report_publisher = self.parent_node.create_publisher(
+            String, FULL_STATUS_REPORT_TOPIC, 10
+        )
+        self._full_status_results = queue.SimpleQueue()
+        self._full_status_result_timer = self.parent_node.create_timer(
+            0.1, self._drain_full_status_results
+        )
+        self._full_status_seen_requests = []
+        self._full_status_forwarded_reports = []
 
         # --- Action Server State --- ### NEW ###
         self._action_goal_handle = None
@@ -339,6 +374,128 @@ class Communication():
         self.vision_return_land_active = False
         self.vision_return_height = None
 
+    @staticmethod
+    def _remember_once(items, key, limit=64):
+        """Remember a bounded diagnostic key and reject duplicate delivery."""
+        if key in items:
+            return False
+        items.append(key)
+        if len(items) > limit:
+            del items[:-limit]
+        return True
+
+    def _start_full_status_collection(self, request_id):
+        """Start one non-blocking local report for a unique request."""
+        if not valid_request_id(request_id):
+            self.parent_node.get_logger().error(
+                'FULL_STATUS ignored: invalid or missing request_id.'
+            )
+            return False
+        if not self._remember_once(
+            self._full_status_seen_requests, request_id
+        ):
+            self.parent_node.get_logger().warning(
+                f'FULL_STATUS duplicate ignored: request_id={request_id}'
+            )
+            return False
+
+        def collect_in_background():
+            try:
+                report = collect_full_status(self.parent_node)
+            except Exception as exc:
+                report = {
+                    'schema': 1,
+                    'drone_id': int(self.parent_node.frame_id),
+                    'errors': [f'report collection failed: {exc}'[:200]],
+                }
+            self._full_status_results.put((request_id, report))
+
+        threading.Thread(
+            target=collect_in_background,
+            name=f'full-status-d{self.parent_node.frame_id}',
+            daemon=True,
+        ).start()
+        self.parent_node.get_logger().info(
+            f'Collecting one-shot FULL_STATUS request {request_id}.'
+        )
+        return True
+
+    @staticmethod
+    def _encode_full_status(kind, request_id, report):
+        return json.dumps(
+            {
+                'kind': kind,
+                'request_id': request_id,
+                'report': report,
+            },
+            separators=(',', ':'),
+        )
+
+    def _drain_full_status_results(self):
+        """Publish completed worker results without blocking flight callbacks."""
+        while True:
+            try:
+                request_id, report = self._full_status_results.get_nowait()
+            except queue.Empty:
+                return
+
+            output = String()
+            if self.parent_node.is_leader:
+                output.data = self._encode_full_status(
+                    FULL_STATUS_REPORT_KIND, request_id, report
+                )
+                self.full_status_report_publisher.publish(output)
+                destination = 'station'
+            else:
+                output.data = self._encode_full_status(
+                    FULL_STATUS_RESPONSE_KIND, request_id, report
+                )
+                self.full_status_response_publisher.publish(output)
+                destination = 'leader'
+            self.parent_node.get_logger().info(
+                f'FULL_STATUS report for drone {report.get("drone_id", "?")} '
+                f'published to {destination}; request_id={request_id}.'
+            )
+
+    def _full_status_response_callback(self, msg):
+        """Leader validates and forwards one follower report to the station."""
+        if not self.parent_node.is_leader:
+            return
+        try:
+            envelope = json.loads(msg.data)
+            request_id = envelope.get('request_id')
+            report = envelope.get('report')
+            drone_id = int(report.get('drone_id'))
+        except (AttributeError, TypeError, ValueError, json.JSONDecodeError):
+            self.parent_node.get_logger().warning(
+                'Malformed follower FULL_STATUS response ignored.'
+            )
+            return
+        if (
+            envelope.get('kind') != FULL_STATUS_RESPONSE_KIND
+            or not valid_request_id(request_id)
+            or not isinstance(report, dict)
+            or not 1 <= drone_id <= 254
+            or drone_id == int(self.parent_node.frame_id)
+        ):
+            self.parent_node.get_logger().warning(
+                'Invalid follower FULL_STATUS response ignored.'
+            )
+            return
+        key = (request_id, drone_id)
+        if not self._remember_once(self._full_status_forwarded_reports, key):
+            return
+
+        output = String()
+        output.data = self._encode_full_status(
+            FULL_STATUS_REPORT_KIND, request_id, report
+        )
+        self.full_status_report_publisher.publish(output)
+        self.parent_node.get_logger().info(
+            f'Forwarded FULL_STATUS from drone {drone_id} to station; '
+            f'request_id={request_id}.'
+        )
+
     def command_callback(self, msg: String):
         self.parent_node.get_logger().info(f"Follower received command payload: {msg.data}")
         try:
@@ -379,6 +536,8 @@ class Communication():
                 self.parent_node.get_logger().warning(
                     'Follower ignored mission start because Offboard is not active.'
                 )
+        elif command_type == 'full_status':
+            self._start_full_status_collection(cmd.get('request_id'))
         elif command_type == "leader_is_dead":
             del self.parent_node.last_seen_neighbors[self.parent_node.leader_id]
             self.referendum_conducting()
@@ -479,6 +638,21 @@ class Communication():
             out_msg.data = json.dumps({"command": "stop_animation"})
             self.command_publisher.publish(out_msg)
             self.parent_node.get_logger().info("Leader: Publishing stop animation command.")
+        elif command_type == 'full_status':
+            request_id = cmd.get('request_id')
+            if self._start_full_status_collection(request_id):
+                out_msg = String()
+                out_msg.data = json.dumps(
+                    {
+                        'command': 'full_status',
+                        'request_id': request_id,
+                    },
+                    separators=(',', ':'),
+                )
+                self.command_publisher.publish(out_msg)
+                self.parent_node.get_logger().info(
+                    f'FULL_STATUS request {request_id} broadcast to followers.'
+                )
         elif command_type == 'start_detection':
             detection_action = str(
                 cmd.get('on_detection', VISION_ACTION_REPORT)

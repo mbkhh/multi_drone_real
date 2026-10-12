@@ -15,6 +15,8 @@ from swarm_p900_bridge.topic_registry import (
     CODEC_COMPACT_STATE,
     COMMAND_TOPIC_ID,
     FOLLOWER_COMMAND_TOPIC_ID,
+    FULL_STATUS_REPORT_TOPIC_ID,
+    FULL_STATUS_RESPONSE_TOPIC_ID,
     FORMATION_COMMAND_TOPIC_ID,
     FORMATION_TOPIC_ID,
     LEADER_NODE_ID,
@@ -82,6 +84,25 @@ def test_new_leader_follower_command_and_vision_routes():
     )
 
 
+def test_full_status_return_routes_are_explicit_and_not_relayed():
+    response = TOPIC_REGISTRY[FULL_STATUS_RESPONSE_TOPIC_ID]
+    report = TOPIC_REGISTRY[FULL_STATUS_REPORT_TOPIC_ID]
+
+    assert response.topic_name == '/swarm/full_status_response'
+    assert response.message_type is String
+    assert response.sender_roles == frozenset({ROLE_FOLLOWER})
+    assert response.receiver_roles == frozenset({ROLE_LEADER})
+    assert response.link_for_sender(ROLE_FOLLOWER).destination_node_id == 1
+    assert not response.leader_relay
+
+    assert report.topic_name == '/swarm/full_status_report'
+    assert report.message_type is String
+    assert report.sender_roles == frozenset({ROLE_LEADER})
+    assert report.receiver_roles == frozenset({ROLE_STATION})
+    assert report.link_for_sender(ROLE_LEADER).destination_node_id == 100
+    assert not report.leader_relay
+
+
 def test_liveness_and_compact_state_have_explicit_relay_policy():
     liveness = TOPIC_REGISTRY[LIVENESS_TOPIC_ID]
     state = TOPIC_REGISTRY[LOCAL_STATE_TOPIC_ID]
@@ -118,15 +139,17 @@ def test_liveness_and_compact_state_have_explicit_relay_policy():
 
 def test_complete_role_route_sets_and_legacy_drone_alias():
     assert [route.topic_id for route in routes_sent_by(ROLE_STATION)] == [1, 2]
-    assert [route.topic_id for route in routes_received_by(ROLE_STATION)] == [3]
+    assert [route.topic_id for route in routes_received_by(ROLE_STATION)] == [
+        3, 11,
+    ]
     assert [route.topic_id for route in routes_sent_by(ROLE_LEADER)] == [
-        3, 4, 5, 6, 7, 8,
+        3, 4, 5, 6, 7, 8, 11,
     ]
     assert [route.topic_id for route in routes_received_by(ROLE_LEADER)] == [
-        1, 2, 6, 7, 9,
+        1, 2, 6, 7, 9, 10,
     ]
     assert [route.topic_id for route in routes_sent_by(ROLE_FOLLOWER)] == [
-        6, 7, 9,
+        6, 7, 9, 10,
     ]
     assert [route.topic_id for route in routes_received_by(ROLE_FOLLOWER)] == [
         4, 5, 6, 7, 8,
