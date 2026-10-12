@@ -1,0 +1,36 @@
+# Installed as /etc/swarm-drone.conf. Use plain KEY=value lines without shell
+# commands. This file contains no passwords.
+
+# Common installation
+SWARM_WORKSPACE=@SWARM_WORKSPACE@
+ROS_SETUP=/opt/ros/rolling/setup.sh
+RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+# Keep domain 0 unless PX4's UXRCE_DDS_DOM_ID is configured to match another
+# domain. The P900 bridge, controller, vision node and PX4 DDS topics must all
+# be in the same local ROS domain.
+ROS_DOMAIN_ID=0
+
+# Change these values on each Raspberry Pi.
+DRONE_ID=1
+UAV_ID=UAV_1
+
+# Drone 1 is leader/node 1. Other drones use follower and their own ID.
+P900_ROLE=leader
+P900_NODE_ID=1
+
+# Prefer the stable path printed by: ls -l /dev/serial/by-id/
+# Replace this before starting the service.
+P900_SERIAL_PORT=/dev/serial/by-id/REPLACE_WITH_P900_DEVICE
+P900_BAUD_RATE=230400
+P900_DIAGNOSTICS_INTERVAL=10.0
+
+# PX4 serial agent. This process intentionally runs without sourcing ROS.
+XRCE_AGENT_BIN=/usr/local/bin/MicroXRCEAgent
+XRCE_SERIAL_PORT=/dev/ttyAMA0
+XRCE_BAUD_RATE=921600
+
+# Onboard flight-vision settings.
+VISION_CAMERA_INDEX=0
+VISION_INPUT_SIZE=320
+VISION_INFERENCE_THREADS=1

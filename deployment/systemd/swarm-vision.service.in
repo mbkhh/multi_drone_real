@@ -1,0 +1,22 @@
+[Unit]
+Description=Swarm drone flight vision
+Documentation=file://@SWARM_WORKSPACE@/deployment/systemd/README.md
+Wants=swarm-p900-bridge.service
+After=swarm-p900-bridge.service
+PartOf=swarm-drone.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=@SWARM_USER@
+SupplementaryGroups=video
+EnvironmentFile=/etc/swarm-drone.conf
+ExecStart=/usr/local/libexec/swarm-drone-run vision
+Restart=always
+RestartSec=3
+KillMode=control-group
+KillSignal=SIGINT
+TimeoutStopSec=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=swarm-vision

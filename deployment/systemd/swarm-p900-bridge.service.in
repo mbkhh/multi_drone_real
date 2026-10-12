@@ -1,0 +1,22 @@
+[Unit]
+Description=Swarm drone P900 ROS bridge
+Documentation=file://@SWARM_WORKSPACE@/deployment/systemd/README.md
+Wants=network-online.target
+After=network-online.target local-fs.target
+PartOf=swarm-drone.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=@SWARM_USER@
+SupplementaryGroups=dialout
+EnvironmentFile=/etc/swarm-drone.conf
+ExecStart=/usr/local/libexec/swarm-drone-run p900
+Restart=always
+RestartSec=2
+KillMode=control-group
+KillSignal=SIGINT
+TimeoutStopSec=12
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=swarm-p900-bridge

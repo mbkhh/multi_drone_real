@@ -1,0 +1,9 @@
+[Unit]
+Description=Complete swarm drone companion-computer stack
+Wants=swarm-xrce-agent.service swarm-p900-bridge.service
+Wants=swarm-control.service swarm-vision.service
+After=swarm-xrce-agent.service swarm-p900-bridge.service
+After=swarm-control.service swarm-vision.service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# One small, auditable entry point shared by the four systemd services.
+# The Micro XRCE Agent path intentionally never sources ROS: the Agent under
+# /usr/local has its own Fast DDS libraries and mixing those with ROS Rolling's
+# libraries has previously caused a stack-smashing abort on connection.
+
+readonly config_file="${SWARM_DRONE_CONFIG:-/etc/swarm-drone.conf}"
+readonly component="${1:-}"
+
+if [[ ! -r "$config_file" ]]; then
+    echo "[swarm-drone] configuration is not readable: $config_file" >&2
+    exit 2
+fi
+
+set -a
+# shellcheck disable=SC1090
+source "$config_file"
+set +a
+
+: "${SWARM_WORKSPACE:?Set SWARM_WORKSPACE in $config_file}"
+: "${DRONE_ID:?Set DRONE_ID in $config_file}"
+
+ROS_SETUP="${ROS_SETUP:-/opt/ros/rolling/setup.sh}"
+RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}"
+ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}"
+
+XRCE_AGENT_BIN="${XRCE_AGENT_BIN:-/usr/local/bin/MicroXRCEAgent}"
+XRCE_SERIAL_PORT="${XRCE_SERIAL_PORT:-/dev/ttyAMA0}"
+XRCE_BAUD_RATE="${XRCE_BAUD_RATE:-921600}"
+
+P900_ROLE="${P900_ROLE:-follower}"
+P900_NODE_ID="${P900_NODE_ID:-$DRONE_ID}"
+P900_SERIAL_PORT="${P900_SERIAL_PORT:-/dev/ttyUSB0}"
+P900_BAUD_RATE="${P900_BAUD_RATE:-230400}"
+P900_DIAGNOSTICS_INTERVAL="${P900_DIAGNOSTICS_INTERVAL:-10.0}"
+
+UAV_ID="${UAV_ID:-UAV_${DRONE_ID}}"
+VISION_CAMERA_INDEX="${VISION_CAMERA_INDEX:-0}"
+VISION_INPUT_SIZE="${VISION_INPUT_SIZE:-320}"
+VISION_INFERENCE_THREADS="${VISION_INFERENCE_THREADS:-1}"
+
+require_positive_integer() {
+    local name="$1"
+    local value="$2"
+    if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+        echo "[swarm-drone] $name must be a positive integer; got '$value'" >&2
+        exit 2
+    fi
+}
+
+require_p900_node_id() {
+    local value="$1"
+    require_positive_integer P900_NODE_ID "$value"
+    if (( value > 254 )); then
+        echo "[swarm-drone] P900_NODE_ID must be in 1..254; got '$value'" >&2
+        exit 2
+    fi
+    if [[ "$P900_ROLE" == leader && "$value" -ne 1 ]]; then
+        echo "[swarm-drone] the current registry requires leader node ID 1" >&2
+        exit 2
+    fi
+    if [[ "$P900_ROLE" == follower && ( "$value" -eq 1 || "$value" -eq 100 ) ]]; then
+        echo "[swarm-drone] follower ID cannot use leader 1 or station 100" >&2
+        exit 2
+    fi
+}
+
+require_serial_device() {
+    local name="$1"
+    local path="$2"
+    if [[ ! -e "$path" ]]; then
+        echo "[swarm-drone] $name is not present yet: $path" >&2
+        exit 1
+    fi
+    if [[ ! -r "$path" || ! -w "$path" ]]; then
+        echo "[swarm-drone] $name is not readable/writable: $path" >&2
+        echo "[swarm-drone] verify the service user belongs to dialout" >&2
+        exit 1
+    fi
+}
+
+source_ros_workspace() {
+    if [[ ! -r "$ROS_SETUP" ]]; then
+        echo "[swarm-drone] ROS setup is not readable: $ROS_SETUP" >&2
+        exit 1
+    fi
+    if [[ ! -r "$SWARM_WORKSPACE/install/setup.sh" ]]; then
+        echo "[swarm-drone] workspace is not built: $SWARM_WORKSPACE" >&2
+        echo "[swarm-drone] missing install/setup.sh" >&2
+        exit 1
+    fi
+
+    cd -- "$SWARM_WORKSPACE"
+    export PYTHONUNBUFFERED=1
+    export RMW_IMPLEMENTATION ROS_DOMAIN_ID
+    # ROS-generated setup files may legitimately probe unset variables. The
+    # runner itself returns to nounset mode immediately after sourcing them.
+    set +u
+    # shellcheck disable=SC1090
+    source "$ROS_SETUP"
+    # shellcheck disable=SC1091
+    source "$SWARM_WORKSPACE/install/setup.sh"
+    set -u
+}
+
+require_positive_integer DRONE_ID "$DRONE_ID"
+
+case "$component" in
+    agent)
+        require_positive_integer XRCE_BAUD_RATE "$XRCE_BAUD_RATE"
+        require_serial_device "PX4 serial device" "$XRCE_SERIAL_PORT"
+        if [[ ! -x "$XRCE_AGENT_BIN" ]]; then
+            echo "[swarm-drone] MicroXRCEAgent is not executable: $XRCE_AGENT_BIN" >&2
+            echo "[swarm-drone] check with: command -v MicroXRCEAgent" >&2
+            exit 1
+        fi
+
+        # Remove any ROS environment inherited by systemd or a manual start.
+        unset ROS_DOMAIN_ID RMW_IMPLEMENTATION
+        unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH
+        unset PYTHONPATH LD_LIBRARY_PATH
+        echo "[swarm-drone] starting standalone Micro XRCE Agent"
+        echo "[swarm-drone] $XRCE_AGENT_BIN serial --dev $XRCE_SERIAL_PORT -b $XRCE_BAUD_RATE"
+        exec "$XRCE_AGENT_BIN" serial \
+            --dev "$XRCE_SERIAL_PORT" -b "$XRCE_BAUD_RATE"
+        ;;
+
+    p900)
+        case "$P900_ROLE" in
+            leader|follower) ;;
+            *)
+                echo "[swarm-drone] P900_ROLE must be leader or follower; got '$P900_ROLE'" >&2
+                exit 2
+                ;;
+        esac
+        require_p900_node_id "$P900_NODE_ID"
+        require_positive_integer P900_BAUD_RATE "$P900_BAUD_RATE"
+        require_serial_device "P900 serial device" "$P900_SERIAL_PORT"
+        source_ros_workspace
+        echo "[swarm-drone] starting P900 bridge role=$P900_ROLE node_id=$P900_NODE_ID"
+        exec ros2 launch swarm_p900_bridge p900_bridge.launch.py \
+            role:="$P900_ROLE" \
+            node_id:="$P900_NODE_ID" \
+            serial_port:="$P900_SERIAL_PORT" \
+            baud_rate:="$P900_BAUD_RATE" \
+            diagnostics_interval:="$P900_DIAGNOSTICS_INTERVAL"
+        ;;
+
+    control)
+        source_ros_workspace
+        echo "[swarm-drone] starting no-TF yaw controller for drone $DRONE_ID"
+        exec ros2 run swarm_single_no_tf_yaw control_node --ros-args \
+            -p frame_id:="$DRONE_ID" \
+            -r __node:="control_node_no_tf_yaw_d${DRONE_ID}"
+        ;;
+
+    vision)
+        require_positive_integer VISION_INPUT_SIZE "$VISION_INPUT_SIZE"
+        require_positive_integer VISION_INFERENCE_THREADS "$VISION_INFERENCE_THREADS"
+        source_ros_workspace
+        if [[ ! -x "$SWARM_WORKSPACE/run_swarm_vision.sh" ]]; then
+            echo "[swarm-drone] vision launcher is not executable: $SWARM_WORKSPACE/run_swarm_vision.sh" >&2
+            exit 1
+        fi
+        echo "[swarm-drone] starting flight vision for $UAV_ID"
+        exec "$SWARM_WORKSPACE/run_swarm_vision.sh" flight --ros-args \
+            -p uav_id:="$UAV_ID" \
+            -p camera_index:="$VISION_CAMERA_INDEX" \
+            -p input_size:="$VISION_INPUT_SIZE" \
+            -p inference_threads:="$VISION_INFERENCE_THREADS"
+        ;;
+
+    *)
+        echo "Usage: $0 {agent|p900|control|vision}" >&2
+        exit 2
+        ;;
+esac

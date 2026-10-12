@@ -1,0 +1,21 @@
+[Unit]
+Description=Swarm drone no-TF yaw flight controller
+Documentation=file://@SWARM_WORKSPACE@/deployment/systemd/README.md
+Wants=swarm-xrce-agent.service swarm-p900-bridge.service
+After=swarm-xrce-agent.service swarm-p900-bridge.service
+PartOf=swarm-drone.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=@SWARM_USER@
+EnvironmentFile=/etc/swarm-drone.conf
+ExecStart=/usr/local/libexec/swarm-drone-run control
+Restart=always
+RestartSec=2
+KillMode=control-group
+KillSignal=SIGINT
+TimeoutStopSec=12
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=swarm-control
