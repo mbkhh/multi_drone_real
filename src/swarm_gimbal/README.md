@@ -12,10 +12,11 @@ package. Its framing and command fields follow the SIYI Gimbal SDK protocol.
 - `/swarm/gimbal/control` (`std_msgs/msg/String`): commands, normally JSON.
 - `/swarm/gimbal/status` (`std_msgs/msg/String`): periodic JSON status.
 
-Status contains the last gimbal yaw/pitch/roll, angular rates, mode, recording
-state, mounting direction, firmware versions, connection age, last command
-acknowledgement, and UDP/protocol counters. `connected` becomes false when no
-valid response has arrived within `connection_timeout_sec`.
+Status contains the last gimbal yaw/pitch/roll, angular rates, current zoom,
+zoom range, mode, recording state, mounting direction, firmware versions,
+connection age, last command acknowledgement, and UDP/protocol counters.
+`connected` becomes false when no valid response has arrived within
+`connection_timeout_sec`.
 
 ## Build and run
 
@@ -56,7 +57,33 @@ ros2 topic pub --once /swarm/gimbal/control std_msgs/msg/String \
 ```
 
 The ZR10 limits enforced by the node are yaw `-135..135` degrees and pitch
-`-90..25` degrees.
+`-90..25` degrees. The SIYI ZR10 SDK does not provide commanded roll in its
+angle or single-axis control messages. Roll is reported in status but remains
+under the gimbal's stabilization controller.
+
+Set an absolute zoom level:
+
+```bash
+ros2 topic pub --once /swarm/gimbal/control std_msgs/msg/String \
+  "data: '{\"command\":\"zoom\",\"level\":5.0}'"
+```
+
+The SIYI absolute command accepts `1.0x..30.0x` hybrid zoom. The ZR10 reports
+its optical limit in `status.zoom.maximum`; magnification above that limit can
+include digital zoom.
+
+Manual zoom in/out uses the same watchdog behavior as gimbal speed movement:
+
+```bash
+ros2 topic pub -r 5 /swarm/gimbal/control std_msgs/msg/String \
+  "data: '{\"command\":\"zoom\",\"direction\":\"in\"}'"
+
+ros2 topic pub --once /swarm/gimbal/control std_msgs/msg/String \
+  "data: '{\"command\":\"zoom_stop\"}'"
+```
+
+Use `"direction":"out"` to zoom out. Numeric directions `1`, `-1`, and `0`
+are also accepted.
 
 Speed control uses integers from `-100..100`. A nonzero speed command is
 automatically stopped after 0.5 seconds by default. Publish repeatedly to keep
@@ -96,4 +123,5 @@ higher-level controller provides its own watchdog.
 | `attitude_poll_rate_hz` | `5.0` | Gimbal attitude query rate |
 | `connection_timeout_sec` | `2.0` | No-response disconnect threshold |
 | `speed_command_timeout_sec` | `0.5` | Automatic rate-command stop time |
+| `zoom_command_timeout_sec` | `0.5` | Automatic manual-zoom stop time |
 

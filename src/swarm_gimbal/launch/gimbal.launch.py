@@ -18,6 +18,9 @@ def generate_launch_description():
     speed_command_timeout_sec = LaunchConfiguration(
         'speed_command_timeout_sec'
     )
+    zoom_command_timeout_sec = LaunchConfiguration(
+        'zoom_command_timeout_sec'
+    )
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -57,6 +60,13 @@ def generate_launch_description():
                 'Auto-stop timeout for nonzero speed control; 0 disables it.'
             ),
         ),
+        DeclareLaunchArgument(
+            'zoom_command_timeout_sec',
+            default_value='0.5',
+            description=(
+                'Auto-stop timeout for manual zoom; 0 disables it.'
+            ),
+        ),
         Node(
             package='swarm_gimbal',
             executable='gimbal_node',
@@ -75,6 +85,9 @@ def generate_launch_description():
                 ),
                 'speed_command_timeout_sec': ParameterValue(
                     speed_command_timeout_sec, value_type=float
+                ),
+                'zoom_command_timeout_sec': ParameterValue(
+                    zoom_command_timeout_sec, value_type=float
                 ),
             }],
         ),

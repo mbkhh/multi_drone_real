@@ -12,16 +12,22 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
 
 from .commands import (
+    absolute_zoom_payload,
     attitude_payload,
+    CMD_ABSOLUTE_ZOOM,
     CMD_CAMERA_FUNCTION,
     CMD_CAMERA_SYSTEM_INFO,
+    CMD_CURRENT_ZOOM,
     CMD_FIRMWARE_VERSION,
     CMD_GIMBAL_ATTITUDE,
     CMD_GIMBAL_MODE,
     CMD_GIMBAL_ROTATION,
+    CMD_MANUAL_ZOOM,
     CMD_ONE_KEY_CENTERING,
     CMD_SET_GIMBAL_ATTITUDE,
+    CMD_ZOOM_RANGE,
     decode_response,
+    manual_zoom_payload,
     mode_payload,
     speed_payload,
 )
@@ -43,6 +49,7 @@ class GimbalNode(Node):
         self.declare_parameter('attitude_poll_rate_hz', 5.0)
         self.declare_parameter('connection_timeout_sec', 2.0)
         self.declare_parameter('speed_command_timeout_sec', 0.5)
+        self.declare_parameter('zoom_command_timeout_sec', 0.5)
 
         self.camera_ip = str(self.get_parameter('camera_ip').value)
         self.camera_port = int(self.get_parameter('camera_port').value)
@@ -59,6 +66,11 @@ class GimbalNode(Node):
         )
         if not math.isfinite(self.speed_timeout) or self.speed_timeout < 0.0:
             raise ValueError('speed_command_timeout_sec must be finite and >= 0')
+        self.zoom_timeout = float(
+            self.get_parameter('zoom_command_timeout_sec').value
+        )
+        if not math.isfinite(self.zoom_timeout) or self.zoom_timeout < 0.0:
+            raise ValueError('zoom_command_timeout_sec must be finite and >= 0')
 
         qos = QoSProfile(depth=10)
         qos.reliability = ReliabilityPolicy.RELIABLE
@@ -75,6 +87,7 @@ class GimbalNode(Node):
         self._attitude: Dict[str, Any] = {}
         self._camera: Dict[str, Any] = {}
         self._firmware: Dict[str, Any] = {}
+        self._zoom: Dict[str, Any] = {}
         self._last_ack: Dict[str, Any] = {}
         self._last_feedback = ''
         self._last_rx_monotonic = 0.0
@@ -82,8 +95,11 @@ class GimbalNode(Node):
         self._last_command_error = ''
         self._decoded_frames = 0
         self._decode_errors = 0
+        self._last_decode_warning: Dict[int, float] = {}
         self._speed_deadline = 0.0
         self._speed_active = False
+        self._zoom_deadline = 0.0
+        self._zoom_active = False
         self._last_info_request = 0.0
         self._last_firmware_request = 0.0
 
@@ -102,7 +118,8 @@ class GimbalNode(Node):
             f'  Control: {control_topic} (std_msgs/msg/String JSON)\n'
             f'  Status: {status_topic} (std_msgs/msg/String JSON)\n'
             f'  Attitude poll: {attitude_rate:.1f} Hz\n'
-            f'  Speed watchdog: {self.speed_timeout:.2f} s'
+            f'  Speed watchdog: {self.speed_timeout:.2f} s\n'
+            f'  Zoom watchdog: {self.zoom_timeout:.2f} s'
         )
 
     def _positive_parameter(self, name: str) -> float:
@@ -128,9 +145,11 @@ class GimbalNode(Node):
         if now - self._last_info_request >= 1.0:
             self._send(CMD_CAMERA_SYSTEM_INFO)
             self._send(CMD_GIMBAL_MODE)
+            self._send(CMD_CURRENT_ZOOM)
             self._last_info_request = now
         if now - self._last_firmware_request >= 30.0:
             self._send(CMD_FIRMWARE_VERSION)
+            self._send(CMD_ZOOM_RANGE)
             self._last_firmware_request = now
 
     def _receive_timer(self) -> None:
@@ -141,10 +160,17 @@ class GimbalNode(Node):
                 update = decode_response(frame)
             except (ValueError, struct.error) as exc:
                 self._decode_errors += 1
-                self.get_logger().warning(
-                    f'Ignored malformed SIYI response 0x{frame.command_id:02X}: '
-                    f'{exc}'
+                now = time.monotonic()
+                last_warning = self._last_decode_warning.get(
+                    frame.command_id, 0.0
                 )
+                if now - last_warning >= 10.0:
+                    self.get_logger().warning(
+                        'Ignored malformed SIYI response '
+                        f'0x{frame.command_id:02X}: {exc}; '
+                        f'payload={frame.payload.hex()}'
+                    )
+                    self._last_decode_warning[frame.command_id] = now
                 continue
             self._apply_update(update)
 
@@ -155,6 +181,8 @@ class GimbalNode(Node):
             self._camera.update(update['camera'])
         if 'firmware' in update:
             self._firmware.update(update['firmware'])
+        if 'zoom' in update:
+            self._zoom.update(update['zoom'])
         if 'ack' in update:
             self._last_ack = dict(update['ack'])
             self._last_ack['stamp'] = self.get_clock().now().nanoseconds / 1e9
@@ -185,13 +213,58 @@ class GimbalNode(Node):
                 if self._send(CMD_GIMBAL_ROTATION, speed_payload(0, 0)):
                     self._speed_active = False
                     self._speed_deadline = 0.0
+                if self._send(CMD_MANUAL_ZOOM, manual_zoom_payload('stop')):
+                    self._zoom_active = False
+                    self._zoom_deadline = 0.0
 
             elif command in ('angle', 'set_angle'):
+                requested_roll = request.get(
+                    'roll_deg', request.get('roll')
+                )
+                if requested_roll is not None:
+                    self.get_logger().warning(
+                        'ZR10 SDK angle control supports yaw and pitch only; '
+                        'roll is stabilization-controlled and was ignored.'
+                    )
                 payload = attitude_payload(
                     request.get('yaw_deg', request.get('yaw')),
                     request.get('pitch_deg', request.get('pitch')),
                 )
                 self._send(CMD_SET_GIMBAL_ATTITUDE, payload)
+
+            elif command in ('zoom', 'manual_zoom'):
+                if 'level' in request or 'zoom' in request:
+                    level = request.get('level', request.get('zoom'))
+                    self._send(
+                        CMD_ABSOLUTE_ZOOM, absolute_zoom_payload(level)
+                    )
+                    self._zoom_active = False
+                    self._zoom_deadline = 0.0
+                else:
+                    payload = manual_zoom_payload(
+                        request.get('direction', 'stop')
+                    )
+                    moving = payload != b'\x00'
+                    if self._send(CMD_MANUAL_ZOOM, payload):
+                        self._zoom_active = moving
+                        self._zoom_deadline = (
+                            time.monotonic() + self.zoom_timeout
+                            if moving and self.zoom_timeout > 0.0
+                            else 0.0
+                        )
+
+            elif command in ('zoom_absolute', 'set_zoom'):
+                level = request.get(
+                    'level', request.get('zoom', request.get('value'))
+                )
+                self._send(CMD_ABSOLUTE_ZOOM, absolute_zoom_payload(level))
+                self._zoom_active = False
+                self._zoom_deadline = 0.0
+
+            elif command == 'zoom_stop':
+                if self._send(CMD_MANUAL_ZOOM, manual_zoom_payload('stop')):
+                    self._zoom_active = False
+                    self._zoom_deadline = 0.0
 
             elif command == 'center':
                 self._send(CMD_ONE_KEY_CENTERING, b'\x01')
@@ -211,11 +284,13 @@ class GimbalNode(Node):
                 self._send(CMD_GIMBAL_ATTITUDE)
                 self._send(CMD_CAMERA_SYSTEM_INFO)
                 self._send(CMD_GIMBAL_MODE)
+                self._send(CMD_CURRENT_ZOOM)
+                self._send(CMD_ZOOM_RANGE)
 
             else:
                 raise ValueError(
-                    'unknown command; use speed, stop, angle, center, down, '
-                    'mode, or query'
+                    'unknown command; use speed, stop, angle, zoom, '
+                    'zoom_absolute, zoom_stop, center, down, mode, or query'
                 )
 
             self._last_command = command
@@ -250,6 +325,18 @@ class GimbalNode(Node):
                 'Gimbal speed watchdog stopped motion; refresh speed commands '
                 'to move continuously.'
             )
+        if (
+            self._zoom_active
+            and self._zoom_deadline > 0.0
+            and time.monotonic() >= self._zoom_deadline
+        ):
+            self._send(CMD_MANUAL_ZOOM, manual_zoom_payload('stop'))
+            self._zoom_active = False
+            self._zoom_deadline = 0.0
+            self.get_logger().warning(
+                'Gimbal zoom watchdog stopped zooming; refresh manual zoom '
+                'commands to continue.'
+            )
 
     def _publish_status(self) -> None:
         now_monotonic = time.monotonic()
@@ -266,11 +353,13 @@ class GimbalNode(Node):
             'attitude': self._attitude or None,
             'camera': self._camera or None,
             'firmware': self._firmware or None,
+            'zoom': self._zoom or None,
             'last_ack': self._last_ack or None,
             'last_function_feedback': self._last_feedback or None,
             'last_command': self._last_command or None,
             'last_command_error': self._last_command_error or None,
             'speed_watchdog_active': self._speed_active,
+            'zoom_watchdog_active': self._zoom_active,
             'transport': {
                 'tx_packets': self.transport.tx_packets,
                 'tx_bytes': self.transport.tx_bytes,
@@ -295,6 +384,7 @@ class GimbalNode(Node):
         """Stop any rate motion and close the UDP socket."""
         if self.transport.is_open:
             self._send(CMD_GIMBAL_ROTATION, speed_payload(0, 0))
+            self._send(CMD_MANUAL_ZOOM, manual_zoom_payload('stop'))
             self.transport.close()
 
 

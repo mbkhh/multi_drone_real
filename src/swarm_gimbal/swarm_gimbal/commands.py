@@ -8,6 +8,7 @@ from .protocol import SiyiFrame
 
 
 CMD_FIRMWARE_VERSION = 0x01
+CMD_MANUAL_ZOOM = 0x05
 CMD_GIMBAL_ROTATION = 0x07
 CMD_ONE_KEY_CENTERING = 0x08
 CMD_CAMERA_SYSTEM_INFO = 0x0A
@@ -15,6 +16,9 @@ CMD_FUNCTION_FEEDBACK = 0x0B
 CMD_CAMERA_FUNCTION = 0x0C
 CMD_GIMBAL_ATTITUDE = 0x0D
 CMD_SET_GIMBAL_ATTITUDE = 0x0E
+CMD_ABSOLUTE_ZOOM = 0x0F
+CMD_ZOOM_RANGE = 0x16
+CMD_CURRENT_ZOOM = 0x18
 CMD_GIMBAL_MODE = 0x19
 
 YAW_MIN_DEG = -135.0
@@ -77,6 +81,46 @@ def attitude_payload(yaw_deg: Any, pitch_deg: Any) -> bytes:
     return struct.pack('<hh', round(yaw * 10.0), round(pitch * 10.0))
 
 
+def manual_zoom_payload(direction: Any) -> bytes:
+    """Build manual zoom direction: -1 out, 0 stop, or 1 in."""
+    if isinstance(direction, str):
+        directions = {
+            'out': -1,
+            'zoom_out': -1,
+            'stop': 0,
+            'in': 1,
+            'zoom_in': 1,
+        }
+        key = direction.strip().lower()
+        if key not in directions:
+            raise ValueError('zoom direction must be in, out, or stop')
+        value = directions[key]
+    elif isinstance(direction, bool) or not isinstance(direction, (int, float)):
+        raise ValueError('zoom direction must be in, out, stop, -1, 0, or 1')
+    else:
+        numeric = _finite_number(direction, 'direction')
+        if not numeric.is_integer():
+            raise ValueError('numeric zoom direction must be -1, 0, or 1')
+        value = int(numeric)
+    if value not in (-1, 0, 1):
+        raise ValueError('numeric zoom direction must be -1, 0, or 1')
+    return struct.pack('<b', value)
+
+
+def absolute_zoom_payload(zoom: Any) -> bytes:
+    """Build an absolute hybrid-zoom target from 1.0x through 30.0x."""
+    value = _finite_number(zoom, 'zoom')
+    if not 1.0 <= value <= 30.0:
+        raise ValueError('zoom must be in [1.0, 30.0]')
+
+    integer = int(value)
+    decimal = round((value - integer) * 10.0)
+    if decimal == 10:
+        integer += 1
+        decimal = 0
+    return struct.pack('<BB', integer, decimal)
+
+
 def mode_payload(mode: str) -> bytes:
     """Build the camera-function byte that selects a gimbal motion mode."""
     functions = {'lock': 3, 'follow': 4, 'fpv': 5}
@@ -122,28 +166,34 @@ def decode_response(frame: SiyiFrame) -> Dict[str, Any]:
         }
 
     if command_id == CMD_CAMERA_SYSTEM_INFO:
-        if len(payload) not in (7, 8):
-            raise ValueError('camera system-info response must be 7 or 8 bytes')
+        # Newer protocol revisions return 7/8 bytes. Some ZR10 firmware
+        # returns the same ordered prefix with only 6 bytes.
+        if len(payload) not in (6, 7, 8):
+            raise ValueError(
+                'camera system-info response must be 6, 7, or 8 bytes; '
+                f'got {len(payload)}'
+            )
         values = struct.unpack('<' + ('B' * len(payload)), payload)
         zoom_linkage = values[7] if len(values) == 8 else 0
-        return {
-            'camera': {
-                'hdr_enabled': bool(values[1]),
-                'recording_state': RECORD_STATES.get(
-                    values[3], f'unknown_{values[3]}'
-                ),
-                'gimbal_mode': GIMBAL_MODES.get(
-                    values[4], f'unknown_{values[4]}'
-                ),
-                'mounting_direction': MOUNT_DIRECTIONS.get(
-                    values[5], f'unknown_{values[5]}'
-                ),
-                'video_output': VIDEO_OUTPUT_STATES.get(
-                    values[6], f'unknown_{values[6]}'
-                ),
-                'zoom_linkage': bool(zoom_linkage),
-            }
+        camera = {
+            'hdr_enabled': bool(values[1]),
+            'recording_state': RECORD_STATES.get(
+                values[3], f'unknown_{values[3]}'
+            ),
+            'gimbal_mode': GIMBAL_MODES.get(
+                values[4], f'unknown_{values[4]}'
+            ),
+            'mounting_direction': MOUNT_DIRECTIONS.get(
+                values[5], f'unknown_{values[5]}'
+            ),
         }
+        if len(values) >= 7:
+            camera['video_output'] = VIDEO_OUTPUT_STATES.get(
+                values[6], f'unknown_{values[6]}'
+            )
+        if len(values) >= 8:
+            camera['zoom_linkage'] = bool(zoom_linkage)
+        return {'camera': camera}
 
     if command_id == CMD_GIMBAL_MODE:
         if len(payload) != 1:
@@ -165,6 +215,53 @@ def decode_response(frame: SiyiFrame) -> Dict[str, Any]:
             'firmware': {
                 name: _format_firmware(word)
                 for name, word in zip(names, words)
+            }
+        }
+
+    if command_id == CMD_MANUAL_ZOOM:
+        if len(payload) != 2:
+            raise ValueError(
+                f'manual-zoom response must be 2 bytes; got {len(payload)}'
+            )
+        return {
+            'zoom': {
+                'current': struct.unpack('<H', payload)[0] / 10.0,
+                'unit': 'x',
+            },
+            'ack': {'command': 'zoom', 'success': True},
+        }
+
+    if command_id == CMD_ABSOLUTE_ZOOM:
+        if len(payload) != 1:
+            raise ValueError(
+                f'absolute-zoom response must be 1 byte; got {len(payload)}'
+            )
+        return {
+            'ack': {'command': 'zoom_absolute', 'success': bool(payload[0])}
+        }
+
+    if command_id == CMD_ZOOM_RANGE:
+        if len(payload) != 2:
+            raise ValueError(
+                f'zoom-range response must be 2 bytes; got {len(payload)}'
+            )
+        return {
+            'zoom': {
+                'minimum': 1.0,
+                'maximum': payload[0] + payload[1] / 10.0,
+                'unit': 'x',
+            }
+        }
+
+    if command_id == CMD_CURRENT_ZOOM:
+        if len(payload) != 2:
+            raise ValueError(
+                f'current-zoom response must be 2 bytes; got {len(payload)}'
+            )
+        return {
+            'zoom': {
+                'current': payload[0] + payload[1] / 10.0,
+                'unit': 'x',
             }
         }
 
