@@ -103,10 +103,21 @@ XRCE_AGENT_BIN=/usr/local/bin/MicroXRCEAgent
 XRCE_SERIAL_PORT=/dev/ttyAMA0
 XRCE_BAUD_RATE=921600
 
+VISION_CAMERA_SOURCE=
 VISION_CAMERA_INDEX=0
 VISION_INPUT_SIZE=320
 VISION_INFERENCE_THREADS=1
 ```
+
+For a SIYI ZR10 network stream, set the source instead of relying on a local
+`/dev/video` device:
+
+```ini
+VISION_CAMERA_SOURCE=rtsp://192.168.144.25:8554/main.264
+```
+
+The companion computer must have a route to the camera subnet. Verify it with
+`ip route get 192.168.144.25` and test TCP port 8554 before starting vision.
 
 Use the following identity values.
 

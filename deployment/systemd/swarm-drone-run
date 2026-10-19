@@ -38,6 +38,7 @@ P900_DIAGNOSTICS_INTERVAL="${P900_DIAGNOSTICS_INTERVAL:-10.0}"
 
 UAV_ID="${UAV_ID:-UAV_${DRONE_ID}}"
 VISION_CAMERA_INDEX="${VISION_CAMERA_INDEX:-0}"
+VISION_CAMERA_SOURCE="${VISION_CAMERA_SOURCE:-}"
 VISION_INPUT_SIZE="${VISION_INPUT_SIZE:-320}"
 VISION_INFERENCE_THREADS="${VISION_INFERENCE_THREADS:-1}"
 
@@ -165,11 +166,20 @@ case "$component" in
             exit 1
         fi
         echo "[swarm-drone] starting flight vision for $UAV_ID"
-        exec "$SWARM_WORKSPACE/run_swarm_vision.sh" flight --ros-args \
-            -p uav_id:="$UAV_ID" \
-            -p camera_index:="$VISION_CAMERA_INDEX" \
-            -p input_size:="$VISION_INPUT_SIZE" \
+        vision_arguments=(
+            --ros-args
+            -p uav_id:="$UAV_ID"
+            -p camera_index:="$VISION_CAMERA_INDEX"
+            -p input_size:="$VISION_INPUT_SIZE"
             -p inference_threads:="$VISION_INFERENCE_THREADS"
+        )
+        if [[ -n "$VISION_CAMERA_SOURCE" ]]; then
+            vision_arguments+=(
+                -p camera_source:="$VISION_CAMERA_SOURCE"
+            )
+        fi
+        exec "$SWARM_WORKSPACE/run_swarm_vision.sh" \
+            flight "${vision_arguments[@]}"
         ;;
 
     *)

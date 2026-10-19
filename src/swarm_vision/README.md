@@ -22,10 +22,10 @@ colcon build --packages-select swarm_vision
 source install/setup.bash
 ```
 
-The local environment reuses Ubuntu's ROS 2, NumPy, and OpenCV packages. Only
-Flask, ONNX Runtime CPU, and their small Python dependencies are installed in
-`.venv-swarm-vision`. The supplied runner disables `~/.local` Python packages
-for the vision process to avoid version conflicts.
+The local environment reuses Ubuntu's ROS 2 and OpenCV packages. It installs
+Flask and ONNX Runtime CPU plus an architecture-specific NumPy only where the
+Jetson wheel requires it. The supplied runner disables `~/.local` Python
+packages for the vision process to avoid version conflicts.
 
 ## Run
 
@@ -41,6 +41,15 @@ Start the lightweight flight node:
 ./run_swarm_vision.sh flight --ros-args \
   -p uav_id:=UAV_1 \
   -p camera_index:=0
+```
+
+Use a network camera by setting `camera_source`; when it is non-empty it takes
+precedence over `camera_index`:
+
+```bash
+./run_swarm_vision.sh flight --ros-args \
+  -p uav_id:=UAV_1 \
+  -p camera_source:=rtsp://192.168.144.25:8554/main.264
 ```
 
 Enable sports-ball detection (COCO class 32), or stop it:
@@ -105,6 +114,8 @@ Useful parameters shared by both nodes:
 
 - `model_path`: explicit ONNX path; empty auto-discovers `yolo11n.onnx`;
 - `camera_index`: OpenCV camera number;
+- `camera_source`: optional RTSP/video URL or device path; overrides
+  `camera_index`;
 - `input_size`: inference size, default `320` (must be a multiple of 32);
 - `confidence`: detection threshold, default `0.45`;
 - `nms_threshold`: non-maximum suppression threshold, default `0.45`;

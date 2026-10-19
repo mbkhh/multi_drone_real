@@ -9,6 +9,11 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
+from swarm_vision.camera import (
+    describe_camera_source,
+    open_camera,
+    resolve_camera_source,
+)
 from swarm_vision.detector import (
     COCO_CLASSES,
     resolve_model_path,
@@ -25,6 +30,7 @@ class FlightVisionNode(Node):
         self.declare_parameter('uav_id', 'UAV_1')
         self.declare_parameter('model_path', '')
         self.declare_parameter('camera_index', 0)
+        self.declare_parameter('camera_source', '')
         self.declare_parameter('camera_width', 640)
         self.declare_parameter('camera_height', 480)
         self.declare_parameter('input_size', 320)
@@ -59,22 +65,17 @@ class FlightVisionNode(Node):
             ),
         )
 
-        camera_index = int(self.get_parameter('camera_index').value)
-        self.camera = cv2.VideoCapture(camera_index)
-        self.camera.set(
-            cv2.CAP_PROP_FRAME_WIDTH,
-            int(self.get_parameter('camera_width').value),
+        camera_source = resolve_camera_source(
+            self.get_parameter('camera_source').value,
+            self.get_parameter('camera_index').value,
         )
-        self.camera.set(
-            cv2.CAP_PROP_FRAME_HEIGHT,
-            int(self.get_parameter('camera_height').value),
+        self.camera_is_stream = isinstance(camera_source, str)
+        self.camera = open_camera(
+            camera_source,
+            width=self.get_parameter('camera_width').value,
+            height=self.get_parameter('camera_height').value,
         )
-        if not self.camera.isOpened():
-            self.camera.release()
-            raise RuntimeError(
-                f'Could not open camera index {camera_index}. Set '
-                'camera_index to the correct /dev/video device.'
-            )
+        camera_description = describe_camera_source(camera_source)
 
         self.command_publisher = self.create_publisher(
             String, '/swarm/vision_command', 10
@@ -98,7 +99,7 @@ class FlightVisionNode(Node):
         self.worker.start()
         self.get_logger().info(
             f'Flight vision online for {self.uav_id}; model={model_path}, '
-            f'camera={camera_index}, output={self.save_directory}'
+            f'camera={camera_description}, output={self.save_directory}'
         )
 
     def trigger_callback(self, msg):
@@ -154,6 +155,12 @@ class FlightVisionNode(Node):
         """Read frames and run inference outside the ROS executor thread."""
         while not self.stop_event.is_set():
             if not self.detection_enabled:
+                # Network streams keep sending while detection is disabled.
+                # Drain them so a later START operates on current imagery.
+                if self.camera_is_stream:
+                    if not self.camera.grab():
+                        self.stop_event.wait(0.05)
+                    continue
                 self.stop_event.wait(0.08)
                 continue
             success, frame = self.camera.read()

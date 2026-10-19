@@ -14,6 +14,11 @@ import numpy as np
 from datetime import datetime
 from flask import Flask, Response, render_template_string, request, jsonify, send_file
 
+from swarm_vision.camera import (
+    describe_camera_source,
+    open_camera,
+    resolve_camera_source,
+)
 from swarm_vision.detector import (
     COCO_CLASSES,
     YoloDetector,
@@ -59,6 +64,7 @@ class SwarmVisionNode(Node):
         self.declare_parameter('uav_id', 'UAV_1')
         self.declare_parameter('model_path', '')
         self.declare_parameter('camera_index', 0)
+        self.declare_parameter('camera_source', '')
         self.declare_parameter('camera_width', 640)
         self.declare_parameter('camera_height', 480)
         self.declare_parameter('input_size', 320)
@@ -591,21 +597,16 @@ def main(args=None):
         ))
         web_host = str(ros_node.get_parameter('web_host').value)
         web_port = int(ros_node.get_parameter('web_port').value)
-        camera_index = int(ros_node.get_parameter('camera_index').value)
-        cap = cv2.VideoCapture(camera_index)
-        cap.set(
-            cv2.CAP_PROP_FRAME_WIDTH,
-            int(ros_node.get_parameter('camera_width').value),
+        camera_source = resolve_camera_source(
+            ros_node.get_parameter('camera_source').value,
+            ros_node.get_parameter('camera_index').value,
         )
-        cap.set(
-            cv2.CAP_PROP_FRAME_HEIGHT,
-            int(ros_node.get_parameter('camera_height').value),
+        cap = open_camera(
+            camera_source,
+            width=ros_node.get_parameter('camera_width').value,
+            height=ros_node.get_parameter('camera_height').value,
         )
-        if not cap.isOpened():
-            raise RuntimeError(
-                f'Could not open camera index {camera_index}. Set '
-                'camera_index to the correct /dev/video device.'
-            )
+        camera_description = describe_camera_source(camera_source)
 
         worker_thread = threading.Thread(
             target=vision_loop,
@@ -620,7 +621,8 @@ def main(args=None):
         )
         flask_thread.start()
         ros_node.get_logger().info(
-            f'Web vision ready: model={model_path}, camera={camera_index}, '
+            f'Web vision ready: model={model_path}, '
+            f'camera={camera_description}, '
             f'output={BASE_TEST_DIR}, URL=http://{web_host}:{web_port}'
         )
         rclpy.spin(ros_node)
