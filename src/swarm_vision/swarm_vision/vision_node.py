@@ -67,7 +67,7 @@ class SwarmVisionNode(Node):
         self.declare_parameter('camera_source', '')
         self.declare_parameter('camera_width', 640)
         self.declare_parameter('camera_height', 480)
-        self.declare_parameter('input_size', 320)
+        self.declare_parameter('input_size', 640)
         self.declare_parameter('confidence', 0.45)
         self.declare_parameter('nms_threshold', 0.45)
         self.declare_parameter('inference_threads', 1)

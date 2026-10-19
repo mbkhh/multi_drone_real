@@ -97,7 +97,7 @@ class YoloDetector:
     def __init__(
         self,
         model_path: Path,
-        input_size: int = 320,
+        input_size: int = 640,
         confidence: float = 0.45,
         nms_threshold: float = 0.45,
         inference_threads: int = 1,
@@ -126,6 +126,38 @@ class YoloDetector:
         self.confidence = float(confidence)
         self.nms_threshold = float(nms_threshold)
 
+    def _prepare_input(self, frame: np.ndarray):
+        """
+        Letterbox one BGR frame and return its tensor and geometry.
+
+        Ultralytics models are trained with aspect-ratio-preserving resize and
+        padding.  Stretching a 16:9 RTSP image into a square severely distorts
+        round and small targets (notably sports balls), so keep the aspect
+        ratio and remember the transform for mapping boxes back to the source.
+        """
+        height, width = frame.shape[:2]
+        scale = min(self.input_size / width, self.input_size / height)
+        resized_width = max(1, int(round(width * scale)))
+        resized_height = max(1, int(round(height * scale)))
+        resized = cv2.resize(frame, (resized_width, resized_height))
+
+        pad_x = (self.input_size - resized_width) // 2
+        pad_y = (self.input_size - resized_height) // 2
+        prepared = np.full(
+            (self.input_size, self.input_size, 3),
+            114,
+            dtype=np.uint8,
+        )
+        prepared[
+            pad_y:pad_y + resized_height,
+            pad_x:pad_x + resized_width,
+        ] = resized
+
+        rgb = cv2.cvtColor(prepared, cv2.COLOR_BGR2RGB)
+        tensor = np.transpose(rgb.astype(np.float32) / 255.0, (2, 0, 1))
+        tensor = np.expand_dims(tensor, axis=0)
+        return tensor, scale, pad_x, pad_y
+
     def detect(
         self,
         frame: np.ndarray,
@@ -137,10 +169,7 @@ class YoloDetector:
             raise ValueError('Expected a BGR image with three channels.')
 
         height, width = frame.shape[:2]
-        resized = cv2.resize(frame, (self.input_size, self.input_size))
-        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-        tensor = np.transpose(rgb.astype(np.float32) / 255.0, (2, 0, 1))
-        tensor = np.expand_dims(tensor, axis=0)
+        tensor, scale, pad_x, pad_y = self._prepare_input(frame)
         output = np.squeeze(
             self.session.run(None, {self.input_name: tensor})[0]
         )
@@ -159,8 +188,6 @@ class YoloDetector:
         class_ids = np.argmax(scores, axis=1)
         confidences = np.max(scores, axis=1)
         allowed = {int(value) for value in (selected_classes or [])}
-        scale_x = width / self.input_size
-        scale_y = height / self.input_size
         boxes = []
         kept_confidences = []
         kept_class_ids = []
@@ -172,11 +199,19 @@ class YoloDetector:
             if not detect_all and class_id not in allowed:
                 continue
             center_x, center_y, box_width, box_height = predictions[index, :4]
-            x = int((center_x - box_width / 2.0) * scale_x)
-            y = int((center_y - box_height / 2.0) * scale_y)
-            w = int(box_width * scale_x)
-            h = int(box_height * scale_y)
-            boxes.append([x, y, w, h])
+            x1 = int(round((center_x - box_width / 2.0 - pad_x) / scale))
+            y1 = int(round((center_y - box_height / 2.0 - pad_y) / scale))
+            x2 = int(round((center_x + box_width / 2.0 - pad_x) / scale))
+            y2 = int(round((center_y + box_height / 2.0 - pad_y) / scale))
+            x1 = max(0, min(width - 1, x1))
+            y1 = max(0, min(height - 1, y1))
+            x2 = max(0, min(width, x2))
+            y2 = max(0, min(height, y2))
+            box_width_pixels = x2 - x1
+            box_height_pixels = y2 - y1
+            if box_width_pixels <= 0 or box_height_pixels <= 0:
+                continue
+            boxes.append([x1, y1, box_width_pixels, box_height_pixels])
             kept_confidences.append(float(confidence))
             kept_class_ids.append(class_id)
 

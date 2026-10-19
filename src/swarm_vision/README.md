@@ -116,7 +116,7 @@ Useful parameters shared by both nodes:
 - `camera_index`: OpenCV camera number;
 - `camera_source`: optional RTSP/video URL or device path; overrides
   `camera_index`;
-- `input_size`: inference size, default `320` (must be a multiple of 32);
+- `input_size`: inference size, default `640` (must be a multiple of 32);
 - `confidence`: detection threshold, default `0.45`;
 - `nms_threshold`: non-maximum suppression threshold, default `0.45`;
 - `inference_threads`: ONNX CPU threads, default `1` to protect flight control;
